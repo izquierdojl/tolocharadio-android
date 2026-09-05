@@ -1,0 +1,16 @@
+<!-- Versión monocromo simplificada: silueta + sol, sin ondas finas. Uso: notificación smallIcon, atajos, widget. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M16,8.5m-6.5,0a6.5,6.5 0 1 0 13,0a6.5,6.5 0 1 0 -13,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M0,64L14,34L26,50L40,26L64,58L64,64Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,6.5m-3,0a3,3 0 1 0 6,0a3,3 0 1 0 -6,0" />
+</vector>

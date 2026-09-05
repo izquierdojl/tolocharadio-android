@@ -1,10 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+    <!-- Escala Tolocha (web index.css). Fuente de verdad en Theme.kt; aquí solo para temas/splash XML. -->
+    <color name="pine_50">#FFF0F5F1</color>
+    <color name="pine_100">#FFDEEAE2</color>
+    <color name="pine_200">#FFBCD2C4</color>
+    <color name="pine_300">#FF8CB29A</color>
+    <color name="pine_400">#FF5F8F73</color>
+    <color name="pine_500">#FF3C6A4D</color>
+    <color name="pine_600">#FF2C4F38</color>
+    <color name="pine_700">#FF203A28</color>
+    <color name="pine_800">#FF17291C</color>
+    <color name="pine_850">#FF122016</color>
+    <color name="pine_900">#FF0F1A12</color>
+    <color name="pine_950">#FF08100B</color>
+    <color name="ochre_100">#FFF7ECDB</color>
+    <color name="ochre_200">#FFEFDABB</color>
+    <color name="ochre_300">#FFE2C091</color>
+    <color name="ochre_400">#FFD3A568</color>
+    <color name="ochre_500">#FFC0883E</color>
+    <color name="ochre_600">#FFA67430</color>
+    <color name="ochre_700">#FF8A5F26</color>
+    <color name="ochre_800">#FF6B4A1D</color>
+    <color name="ochre_900">#FF4A3314</color>
+    <color name="ochre_950">#FF2B1D0C</color>
+    <color name="tolocha_brand">#FF8A5F26</color>
+    <color name="light_surface">#FFEEF3EF</color>
+    <color name="light_surface_raised">#FFFFFFFF</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

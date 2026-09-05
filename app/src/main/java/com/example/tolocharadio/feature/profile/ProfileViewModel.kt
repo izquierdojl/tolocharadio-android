@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tolocharadio.core.network.ApiResult
 import com.example.tolocharadio.core.network.userMessage
+import com.example.tolocharadio.core.ui.theme.ThemeMode
 import com.example.tolocharadio.data.local.InstancePrefs
 import com.example.tolocharadio.data.remote.dto.ThemeDto
 import com.example.tolocharadio.data.remote.dto.UserDto
@@ -24,6 +25,7 @@ data class ProfileUi(
     val user: UserDto? = null,
     val name: String = "",
     val darkTheme: Boolean = true,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val message: String? = null,
     val loading: Boolean = true,
 )
@@ -43,6 +45,11 @@ class ProfileViewModel
 
         init {
             refresh()
+            viewModelScope.launch {
+                prefs.themeMode.collect { mode ->
+                    _ui.value = _ui.value.copy(themeMode = mode, darkTheme = mode != ThemeMode.LIGHT)
+                }
+            }
         }
 
         /** Recarga `GET /users/me`. */
@@ -72,10 +79,17 @@ class ProfileViewModel
         }
 
         fun onThemeChange(dark: Boolean) {
-            _ui.value = _ui.value.copy(darkTheme = dark)
+            onThemeModeChange(if (dark) ThemeMode.DARK else ThemeMode.LIGHT)
+        }
+
+        /** Selector Sistema/Claro/Oscuro (spec 002, FR-010). SYSTEM es solo local. */
+        fun onThemeModeChange(mode: ThemeMode) {
+            _ui.value = _ui.value.copy(themeMode = mode, darkTheme = mode != ThemeMode.LIGHT)
             viewModelScope.launch {
-                users.patchMe(null, if (dark) ThemeDto.DARK else ThemeDto.LIGHT)
-                prefs.setDarkTheme(dark)
+                prefs.setThemeMode(mode)
+                if (mode != ThemeMode.SYSTEM) {
+                    users.patchMe(null, if (mode == ThemeMode.DARK) ThemeDto.DARK else ThemeDto.LIGHT)
+                }
             }
         }
 

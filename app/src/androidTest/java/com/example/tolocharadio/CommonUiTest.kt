@@ -36,13 +36,15 @@ class CommonUiTest {
     }
 
     @Test
-    fun stationListItem_sinFavicon_muestraInicial() {
+    fun stationListItem_sinFavicon_muestraPlaceholderSierra() {
         compose.setContent {
             TolochaTheme {
                 StationListItem(station, isFavorite = true, onPlay = {}, onToggleFavorite = {})
             }
         }
-        compose.onNodeWithText("T").assertIsDisplayed()
+        // Spec 002: sin favicon se muestra el emblema Sierra (icono Radio), no la inicial.
+        compose.onNodeWithText("Tolocha").assertIsDisplayed()
+        compose.onNodeWithText("España · español").assertIsDisplayed()
     }
 
     @Test

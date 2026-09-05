@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Los tokens (EncryptedSharedPreferences) NUNCA se respaldan. -->
+<!-- Los tokens (EncryptedSharedPreferences) NUNCA se respaldan.
+     theme_mode/base_url (DataStore tolocha_prefs) SÍ se respaldan: son preferencias locales. -->
 <full-backup-content>
     <exclude domain="sharedpref" path="tolocha_tokens.xml" />
     <exclude domain="sharedpref" path="tolocha_tokens_preference.xml" />

@@ -1,0 +1,10 @@
+<!-- Origen: AppShell.tsx MountainWall (M0 120 L200 30 L340 90 L520 10 L700 80 L860 25 L1050 95 L1200 45 L1200 120 Z). Tint con ?attr/colorMountain o MountainDark/Light. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="12dp"
+    android:viewportWidth="1200"
+    android:viewportHeight="120">
+    <path
+        android:fillColor="#203A28"
+        android:pathData="M0,120L200,30L340,90L520,10L700,80L860,25L1050,95L1200,45L1200,120Z" />
+</vector>

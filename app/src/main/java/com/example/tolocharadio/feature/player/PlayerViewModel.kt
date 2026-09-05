@@ -106,6 +106,7 @@ class PlayerViewModel
             connectController()
         }
 
+        @OptIn(UnstableApi::class)
         private fun connectController() {
             val token = SessionToken(context, ComponentName(context, RadioPlaybackService::class.java))
             val future = MediaController.Builder(context, token).buildAsync()

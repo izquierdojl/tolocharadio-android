@@ -3,14 +3,18 @@ package com.example.tolocharadio.core.ui.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,6 +28,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.tolocharadio.core.session.AuthState
 import com.example.tolocharadio.core.session.SessionManager
+import com.example.tolocharadio.core.ui.components.TolochaLogo
 import com.example.tolocharadio.feature.auth.LoginScreen
 import com.example.tolocharadio.feature.auth.RegisterScreen
 import com.example.tolocharadio.feature.explore.ExploreScreen
@@ -35,11 +40,13 @@ import com.example.tolocharadio.feature.profile.ProfileScreen
 
 private data class BottomDest(val route: String, val label: String, val icon: ImageVector)
 
+/** Paridad web: Explorar, Favoritos, Historial, Mis emisoras + Perfil (Lucide→Material, spec 002). */
 private val BOTTOM_DESTS =
     listOf(
-        BottomDest(Routes.HOME, "Inicio", Icons.Filled.Home),
         BottomDest(Routes.EXPLORE, "Explorar", Icons.Filled.Search),
         BottomDest(Routes.FAVORITES, "Favoritos", Icons.Filled.Favorite),
+        BottomDest(Routes.HISTORY, "Historial", Icons.Filled.History),
+        BottomDest(Routes.CUSTOM_STATIONS, "Mis emisoras", Icons.Filled.Radio),
         BottomDest(Routes.PROFILE, "Perfil", Icons.Filled.Person),
     )
 
@@ -48,6 +55,7 @@ private val BOTTOM_DESTS =
  *
  * @param hasInstance false en primer arranque (va a [Routes.SETUP]).
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TolochaNavGraph(
     sessionManager: SessionManager,
@@ -58,11 +66,23 @@ fun TolochaNavGraph(
     val authState by sessionManager.authState.collectAsState()
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
+    val chromeVisible = currentRoute != null && currentRoute !in setOf(Routes.SETUP, Routes.LOGIN, Routes.REGISTER)
 
     Scaffold(
         modifier = modifier,
+        topBar = {
+            if (chromeVisible) {
+                TopAppBar(
+                    title = { TolochaLogo() },
+                    colors =
+                        TopAppBarDefaults.topAppBarColors(
+                            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer,
+                        ),
+                )
+            }
+        },
         bottomBar = {
-            if (currentRoute != null && currentRoute !in setOf(Routes.SETUP, Routes.LOGIN, Routes.REGISTER)) {
+            if (chromeVisible) {
                 NavigationBar {
                     BOTTOM_DESTS.forEach { dest ->
                         NavigationBarItem(

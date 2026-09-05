@@ -1,0 +1,5 @@
+<!-- Origen: https://github.com/izquierdojl/tolocharadio/blob/main/apps/web/src/components/AppShell.tsx (MountainWall)
+     viewBox 1200x120, path M0 120 L200 30 L340 90 L520 10 L700 80 L860 25 L1050 95 L1200 45 L1200 120 Z, fill currentColor=text-mountain. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
+  <path d="M0 120 L200 30 L340 90 L520 10 L700 80 L860 25 L1050 95 L1200 45 L1200 120 Z" fill="currentColor"/>
+</svg>

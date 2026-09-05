@@ -1,7 +1,6 @@
 package com.example.tolocharadio.feature.profile
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,15 +11,17 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.tolocharadio.core.ui.theme.ThemeMode
 
 /** Perfil: nombre, tema, instancia y salir (US-6). */
 @Composable
@@ -50,9 +51,29 @@ fun ProfileScreen(
             Text("Guardar")
         }
         Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Tema oscuro", modifier = Modifier.weight(1f))
-            Switch(checked = ui.darkTheme, onCheckedChange = viewModel::onThemeChange)
+        Text("Tema", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(4.dp))
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            ThemeMode.entries.forEachIndexed { index, mode ->
+                SegmentedButton(
+                    selected = ui.themeMode == mode,
+                    onClick = { viewModel.onThemeModeChange(mode) },
+                    shape =
+                        SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = ThemeMode.entries.size,
+                        ),
+                    label = {
+                        Text(
+                            when (mode) {
+                                ThemeMode.SYSTEM -> "Sistema"
+                                ThemeMode.DARK -> "Oscuro"
+                                ThemeMode.LIGHT -> "Claro"
+                            },
+                        )
+                    },
+                )
+            }
         }
         ui.message?.let {
             Spacer(Modifier.height(8.dp))

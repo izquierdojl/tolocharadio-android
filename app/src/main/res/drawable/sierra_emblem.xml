@@ -1,0 +1,42 @@
+<!-- Origen: specs/002-web-look-and-feel/assets/sierra-emblem.svg (SierraEmblem.tsx).
+     Colores resueltos tema oscuro: badge #08100b/#203a28, sol #e2c091, sierra #2c4f38, ondas #bcd2c4.
+     Escala: viewBox 64 -> viewport 108dp centrado (factor 1.6875, traslación 0). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <path
+        android:fillColor="#08100B"
+        android:pathData="M14,0h36a14,14 0 0 1 14,14v36a14,14 0 0 1 -14,14H14A14,14 0 0 1 0,50V14A14,14 0 0 1 14,0Z" />
+    <path
+        android:fillColor="#203A28"
+        android:pathData="M14,0h36a14,14 0 0 1 14,14v36a14,14 0 0 1 -14,14H14A14,14 0 0 1 0,50V14A14,14 0 0 1 14,0Z"
+        android:fillAlpha="0.55" />
+    <path
+        android:fillColor="#E2C091"
+        android:pathData="M16,8.5m-6.5,0a6.5,6.5 0 1 0 13,0a6.5,6.5 0 1 0 -13,0" />
+    <path
+        android:fillColor="#2C4F38"
+        android:pathData="M0,64L14,34L26,50L40,26L64,58L64,64Z" />
+    <path
+        android:strokeColor="#E2C091"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M40,27L40,12" />
+    <path
+        android:fillColor="#E2C091"
+        android:pathData="M40,6.5m-3,0a3,3 0 1 0 6,0a3,3 0 1 0 -6,0" />
+    <path
+        android:strokeColor="#BCD2C4"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M34,8A6,6 0 0 1 40,2"
+        android:strokeAlpha="153" />
+    <path
+        android:strokeColor="#BCD2C4"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:pathData="M32,8A8,8 0 0 1 40,0"
+        android:strokeAlpha="89" />
+</vector>

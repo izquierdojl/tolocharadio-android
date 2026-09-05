@@ -19,6 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -42,56 +43,61 @@ fun MiniPlayer(viewModel: PlayerViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     var showSheet by remember { mutableStateOf(false) }
     if (state is PlayerState.Idle) return
-    Row(
-        modifier =
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                .clickable { showSheet = true },
-        verticalAlignment = Alignment.CenterVertically,
+    Surface(
+        tonalElevation = 3.dp,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
     ) {
-        when (val s = state) {
-            is PlayerState.Buffering -> {
-                CircularProgressIndicator(Modifier.padding(8.dp))
-                Text(s.station.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            }
-            is PlayerState.Playing -> {
-                IconButton(onClick = viewModel::toggle) {
-                    Icon(Icons.Filled.Pause, contentDescription = "Pausar")
+        Row(
+            modifier =
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                    .clickable { showSheet = true },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            when (val s = state) {
+                is PlayerState.Buffering -> {
+                    CircularProgressIndicator(Modifier.padding(8.dp))
+                    Text(s.station.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 }
-                Text(
-                    s.station.name,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            is PlayerState.Paused -> {
-                IconButton(onClick = viewModel::toggle) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = "Reanudar")
+                is PlayerState.Playing -> {
+                    IconButton(onClick = viewModel::toggle) {
+                        Icon(Icons.Filled.Pause, contentDescription = "Pausar")
+                    }
+                    Text(
+                        s.station.name,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
-                Text(
-                    s.station.name,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            is PlayerState.Error -> {
-                IconButton(onClick = viewModel::retry) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "Reintentar")
+                is PlayerState.Paused -> {
+                    IconButton(onClick = viewModel::toggle) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = "Reanudar")
+                    }
+                    Text(
+                        s.station.name,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
-                Text(
-                    s.message,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.error,
-                )
+                is PlayerState.Error -> {
+                    IconButton(onClick = viewModel::retry) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Reintentar")
+                    }
+                    Text(
+                        s.message,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                PlayerState.Idle -> Unit
             }
-            PlayerState.Idle -> Unit
-        }
-        Spacer(Modifier.width(4.dp))
-        IconButton(onClick = viewModel::stop) {
-            Icon(Icons.Filled.Close, contentDescription = "Detener")
+            Spacer(Modifier.width(4.dp))
+            IconButton(onClick = viewModel::stop) {
+                Icon(Icons.Filled.Close, contentDescription = "Detener")
+            }
         }
     }
     if (showSheet) {

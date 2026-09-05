@@ -1,12 +1,13 @@
 # TolochaRadio Android
 
 Cliente Android de [TolochaRadio](https://github.com/izquierdojl/tolocharadio):
-radio en línea self-hosted con cuentas propias. Estética tipo Pocket Casts
-con Material Design 3 y reproductor persistente (Media3).
+radio en línea self-hosted con cuentas propias. Look-and-feel en paridad
+con la app web (paleta pine/ochre/moss, emblema Sierra) con Material
+Design 3 y reproductor persistente (Media3).
 
 ## Requisitos
 
-- JDK 17, Android SDK (API 37), `minSdk=26`.
+- JDK 21 (toolchain Gradle), Android SDK (API 37), `minSdk=26`.
 - Una instancia TolochaRadio, p. ej. `https://radio.mi-dominio.com`
   (la app la pide al arrancar; override local con
   `tolocha.baseUrl` en `local.properties`).
@@ -29,3 +30,11 @@ refresh rotatorio cifrado; playback por proxy con `Authorization: Bearer`
 (nunca en la URL).
 
 Especificación: `specs/001-auth-explore-base/` (spec, plan, tasks).
+
+## Tema (spec 002)
+
+- Tokens de color en `app/src/main/java/com/example/tolocharadio/core/ui/theme/Theme.kt`
+  (fuente de verdad; `res/values/colors.xml` solo alimenta los temas XML de
+  launcher/splash). Contraste WCAG AA verificado en `ContrastTest`.
+- Selector Sistema/Claro/Oscuro en Perfil → se guarda local en DataStore
+  `theme_mode` (default: sistema). Sin fuente externa: solo fuente del sistema.
