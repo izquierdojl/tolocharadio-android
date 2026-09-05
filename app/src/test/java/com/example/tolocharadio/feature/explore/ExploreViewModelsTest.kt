@@ -8,10 +8,14 @@ import com.example.tolocharadio.core.network.DomainError
 import com.example.tolocharadio.data.remote.dto.PaginationDto
 import com.example.tolocharadio.data.remote.dto.StationDto
 import com.example.tolocharadio.data.remote.dto.StationPageDto
+import com.example.tolocharadio.data.repo.FavoritesRepo
+import com.example.tolocharadio.data.repo.FavoritesResult
 import com.example.tolocharadio.data.repo.StationsRepo
 import com.example.tolocharadio.domain.ToggleFavoriteUseCase
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -23,6 +27,7 @@ class ExploreViewModelTest {
     val main = MainDispatcherRule()
 
     private val repo: StationsRepo = mockk()
+    private val favorites: FavoritesRepo = mockk(relaxed = true)
     private val toggle: ToggleFavoriteUseCase = mockk()
     private val page =
         StationPageDto(
@@ -43,7 +48,9 @@ class ExploreViewModelTest {
     fun `init carga primera pagina con hasMore`() =
         runTest {
             coEvery { repo.search(any()) } returns ApiResult.Ok(page)
-            val content = ExploreViewModel(repo, toggle).awaitContent()
+            coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
+            every { favorites.favoriteIds } returns MutableStateFlow(emptySet())
+            val content = ExploreViewModel(repo, favorites, toggle).awaitContent()
             assertEquals(2, content.items.size)
             assertTrue(content.hasMore)
         }
@@ -52,8 +59,10 @@ class ExploreViewModelTest {
     fun `error con lista vacia muestra Error`() =
         runTest {
             coEvery { repo.search(any()) } returns ApiResult.Err(DomainError.Unavailable("x"))
+            coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
+            every { favorites.favoriteIds } returns MutableStateFlow(emptySet())
             var s: ExploreUiState = ExploreUiState.Loading
-            ExploreViewModel(repo, toggle).ui.test {
+            ExploreViewModel(repo, favorites, toggle).ui.test {
                 s = awaitItem()
                 if (s is ExploreUiState.Loading) s = awaitItem()
             }
@@ -64,8 +73,10 @@ class ExploreViewModelTest {
     fun `favorito optimista y rollback ante error`() =
         runTest {
             coEvery { repo.search(any()) } returns ApiResult.Ok(page)
+            coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
             coEvery { toggle("u1", false) } returns ApiResult.Err(DomainError.Unknown("x"))
-            val v = ExploreViewModel(repo, toggle)
+            every { favorites.favoriteIds } returns MutableStateFlow(emptySet())
+            val v = ExploreViewModel(repo, favorites, toggle)
             assertTrue(v.awaitContent().items.isNotEmpty())
             v.toggleFavorite("u1")
             var s: ExploreUiState = ExploreUiState.Loading
@@ -79,6 +90,16 @@ class ExploreViewModelTest {
             val content = s as ExploreUiState.Content
             assertTrue("u1" !in content.favorites)
         }
+
+    @Test
+    fun `favoritas hidratadas marcan existentes en Explorar`() =
+        runTest {
+            coEvery { repo.search(any()) } returns ApiResult.Ok(page)
+            coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
+            every { favorites.favoriteIds } returns MutableStateFlow(setOf("u1"))
+            val content = ExploreViewModel(repo, favorites, toggle).awaitContent()
+            assertEquals(setOf("u1"), content.favorites)
+        }
 }
 
 class StationDetailViewModelTest {
@@ -86,17 +107,34 @@ class StationDetailViewModelTest {
     val main = MainDispatcherRule()
 
     private val repo: StationsRepo = mockk()
+    private val favorites: FavoritesRepo = mockk(relaxed = true)
     private val toggle: ToggleFavoriteUseCase = mockk()
 
     @Test
     fun `detalle OK muestra emisora`() =
         runTest {
             coEvery { repo.detail("u1") } returns ApiResult.Ok(StationDto("u1", "Tolocha"))
+            coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
+            every { favorites.favoriteIds } returns MutableStateFlow(emptySet())
             var s: DetailUiState = DetailUiState.Loading
-            StationDetailViewModel(repo, toggle, SavedStateHandle(mapOf("stationId" to "u1"))).ui.test {
+            StationDetailViewModel(repo, favorites, toggle, SavedStateHandle(mapOf("stationId" to "u1"))).ui.test {
                 s = awaitItem()
                 if (s is DetailUiState.Loading) s = awaitItem()
             }
             assertEquals("Tolocha", (s as DetailUiState.Content).station.name)
+        }
+
+    @Test
+    fun `ficha marca favorita existente`() =
+        runTest {
+            coEvery { repo.detail("u1") } returns ApiResult.Ok(StationDto("u1", "Tolocha"))
+            coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
+            every { favorites.favoriteIds } returns MutableStateFlow(setOf("u1"))
+            var s: DetailUiState = DetailUiState.Loading
+            StationDetailViewModel(repo, favorites, toggle, SavedStateHandle(mapOf("stationId" to "u1"))).ui.test {
+                s = awaitItem()
+                if (s is DetailUiState.Loading) s = awaitItem()
+            }
+            assertEquals(true, (s as DetailUiState.Content).isFavorite)
         }
 }

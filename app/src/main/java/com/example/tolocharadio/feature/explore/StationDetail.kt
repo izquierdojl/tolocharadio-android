@@ -26,6 +26,7 @@ import com.example.tolocharadio.core.ui.components.ErrorBanner
 import com.example.tolocharadio.core.ui.components.FavoriteButton
 import com.example.tolocharadio.core.ui.components.StationArtwork
 import com.example.tolocharadio.data.remote.dto.StationDto
+import com.example.tolocharadio.data.repo.FavoritesRepo
 import com.example.tolocharadio.data.repo.StationsRepo
 import com.example.tolocharadio.domain.ToggleFavoriteUseCase
 import com.example.tolocharadio.feature.player.PlayerViewModel
@@ -50,6 +51,7 @@ class StationDetailViewModel
     @Inject
     constructor(
         private val repo: StationsRepo,
+        private val favorites: FavoritesRepo,
         private val toggleFavorite: ToggleFavoriteUseCase,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
@@ -60,6 +62,16 @@ class StationDetailViewModel
 
         init {
             refresh()
+            // Coherencia con el resto de pantallas (FR-003).
+            viewModelScope.launch {
+                favorites.favoriteIds.collect { ids ->
+                    val c = _ui.value as? DetailUiState.Content ?: return@collect
+                    if ((c.station.id in ids) != c.isFavorite) {
+                        _ui.value = c.copy(isFavorite = c.station.id in ids)
+                    }
+                }
+            }
+            viewModelScope.launch { favorites.list() }
         }
 
         fun refresh() {
@@ -67,7 +79,7 @@ class StationDetailViewModel
             viewModelScope.launch {
                 _ui.value =
                     when (val r = repo.detail(stationId)) {
-                        is ApiResult.Ok -> DetailUiState.Content(r.value, false)
+                        is ApiResult.Ok -> DetailUiState.Content(r.value, stationId in favorites.favoriteIds.value)
                         is ApiResult.Err -> DetailUiState.Error(r.error.userMessage())
                     }
             }

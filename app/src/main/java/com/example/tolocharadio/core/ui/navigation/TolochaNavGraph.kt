@@ -33,6 +33,7 @@ import com.example.tolocharadio.feature.auth.LoginScreen
 import com.example.tolocharadio.feature.auth.RegisterScreen
 import com.example.tolocharadio.feature.explore.ExploreScreen
 import com.example.tolocharadio.feature.explore.StationDetailScreen
+import com.example.tolocharadio.feature.favorites.FavoritesScreen
 import com.example.tolocharadio.feature.home.HomeScreen
 import com.example.tolocharadio.feature.onboarding.InstanceSetupScreen
 import com.example.tolocharadio.feature.player.MiniPlayer
@@ -153,8 +154,14 @@ fun TolochaNavGraph(
                 )
             }
             composable(Routes.FAVORITES) {
-                // Siguiente spec: lista + PUT /favorites/order (FR-009).
-                HomeScreen(onExplore = { navController.navigate(Routes.EXPLORE) })
+                if (authState is AuthState.Authenticated) {
+                    FavoritesScreen(
+                        onStation = { navController.navigate(Routes.stationDetail(it)) },
+                        onExplore = { navController.navigate(Routes.EXPLORE) },
+                    )
+                } else {
+                    LoginScreen(onLoggedIn = {}, onRegister = { navController.navigate(Routes.REGISTER) })
+                }
             }
             composable(Routes.HISTORY) {
                 HomeScreen(onExplore = { navController.navigate(Routes.EXPLORE) })

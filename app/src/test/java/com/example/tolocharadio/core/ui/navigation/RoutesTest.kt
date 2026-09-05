@@ -15,4 +15,10 @@ class RoutesTest {
         assertEquals(false, Routes.HOME in AUTH_REQUIRED)
         assertEquals(false, Routes.LOGIN in AUTH_REQUIRED)
     }
+
+    @Test
+    fun `favoritos exige auth con paridad web`() {
+        assertEquals(true, Routes.FAVORITES in AUTH_REQUIRED)
+        assertEquals("favorites", Routes.FAVORITES)
+    }
 }

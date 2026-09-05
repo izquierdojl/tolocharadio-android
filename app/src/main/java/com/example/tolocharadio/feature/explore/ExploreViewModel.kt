@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.tolocharadio.core.network.ApiResult
 import com.example.tolocharadio.core.network.userMessage
 import com.example.tolocharadio.data.remote.dto.StationDto
+import com.example.tolocharadio.data.repo.FavoritesRepo
 import com.example.tolocharadio.data.repo.StationQuery
 import com.example.tolocharadio.data.repo.StationsRepo
 import com.example.tolocharadio.domain.ToggleFavoriteUseCase
@@ -45,6 +46,7 @@ class ExploreViewModel
     @Inject
     constructor(
         private val repo: StationsRepo,
+        private val favorites: FavoritesRepo,
         private val toggleFavorite: ToggleFavoriteUseCase,
     ) : ViewModel() {
         private val _ui = MutableStateFlow<ExploreUiState>(ExploreUiState.Loading)
@@ -62,6 +64,16 @@ class ExploreViewModel
 
         init {
             refresh()
+            // Marcado coherente (FR-003): la verdad vive en el flujo
+            // compartido del repo; además se hidrata en silencio.
+            viewModelScope.launch {
+                favorites.favoriteIds.collect {
+                    favoriteIds.clear()
+                    favoriteIds.addAll(it)
+                    emitContent()
+                }
+            }
+            viewModelScope.launch { favorites.list() }
         }
 
         /** Recarga desde el offset 0 con los filtros actuales. */
