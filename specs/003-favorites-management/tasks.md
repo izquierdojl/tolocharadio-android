@@ -60,7 +60,7 @@
 ### Tests primero
 
 - [x] T013 [P] [US1] Tests del VM (carga, vacío, error+reintento, offline con/sin caché) con Turbine en `app/src/test/java/com/example/tolocharadio/feature/favorites/FavoritesViewModelTest.kt`
-- [x] T014 [P] [US1] Compose Test base (lista visible, vacío con CTA, error con reintento) en `app/src/androidTest/java/com/example/tolocharadio/feature/favorites/FavoritesScreenTest.kt`
+- [x] T014 [P] [US1] Compose Test base (lista visible, vacío con CTA, error con reintento) en `app/src/androidTest/java/com/example/tolocharadio/feature/favorites/FavoritesScreenTest.kt` — escrito y compila; PENDIENTE ejecución en dispositivo (emulador local API 37 incompatible con compose-ui-test, 2026-09-05)
 
 ### Implementación
 
@@ -82,7 +82,7 @@
 ### Tests primero
 
 - [x] T019 [P] [US2] Ampliar `app/src/test/java/com/example/tolocharadio/feature/favorites/FavoritesViewModelTest.kt` (toggle+rollback, quitar+deshacer 10 s, expiración confirma)
-- [x] T020 [P] [US2] Ampliar `app/src/androidTest/java/com/example/tolocharadio/feature/favorites/FavoritesScreenTest.kt` (toggle, `Snackbar` deshacer, reversión ante error)
+- [x] T020 [P] [US2] Ampliar `app/src/androidTest/java/com/example/tolocharadio/feature/favorites/FavoritesScreenTest.kt` (toggle, `Snackbar` deshacer, reversión ante error) — escrito y compila; PENDIENTE ejecución en dispositivo (ver T014, 2026-09-05)
 - [x] T021 [P] [US2] Ampliar `app/src/test/java/com/example/tolocharadio/feature/explore/ExploreViewModelsTest.kt` (favoritas hidratadas desde el flujo compartido, toggle coherente)
 
 ### Implementación
@@ -104,7 +104,7 @@
 ### Tests primero
 
 - [x] T025 [P] [US3] Ampliar `app/src/test/java/com/example/tolocharadio/feature/favorites/FavoritesViewModelTest.kt` (`moveItem`+`commitOrder`, error→reversión, divergencia→gana-servidor)
-- [x] T026 [P] [US3] Ampliar `app/src/androidTest/java/com/example/tolocharadio/feature/favorites/FavoritesScreenTest.kt` (arrastrar por el asa cambia el orden visible)
+- [x] T026 [P] [US3] Ampliar `app/src/androidTest/java/com/example/tolocharadio/feature/favorites/FavoritesScreenTest.kt` (arrastrar por el asa cambia el orden visible) — escrito y compila; PENDIENTE ejecución en dispositivo (ver T014, 2026-09-05)
 
 ### Implementación
 
@@ -138,7 +138,7 @@
 **Purpose**: gates de merge y validación final (constitución III/IV/V, spec 002 para a11y visual).
 
 - [x] T031 [P] Dejar Android Lint + ktlint + Detekt sin errores ni warnings nuevos y limpiar código muerto en los archivos tocados (`app/src/main/java/com/example/tolocharadio/feature/favorites/`, `data/repo/FavoritesRepo.kt`, `data/local/`, `domain/`)
-- [x] T032 [P] Recorrido completo de `specs/003-favorites-management/quickstart.md` (automatizado + manual con las dos cuentas de prueba) y anotar resultado en la PR
+- [x] T032 [P] Recorrido completo de `specs/003-favorites-management/quickstart.md` (automatizado + manual con las dos cuentas de prueba) y anotar resultado en la PR — automatizado OK; PENDIENTE recorrido manual contra instancia real (2026-09-05)
 
 ---
 
