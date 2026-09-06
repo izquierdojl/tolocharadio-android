@@ -73,4 +73,3 @@ class CommonUiTest {
         assert(acted)
     }
 }
-

@@ -1,6 +1,5 @@
 package com.izquierdojl.tolocharadio.domain.servers
 
-import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.data.local.servers.SavedServerEntity
 import com.izquierdojl.tolocharadio.data.repo.servers.ServerRepository
 import kotlinx.coroutines.flow.Flow

@@ -37,4 +37,3 @@ private fun plural(
     one: String,
     many: String,
 ): String = if (n == 1L) "hace 1 $one" else "hace $n $many"
-

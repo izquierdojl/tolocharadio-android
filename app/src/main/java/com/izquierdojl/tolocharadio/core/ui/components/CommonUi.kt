@@ -342,4 +342,3 @@ fun StationListItem(
         trailingContent = { FavoriteButton(isFavorite = isFavorite, onToggle = onToggleFavorite) },
     )
 }
-

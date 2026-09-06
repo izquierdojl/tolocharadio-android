@@ -125,4 +125,3 @@ class FavoritesRepo
             now: Long,
         ): CachedFavorite = listOf(this).toCached(now).map { it.copy(sortIndex = sortIndex) }.single()
     }
-

@@ -49,4 +49,3 @@ class ContrastTest {
         assertTrue(ratio(0xC0883E, 0x08100B) >= 3.0)
     }
 }
-

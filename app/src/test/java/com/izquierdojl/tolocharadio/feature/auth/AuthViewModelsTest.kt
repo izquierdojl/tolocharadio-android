@@ -133,4 +133,3 @@ class RegisterViewModelTest {
             coVerify { storeCredentials("a@b.c", "secreta123") }
         }
 }
-

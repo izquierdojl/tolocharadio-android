@@ -72,4 +72,3 @@ class TokenAuthenticatorTest {
             assertTrue(session.authState.value is AuthState.Unauthenticated)
         }
 }
-

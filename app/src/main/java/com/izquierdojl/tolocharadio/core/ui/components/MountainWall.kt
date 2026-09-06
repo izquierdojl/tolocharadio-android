@@ -46,4 +46,3 @@ fun MountainWall(
         colorFilter = ColorFilter.tint(if (darkTheme) MountainDark else MountainLight),
     )
 }
-

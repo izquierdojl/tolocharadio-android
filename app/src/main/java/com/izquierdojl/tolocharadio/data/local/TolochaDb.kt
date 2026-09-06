@@ -61,4 +61,3 @@ val MIGRATION_4_5 =
             )
         }
     }
-

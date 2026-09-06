@@ -36,4 +36,3 @@ interface StationsCacheDao {
     @Query("DELETE FROM stations_cache")
     suspend fun clear()
 }
-

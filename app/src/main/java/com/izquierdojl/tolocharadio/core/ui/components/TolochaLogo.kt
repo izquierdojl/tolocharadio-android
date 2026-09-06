@@ -43,4 +43,3 @@ fun TolochaLogo(modifier: Modifier = Modifier) {
         )
     }
 }
-

@@ -392,4 +392,3 @@ private fun HistoryGridCard(
         }
     }
 }
-

@@ -67,4 +67,3 @@ class StationsRepoTest {
             assertTrue((r as ApiResult.Err).error is DomainError.Unavailable)
         }
 }
-

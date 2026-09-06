@@ -71,4 +71,3 @@ suspend fun <T> safeCall(call: suspend () -> Response<T>): ApiResult<T> {
         ApiResult.Err(DomainError.Unknown(e.message ?: "Error inesperado", e))
     }
 }
-

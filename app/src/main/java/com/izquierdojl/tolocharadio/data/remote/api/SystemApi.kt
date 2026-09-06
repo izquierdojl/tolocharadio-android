@@ -12,4 +12,3 @@ interface SystemApi {
     @GET("config")
     suspend fun config(): Response<AppConfigDto>
 }
-

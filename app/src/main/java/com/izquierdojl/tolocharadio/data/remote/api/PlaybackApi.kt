@@ -21,4 +21,3 @@ fun streamUrl(
     baseUrl: String,
     stationId: String,
 ): String = baseUrl.trimEnd('/') + "/api/v1/playback/$stationId"
-

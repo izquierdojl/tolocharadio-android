@@ -179,4 +179,3 @@ class CustomStationsViewModelTest {
             assertTrue(vm.ui.value is CustomStationsUiState.Empty)
         }
 }
-

@@ -81,4 +81,3 @@ class ReorderFavoritesUseCaseTest {
             coVerify(exactly = 0) { repo.reorder(any()) }
         }
 }
-

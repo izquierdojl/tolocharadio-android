@@ -17,4 +17,3 @@ class MainDispatcherRule : TestWatcher() {
         Dispatchers.resetMain()
     }
 }
-

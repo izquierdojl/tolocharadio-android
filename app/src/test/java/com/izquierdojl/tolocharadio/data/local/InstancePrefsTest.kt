@@ -32,26 +32,29 @@ private class FakeDataStore : DataStore<Preferences> {
  */
 class InstancePrefsTest {
     @Test
-    fun `sin clave el modo es LIST (FR-005)`() = runTest {
-        val prefs = InstancePrefs(FakeDataStore())
-        assertEquals(ViewMode.LIST, prefs.viewMode.first())
-    }
+    fun `sin clave el modo es LIST (FR-005)`() =
+        runTest {
+            val prefs = InstancePrefs(FakeDataStore())
+            assertEquals(ViewMode.LIST, prefs.viewMode.first())
+        }
 
     @Test
-    fun `setViewMode persiste y se lee de vuelta (FR-006)`() = runTest {
-        val store = FakeDataStore()
-        val prefs = InstancePrefs(store)
-        prefs.setViewMode(ViewMode.GRID)
-        assertEquals(ViewMode.GRID, prefs.viewMode.first())
-        prefs.setViewMode(ViewMode.LIST)
-        assertEquals(ViewMode.LIST, prefs.viewMode.first())
-    }
+    fun `setViewMode persiste y se lee de vuelta (FR-006)`() =
+        runTest {
+            val store = FakeDataStore()
+            val prefs = InstancePrefs(store)
+            prefs.setViewMode(ViewMode.GRID)
+            assertEquals(ViewMode.GRID, prefs.viewMode.first())
+            prefs.setViewMode(ViewMode.LIST)
+            assertEquals(ViewMode.LIST, prefs.viewMode.first())
+        }
 
     @Test
-    fun `valor corrupto cae a LIST sin error (FR-010)`() = runTest {
-        val store = FakeDataStore()
-        store.state.value = mutablePreferencesOf(stringPreferencesKey("view_mode") to "XXX")
-        val prefs = InstancePrefs(store)
-        assertEquals(ViewMode.LIST, prefs.viewMode.first())
-    }
+    fun `valor corrupto cae a LIST sin error (FR-010)`() =
+        runTest {
+            val store = FakeDataStore()
+            store.state.value = mutablePreferencesOf(stringPreferencesKey("view_mode") to "XXX")
+            val prefs = InstancePrefs(store)
+            assertEquals(ViewMode.LIST, prefs.viewMode.first())
+        }
 }

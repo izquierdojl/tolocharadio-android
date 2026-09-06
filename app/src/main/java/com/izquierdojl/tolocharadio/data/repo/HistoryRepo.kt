@@ -115,4 +115,3 @@ class HistoryRepo
                 .map { (_, group) -> group.maxByOrNull { it.playedAt }!! }
                 .sortedByDescending { it.playedAt }
     }
-

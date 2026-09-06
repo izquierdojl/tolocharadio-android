@@ -36,4 +36,3 @@ interface CustomStationsApi {
         @Path("id") id: String,
     ): Response<OkResult>
 }
-

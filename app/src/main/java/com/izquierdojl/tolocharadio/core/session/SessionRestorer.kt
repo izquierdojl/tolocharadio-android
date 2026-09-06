@@ -1,6 +1,5 @@
 package com.izquierdojl.tolocharadio.core.session
 
-import android.util.Log
 import com.izquierdojl.tolocharadio.domain.auth.RestoreSessionUseCase
 import javax.inject.Inject
 import javax.inject.Singleton

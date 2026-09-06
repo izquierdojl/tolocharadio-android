@@ -28,19 +28,21 @@ class SessionManagerTest {
     }
 
     @Test
-    fun `setAuthenticated updates state to Authenticated`() = runTest {
-        val user = UserDto(id = 1, email = "test@test.com", name = "Test", theme = ThemeDto.DARK, createdAt = 0L)
-        sessionManager.setAuthenticated(user, "access-token", "refresh-token")
-        assertTrue(sessionManager.authState.value is AuthState.Authenticated)
-        assertEquals(user, (sessionManager.authState.value as AuthState.Authenticated).user)
-    }
+    fun `setAuthenticated updates state to Authenticated`() =
+        runTest {
+            val user = UserDto(id = 1, email = "test@test.com", name = "Test", theme = ThemeDto.DARK, createdAt = 0L)
+            sessionManager.setAuthenticated(user, "access-token", "refresh-token")
+            assertTrue(sessionManager.authState.value is AuthState.Authenticated)
+            assertEquals(user, (sessionManager.authState.value as AuthState.Authenticated).user)
+        }
 
     @Test
-    fun `accessTokenNow returns current access token`() = runTest {
-        val user = UserDto(id = 1, email = "test@test.com", name = "Test", theme = ThemeDto.DARK, createdAt = 0L)
-        sessionManager.setAuthenticated(user, "access-token", "refresh-token")
-        assertEquals("access-token", sessionManager.accessTokenNow())
-    }
+    fun `accessTokenNow returns current access token`() =
+        runTest {
+            val user = UserDto(id = 1, email = "test@test.com", name = "Test", theme = ThemeDto.DARK, createdAt = 0L)
+            sessionManager.setAuthenticated(user, "access-token", "refresh-token")
+            assertEquals("access-token", sessionManager.accessTokenNow())
+        }
 
     @Test
     fun `accessTokenNow returns null when not authenticated`() {
@@ -48,43 +50,48 @@ class SessionManagerTest {
     }
 
     @Test
-    fun `logout clears state to Unauthenticated`() = runTest {
-        val user = UserDto(id = 1, email = "test@test.com", name = "Test", theme = ThemeDto.DARK, createdAt = 0L)
-        sessionManager.setAuthenticated(user, "access-token", "refresh-token")
-        sessionManager.logout()
-        assertTrue(sessionManager.authState.value is AuthState.Unauthenticated)
-        assertNull(sessionManager.accessTokenNow())
-    }
+    fun `logout clears state to Unauthenticated`() =
+        runTest {
+            val user = UserDto(id = 1, email = "test@test.com", name = "Test", theme = ThemeDto.DARK, createdAt = 0L)
+            sessionManager.setAuthenticated(user, "access-token", "refresh-token")
+            sessionManager.logout()
+            assertTrue(sessionManager.authState.value is AuthState.Unauthenticated)
+            assertNull(sessionManager.accessTokenNow())
+        }
 
     @Test
-    fun `logout with reason sets reason`() = runTest {
-        sessionManager.logout("expired")
-        val state = sessionManager.authState.value as AuthState.Unauthenticated
-        assertEquals("expired", state.reason)
-    }
+    fun `logout with reason sets reason`() =
+        runTest {
+            sessionManager.logout("expired")
+            val state = sessionManager.authState.value as AuthState.Unauthenticated
+            assertEquals("expired", state.reason)
+        }
 
     @Test
-    fun `setUser updates user when authenticated`() = runTest {
-        val user1 = UserDto(id = 1, email = "test@test.com", name = "Test", theme = ThemeDto.DARK, createdAt = 0L)
-        val user2 = UserDto(id = 1, email = "test@test.com", name = "Updated", theme = ThemeDto.DARK, createdAt = 0L)
-        sessionManager.setAuthenticated(user1, "access-token", "refresh-token")
-        sessionManager.setUser(user2)
-        assertEquals("Updated", (sessionManager.authState.value as AuthState.Authenticated).user.name)
-    }
+    fun `setUser updates user when authenticated`() =
+        runTest {
+            val user1 = UserDto(id = 1, email = "test@test.com", name = "Test", theme = ThemeDto.DARK, createdAt = 0L)
+            val user2 = UserDto(id = 1, email = "test@test.com", name = "Updated", theme = ThemeDto.DARK, createdAt = 0L)
+            sessionManager.setAuthenticated(user1, "access-token", "refresh-token")
+            sessionManager.setUser(user2)
+            assertEquals("Updated", (sessionManager.authState.value as AuthState.Authenticated).user.name)
+        }
 
     @Test
-    fun `setAccess updates access token`() = runTest {
-        val user = UserDto(id = 1, email = "test@test.com", name = "Test", theme = ThemeDto.DARK, createdAt = 0L)
-        sessionManager.setAuthenticated(user, "old-token", "refresh-token")
-        sessionManager.setAccess("new-token")
-        assertEquals("new-token", sessionManager.accessTokenNow())
-    }
+    fun `setAccess updates access token`() =
+        runTest {
+            val user = UserDto(id = 1, email = "test@test.com", name = "Test", theme = ThemeDto.DARK, createdAt = 0L)
+            sessionManager.setAuthenticated(user, "old-token", "refresh-token")
+            sessionManager.setAccess("new-token")
+            assertEquals("new-token", sessionManager.accessTokenNow())
+        }
 
     @Test
-    fun `markRestoring sets Loading state`() = runTest {
-        val user = UserDto(id = 1, email = "test@test.com", name = "Test", theme = ThemeDto.DARK, createdAt = 0L)
-        sessionManager.setAuthenticated(user, "access-token", "refresh-token")
-        sessionManager.markRestoring()
-        assertTrue(sessionManager.authState.value is AuthState.Loading)
-    }
+    fun `markRestoring sets Loading state`() =
+        runTest {
+            val user = UserDto(id = 1, email = "test@test.com", name = "Test", theme = ThemeDto.DARK, createdAt = 0L)
+            sessionManager.setAuthenticated(user, "access-token", "refresh-token")
+            sessionManager.markRestoring()
+            assertTrue(sessionManager.authState.value is AuthState.Loading)
+        }
 }

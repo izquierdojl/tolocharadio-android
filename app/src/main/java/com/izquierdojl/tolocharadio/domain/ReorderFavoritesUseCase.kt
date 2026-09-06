@@ -32,4 +32,3 @@ class ReorderFavoritesUseCase
             return nextSet.size == next.size && nextSet == current.toSet()
         }
     }
-

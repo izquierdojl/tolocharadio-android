@@ -1,9 +1,9 @@
 package com.izquierdojl.tolocharadio.feature
 
-import app.cash.turbine.test
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
+import app.cash.turbine.test
 import com.izquierdojl.tolocharadio.MainDispatcherRule
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
@@ -47,56 +47,63 @@ class ViewModeViewModelTest {
     }
 
     @Test
-    fun `estado inicial es el modo persistido (FR-004)`() = runTest {
-        assertEquals(ViewMode.GRID, vm(ViewMode.GRID).mode.value)
-    }
-
-    @Test
-    fun `sin preferencia previa el modo es LIST (FR-005)`() = runTest {
-        assertEquals(ViewMode.LIST, vm(ViewMode.LIST).mode.value)
-    }
-
-    @Test
-    fun `toggle alterna LIST a GRID y persiste (FR-003, FR-006)`() = runTest {
-        val v = vm(ViewMode.LIST)
-        v.toggle()
-        assertEquals(ViewMode.GRID, v.mode.value)
-        coVerify { prefs.setViewMode(ViewMode.GRID) }
-    }
-
-    @Test
-    fun `toggle doble vuelve a LIST y sobrescribe (FR-006)`() = runTest {
-        val v = vm(ViewMode.LIST)
-        v.toggle()
-        v.toggle()
-        assertEquals(ViewMode.LIST, v.mode.value)
-        coVerify { prefs.setViewMode(ViewMode.LIST) }
-    }
-
-    @Test
-    fun `todos los suscriptores observan el mismo modo (FR-004)`() = runTest {
-        val v = vm(ViewMode.LIST)
-        v.mode.test {
-            assertEquals(ViewMode.LIST, awaitItem())
-            v.toggle()
-            assertEquals(ViewMode.GRID, awaitItem())
-            cancelAndIgnoreRemainingEvents()
+    fun `estado inicial es el modo persistido (FR-004)`() =
+        runTest {
+            assertEquals(ViewMode.GRID, vm(ViewMode.GRID).mode.value)
         }
-    }
 
     @Test
-    fun `dos instancias sucesivas heredan el último modo guardado (FR-006, US-2)`() = runTest {
-        val store = FakeDataStore()
-        val prefs = InstancePrefs(store)
-        val primera = ViewModeViewModel(prefs)
-        primera.toggle()
-        val segunda = ViewModeViewModel(prefs)
-        assertEquals(ViewMode.GRID, segunda.mode.value)
-    }
+    fun `sin preferencia previa el modo es LIST (FR-005)`() =
+        runTest {
+            assertEquals(ViewMode.LIST, vm(ViewMode.LIST).mode.value)
+        }
 
     @Test
-    fun `instancia nueva sin escrituras previas arranca en LIST (US-2 escenario 2)`() = runTest {
-        val v = ViewModeViewModel(InstancePrefs(FakeDataStore()))
-        assertEquals(ViewMode.LIST, v.mode.value)
-    }
+    fun `toggle alterna LIST a GRID y persiste (FR-003, FR-006)`() =
+        runTest {
+            val v = vm(ViewMode.LIST)
+            v.toggle()
+            assertEquals(ViewMode.GRID, v.mode.value)
+            coVerify { prefs.setViewMode(ViewMode.GRID) }
+        }
+
+    @Test
+    fun `toggle doble vuelve a LIST y sobrescribe (FR-006)`() =
+        runTest {
+            val v = vm(ViewMode.LIST)
+            v.toggle()
+            v.toggle()
+            assertEquals(ViewMode.LIST, v.mode.value)
+            coVerify { prefs.setViewMode(ViewMode.LIST) }
+        }
+
+    @Test
+    fun `todos los suscriptores observan el mismo modo (FR-004)`() =
+        runTest {
+            val v = vm(ViewMode.LIST)
+            v.mode.test {
+                assertEquals(ViewMode.LIST, awaitItem())
+                v.toggle()
+                assertEquals(ViewMode.GRID, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `dos instancias sucesivas heredan el último modo guardado (FR-006, US-2)`() =
+        runTest {
+            val store = FakeDataStore()
+            val prefs = InstancePrefs(store)
+            val primera = ViewModeViewModel(prefs)
+            primera.toggle()
+            val segunda = ViewModeViewModel(prefs)
+            assertEquals(ViewMode.GRID, segunda.mode.value)
+        }
+
+    @Test
+    fun `instancia nueva sin escrituras previas arranca en LIST (US-2 escenario 2)`() =
+        runTest {
+            val v = ViewModeViewModel(InstancePrefs(FakeDataStore()))
+            assertEquals(ViewMode.LIST, v.mode.value)
+        }
 }

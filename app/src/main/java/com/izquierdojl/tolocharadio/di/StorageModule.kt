@@ -44,4 +44,3 @@ object StorageModule {
     @Singleton
     fun serverDao(db: TolochaDb): ServerDao = db.servers()
 }
-

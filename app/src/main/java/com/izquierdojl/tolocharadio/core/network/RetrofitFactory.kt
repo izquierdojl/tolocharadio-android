@@ -51,4 +51,3 @@ object RetrofitFactory {
             .build()
     }
 }
-

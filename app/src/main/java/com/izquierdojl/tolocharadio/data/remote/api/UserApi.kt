@@ -32,4 +32,3 @@ interface UserApi {
         @Body body: PatchPasswordBody,
     ): Response<OkResult>
 }
-

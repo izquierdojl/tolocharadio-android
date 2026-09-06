@@ -68,4 +68,3 @@ class SessionManager
             _authState.value = AuthState.Loading
         }
     }
-

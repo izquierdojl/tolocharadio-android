@@ -65,4 +65,3 @@ class FavoritesMigrationTest {
         context.deleteDatabase(name)
     }
 }
-

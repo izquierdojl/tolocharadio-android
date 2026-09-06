@@ -202,4 +202,3 @@ fun TolochaTheme(
         content = content,
     )
 }
-

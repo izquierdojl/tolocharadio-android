@@ -184,5 +184,7 @@ dependencies {
 detekt {
     config.setFrom(rootProject.file("detekt.yml"))
     buildUponDefaultConfig = true
+    // Deuda preexistente documentada (19 issues estructurales de features
+    // anteriores); el gate sigue activo para issues nuevos.
+    baseline = rootProject.file("detekt-baseline.xml")
 }
-

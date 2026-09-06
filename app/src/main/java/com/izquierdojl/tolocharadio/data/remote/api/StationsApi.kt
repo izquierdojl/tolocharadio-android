@@ -35,4 +35,3 @@ interface StationsApi {
     @GET("stations/tags")
     suspend fun tags(): Response<StringListDto>
 }
-

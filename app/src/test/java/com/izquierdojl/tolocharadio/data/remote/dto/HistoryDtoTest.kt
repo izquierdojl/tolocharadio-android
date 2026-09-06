@@ -48,4 +48,3 @@ class HistoryDtoTest {
         assertEquals(3000L, dto.items[0].playedAt)
     }
 }
-

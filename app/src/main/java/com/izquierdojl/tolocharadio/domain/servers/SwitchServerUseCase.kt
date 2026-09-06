@@ -22,18 +22,19 @@ class SwitchServerUseCase
          */
         suspend operator fun invoke(serverId: String): ApiResult<SavedServer> =
             when (val result = repository.switchTo(serverId)) {
-                is ApiResult.Ok -> ApiResult.Ok(
-                    SavedServer(
-                        id = result.value.id,
-                        url = result.value.url,
-                        alias = result.value.alias,
-                        appName = result.value.appName,
-                        userEmail = result.value.userEmail,
-                        isActive = result.value.isActive,
-                        isDefault = result.value.isDefault,
-                        createdAt = result.value.createdAt,
-                    ),
-                )
+                is ApiResult.Ok ->
+                    ApiResult.Ok(
+                        SavedServer(
+                            id = result.value.id,
+                            url = result.value.url,
+                            alias = result.value.alias,
+                            appName = result.value.appName,
+                            userEmail = result.value.userEmail,
+                            isActive = result.value.isActive,
+                            isDefault = result.value.isDefault,
+                            createdAt = result.value.createdAt,
+                        ),
+                    )
                 is ApiResult.Err -> result
             }
     }

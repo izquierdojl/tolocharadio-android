@@ -113,4 +113,3 @@ class FavoritesScreenTest {
         assert(removed == "u1")
     }
 }
-

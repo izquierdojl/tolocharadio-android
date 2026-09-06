@@ -67,4 +67,3 @@ class ValidateAuthUseCase
             const val MAX_NAME_LENGTH = 80
         }
     }
-

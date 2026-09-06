@@ -49,4 +49,3 @@ class ObserveHistoryUseCaseTest {
             assertTrue((r as ApiResult.Ok).value.offline)
         }
 }
-

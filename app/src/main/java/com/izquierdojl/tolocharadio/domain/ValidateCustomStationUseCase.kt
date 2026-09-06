@@ -39,4 +39,3 @@ class ValidateCustomStationUseCase
             const val SCHEME_SEPARATOR_LENGTH = 3
         }
     }
-

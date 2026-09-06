@@ -121,4 +121,3 @@ class CustomStationsRepoTest {
             assertEquals(listOf("c1"), repo.items.value.map { it.id })
         }
 }
-

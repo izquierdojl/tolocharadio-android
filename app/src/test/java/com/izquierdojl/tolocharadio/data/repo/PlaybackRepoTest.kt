@@ -32,4 +32,3 @@ class PlaybackRepoTest {
         assertTrue(!url.contains("token", ignoreCase = true))
     }
 }
-

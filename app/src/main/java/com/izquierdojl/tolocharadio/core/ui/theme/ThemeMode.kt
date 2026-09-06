@@ -17,4 +17,3 @@ fun resolveDarkTheme(
         ThemeMode.DARK -> true
         ThemeMode.LIGHT -> false
     }
-

@@ -1,8 +1,8 @@
 package com.izquierdojl.tolocharadio.data.local.servers
 
 import android.util.Log
-import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.core.session.TokenStore
+import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import javax.inject.Inject
 import javax.inject.Singleton
 

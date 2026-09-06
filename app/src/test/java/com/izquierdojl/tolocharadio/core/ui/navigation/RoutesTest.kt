@@ -28,4 +28,3 @@ class RoutesTest {
         assertEquals("custom-stations", Routes.CUSTOM_STATIONS)
     }
 }
-

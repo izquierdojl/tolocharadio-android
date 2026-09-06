@@ -29,4 +29,3 @@ class FavoritesCacheTest {
         assertEquals(1000, back.first().addedAt)
     }
 }
-

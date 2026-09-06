@@ -45,4 +45,3 @@ class ApiErrorMapperTest {
         assertTrue(DomainError.Unavailable("x").userMessage().contains("conexión"))
     }
 }
-

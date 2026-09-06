@@ -19,4 +19,3 @@ interface HistoryApi {
     @DELETE("history")
     suspend fun clear(): Response<OkResult>
 }
-

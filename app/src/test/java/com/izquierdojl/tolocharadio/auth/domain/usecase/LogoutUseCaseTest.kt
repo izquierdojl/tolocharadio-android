@@ -3,7 +3,6 @@ package com.izquierdojl.tolocharadio.auth.domain.usecase
 import com.izquierdojl.tolocharadio.core.session.TokenStore
 import com.izquierdojl.tolocharadio.data.repo.AuthRepo
 import com.izquierdojl.tolocharadio.domain.auth.LogoutUseCase
-import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -22,39 +21,42 @@ class LogoutUseCaseTest {
     }
 
     @Test
-    fun `logout limpia el snapshot de refresh del servidor activo (FR-007)`() = runTest {
-        every { tokens.getActiveServerId() } returns "srv1"
-        every { tokens.getServerCredentials("srv1") } returns
-            TokenStore.ServerCredentials("refresh-viejo", "a@b.c", "secreta123")
+    fun `logout limpia el snapshot de refresh del servidor activo (FR-007)`() =
+        runTest {
+            every { tokens.getActiveServerId() } returns "srv1"
+            every { tokens.getServerCredentials("srv1") } returns
+                TokenStore.ServerCredentials("refresh-viejo", "a@b.c", "secreta123")
 
-        useCase()
+            useCase()
 
-        coVerify { authRepo.logout() }
-        coVerify {
-            tokens.setServerCredentials("srv1", refresh = null, email = "a@b.c", password = "secreta123")
+            coVerify { authRepo.logout() }
+            coVerify {
+                tokens.setServerCredentials("srv1", refresh = null, email = "a@b.c", password = "secreta123")
+            }
         }
-    }
 
     @Test
-    fun `logout conserva email y password para reconexión (FR-014)`() = runTest {
-        every { tokens.getActiveServerId() } returns "srv1"
-        every { tokens.getServerCredentials("srv1") } returns
-            TokenStore.ServerCredentials("refresh-viejo", "a@b.c", "secreta123")
+    fun `logout conserva email y password para reconexión (FR-014)`() =
+        runTest {
+            every { tokens.getActiveServerId() } returns "srv1"
+            every { tokens.getServerCredentials("srv1") } returns
+                TokenStore.ServerCredentials("refresh-viejo", "a@b.c", "secreta123")
 
-        useCase()
+            useCase()
 
-        coVerify {
-            tokens.setServerCredentials("srv1", refresh = null, email = "a@b.c", password = "secreta123")
+            coVerify {
+                tokens.setServerCredentials("srv1", refresh = null, email = "a@b.c", password = "secreta123")
+            }
         }
-    }
 
     @Test
-    fun `logout sin servidor activo solo cierra sesión`() = runTest {
-        every { tokens.getActiveServerId() } returns null
+    fun `logout sin servidor activo solo cierra sesión`() =
+        runTest {
+            every { tokens.getActiveServerId() } returns null
 
-        useCase()
+            useCase()
 
-        coVerify { authRepo.logout() }
-        coVerify(exactly = 0) { tokens.setServerCredentials(any(), any(), any(), any()) }
-    }
+            coVerify { authRepo.logout() }
+            coVerify(exactly = 0) { tokens.setServerCredentials(any(), any(), any(), any()) }
+        }
 }

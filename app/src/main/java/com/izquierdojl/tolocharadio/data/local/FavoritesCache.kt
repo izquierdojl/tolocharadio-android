@@ -103,4 +103,3 @@ fun List<CachedFavorite>.toFavorites(): List<FavoriteDto> =
             addedAt = it.addedAt,
         )
     }
-

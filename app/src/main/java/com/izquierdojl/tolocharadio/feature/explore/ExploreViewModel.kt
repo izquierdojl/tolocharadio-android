@@ -156,4 +156,3 @@ class ExploreViewModel
             _ui.value = c.copy(items = loaded.toList(), favorites = favoriteIds.toSet())
         }
     }
-

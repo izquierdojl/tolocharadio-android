@@ -22,4 +22,3 @@ class RelativeTimeTest {
         assertEquals("hace 2 días", relativeTime(now - 2 * 86_400_000, now))
     }
 }
-

@@ -90,4 +90,3 @@ class InstancePrefs
             val KEY_VIEW_MODE = stringPreferencesKey("view_mode")
         }
     }
-

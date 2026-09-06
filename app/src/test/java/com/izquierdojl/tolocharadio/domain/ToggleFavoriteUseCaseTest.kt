@@ -32,4 +32,3 @@ class ToggleFavoriteUseCaseTest {
             assertTrue(r is ApiResult.Err)
         }
 }
-

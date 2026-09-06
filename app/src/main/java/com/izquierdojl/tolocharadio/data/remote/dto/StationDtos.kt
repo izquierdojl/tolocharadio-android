@@ -81,4 +81,3 @@ data class CreateCustomStationBody(
 /** Respuesta de `POST /custom-stations` (`{station}`). */
 @Serializable
 data class CustomStationResultDto(val station: StationDto)
-

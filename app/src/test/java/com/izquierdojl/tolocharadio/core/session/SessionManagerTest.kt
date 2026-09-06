@@ -37,4 +37,3 @@ class SessionManagerTest {
         verify { store.setRefresh(null) }
     }
 }
-

@@ -27,4 +27,3 @@ val AUTH_REQUIRED =
         Routes.SETTINGS,
         Routes.SERVERS,
     )
-

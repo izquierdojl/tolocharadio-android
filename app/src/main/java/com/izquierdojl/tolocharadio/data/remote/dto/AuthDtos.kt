@@ -45,4 +45,3 @@ data class PlaybackStatusDto(
     val playable: Boolean,
     val reason: String? = null,
 )
-

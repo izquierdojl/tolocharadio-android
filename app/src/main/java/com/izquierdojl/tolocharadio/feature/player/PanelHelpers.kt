@@ -28,4 +28,3 @@ fun panelSubtitle(station: StationDto): String {
  * muestra "enlace no disponible" y no copia nada).
  */
 fun resolveCopyLink(station: StationDto): String? = station.url.trim().ifEmpty { null }
-

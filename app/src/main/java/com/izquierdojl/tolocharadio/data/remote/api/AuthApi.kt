@@ -59,4 +59,3 @@ interface AuthApi {
         @Body body: ResetBody,
     ): Response<OkResult>
 }
-

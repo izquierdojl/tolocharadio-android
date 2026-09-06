@@ -19,4 +19,3 @@ class ThemeModeTest {
         assertFalse(resolveDarkTheme(ThemeMode.LIGHT, systemDark = true))
     }
 }
-

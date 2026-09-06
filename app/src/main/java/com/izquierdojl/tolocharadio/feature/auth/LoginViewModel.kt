@@ -5,9 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.userMessage
 import com.izquierdojl.tolocharadio.data.repo.SystemRepo
+import com.izquierdojl.tolocharadio.domain.ValidateAuthUseCase
 import com.izquierdojl.tolocharadio.domain.auth.LoginUseCase
 import com.izquierdojl.tolocharadio.domain.auth.StoreServerCredentialsUseCase
-import com.izquierdojl.tolocharadio.domain.ValidateAuthUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -83,4 +83,3 @@ class LoginViewModel
             _ui.value = (_ui.value as? LoginUiState.Form)?.block() ?: return
         }
     }
-

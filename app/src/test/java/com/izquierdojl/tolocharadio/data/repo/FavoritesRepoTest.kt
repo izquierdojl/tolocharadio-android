@@ -117,4 +117,3 @@ class FavoritesRepoTest {
             coVerify { api.reorder(match { it.stationIds == listOf("u2", "u1") }) }
         }
 }
-

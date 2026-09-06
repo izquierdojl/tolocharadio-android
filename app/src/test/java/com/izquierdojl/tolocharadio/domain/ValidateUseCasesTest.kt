@@ -44,4 +44,3 @@ class ValidateAuthUseCaseTest {
         assertEquals(null, validate.password("suficiente1"))
     }
 }
-

@@ -163,4 +163,3 @@ class TokenStore
             private const val KEY_ACTIVE_SERVER = "active_server_id"
         }
     }
-

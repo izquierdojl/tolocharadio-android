@@ -96,4 +96,3 @@ fun List<CachedHistoryEntry>.toHistoryEntries(): List<HistoryEntryDto> =
             playedAt = it.playedAt,
         )
     }
-

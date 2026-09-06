@@ -15,4 +15,3 @@ class PlaybackRepo
         /** `{id,playable,reason}` — llamar antes de arrancar ExoPlayer. */
         suspend fun status(stationId: String): ApiResult<PlaybackStatusDto> = safeCall { api.status(stationId) }
     }
-

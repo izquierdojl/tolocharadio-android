@@ -178,4 +178,3 @@ class FavoritesViewModelTest {
             assertEquals(listOf("u1", "u2"), s.items.map { it.station.id })
         }
 }
-

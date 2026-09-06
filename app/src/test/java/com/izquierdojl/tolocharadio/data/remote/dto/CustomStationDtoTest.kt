@@ -35,4 +35,3 @@ class CustomStationDtoTest {
         assertEquals(true, dto.items.single().isCustom)
     }
 }
-

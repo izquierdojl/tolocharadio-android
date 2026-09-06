@@ -217,4 +217,3 @@ class FavoritesViewModel
             undoJob = null
         }
     }
-

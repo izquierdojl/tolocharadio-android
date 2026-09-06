@@ -14,4 +14,3 @@ class ObserveHistoryUseCase
     constructor(private val repo: HistoryRepo) {
         suspend operator fun invoke(): ApiResult<HistoryResult> = repo.list()
     }
-

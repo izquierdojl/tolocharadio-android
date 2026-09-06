@@ -138,4 +138,3 @@ class StationDetailViewModelTest {
             assertEquals(true, (s as DetailUiState.Content).isFavorite)
         }
 }
-

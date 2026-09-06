@@ -138,4 +138,3 @@ class HistoryViewModelTest {
             assertEquals(1, s.items.size)
         }
 }
-

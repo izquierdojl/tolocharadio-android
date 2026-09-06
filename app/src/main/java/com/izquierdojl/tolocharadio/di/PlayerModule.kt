@@ -26,4 +26,3 @@ object PlayerModule {
     @Singleton
     fun authDataSource(session: SessionManager): AuthDataSourceFactory = AuthDataSourceFactory(session, OkHttpClient())
 }
-

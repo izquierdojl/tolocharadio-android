@@ -13,4 +13,3 @@ class ObserveCustomStationsUseCase
     constructor(private val repo: CustomStationsRepo) {
         suspend operator fun invoke(): ApiResult<CustomStationsResult> = repo.list()
     }
-

@@ -134,4 +134,3 @@ class PlayerViewModelTest {
         assertTrue(viewModel.state.value is PlayerState.Idle)
     }
 }
-

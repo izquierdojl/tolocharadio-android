@@ -18,4 +18,3 @@ class SystemRepo
         /** Config (`appName`, `registrationEnabled`). */
         suspend fun config(): ApiResult<AppConfigDto> = safeCall { api.config() }
     }
-

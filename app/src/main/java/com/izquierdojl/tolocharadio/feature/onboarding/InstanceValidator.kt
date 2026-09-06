@@ -27,4 +27,3 @@ class InstanceValidator
                 api.health().isSuccessful && api.config().isSuccessful
             }.getOrDefault(false)
     }
-

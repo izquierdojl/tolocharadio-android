@@ -80,4 +80,3 @@ fun List<CachedCustomStation>.toCustomStations(): List<StationDto> =
             isCustom = true,
         )
     }
-

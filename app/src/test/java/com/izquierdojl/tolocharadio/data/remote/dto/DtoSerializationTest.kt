@@ -67,4 +67,3 @@ class DtoSerializationTest {
         assertEquals("""{"stationIds":["u1","u2"]}""", json)
     }
 }
-

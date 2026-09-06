@@ -42,4 +42,3 @@ interface FavoritesApi {
         @Body body: ReorderBody,
     ): Response<OkResult>
 }
-

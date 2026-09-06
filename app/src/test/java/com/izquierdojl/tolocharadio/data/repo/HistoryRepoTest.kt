@@ -136,4 +136,3 @@ class HistoryRepoTest {
             assertTrue((r as ApiResult.Err).error is DomainError.Validation)
         }
 }
-

@@ -12,4 +12,3 @@ class SearchStationsUseCase
     constructor(private val repo: StationsRepo) {
         suspend operator fun invoke(query: StationQuery): ApiResult<StationPageDto> = repo.search(query)
     }
-

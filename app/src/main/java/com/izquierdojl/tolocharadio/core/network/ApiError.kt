@@ -45,4 +45,3 @@ fun DomainError.userMessage(): String =
         is DomainError.Unavailable -> "Servicio no disponible. Comprueba tu conexión e inténtalo de nuevo."
         is DomainError.Unknown -> "Algo ha fallado. Inténtalo de nuevo."
     }
-
