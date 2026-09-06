@@ -1,6 +1,6 @@
 package com.izquierdojl.tolocharadio.core.ui.navigation
 
-/** Destinos con paridad web (`/, /explorar, /favoritos, /historial, /mis-emisoras, /perfil`). */
+/** Destinos (`/, /explorar, /favoritos, /historial, /mis-emisoras, /configuracion, /servidores`). */
 object Routes {
     const val SETUP = "setup"
     const val HOME = "home"
@@ -11,7 +11,8 @@ object Routes {
     const val FAVORITES = "favorites"
     const val HISTORY = "history"
     const val CUSTOM_STATIONS = "custom-stations"
-    const val PROFILE = "profile"
+    const val SETTINGS = "settings"
+    const val SERVERS = "servers"
 
     fun stationDetail(stationId: String) = "station/$stationId"
 }
@@ -23,6 +24,7 @@ val AUTH_REQUIRED =
         Routes.FAVORITES,
         Routes.HISTORY,
         Routes.CUSTOM_STATIONS,
-        Routes.PROFILE,
+        Routes.SETTINGS,
+        Routes.SERVERS,
     )
 

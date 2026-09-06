@@ -4,8 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.userMessage
-import com.izquierdojl.tolocharadio.data.repo.AuthRepo
 import com.izquierdojl.tolocharadio.data.repo.SystemRepo
+import com.izquierdojl.tolocharadio.domain.auth.LoginUseCase
+import com.izquierdojl.tolocharadio.domain.auth.StoreServerCredentialsUseCase
 import com.izquierdojl.tolocharadio.domain.ValidateAuthUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +33,8 @@ sealed interface LoginUiState {
 class LoginViewModel
     @Inject
     constructor(
-        private val auth: AuthRepo,
+        private val loginUseCase: LoginUseCase,
+        private val storeCredentials: StoreServerCredentialsUseCase,
         private val system: SystemRepo,
         private val validate: ValidateAuthUseCase,
     ) : ViewModel() {
@@ -54,7 +56,7 @@ class LoginViewModel
 
         fun onPasswordChange(v: String) = update { copy(password = v, passwordError = null, generalError = null) }
 
-        /** Valida local y llama a `POST /auth/login`. */
+        /** Valida local y llama a `POST /auth/login` via [LoginUseCase]. */
         fun login(onLoggedIn: () -> Unit) {
             val form = _ui.value as? LoginUiState.Form ?: return
             val emailErr = validate.email(form.email)
@@ -65,8 +67,13 @@ class LoginViewModel
             }
             _ui.value = form.copy(loading = true, generalError = null)
             viewModelScope.launch {
-                when (val r = auth.login(form.email, form.password)) {
-                    is ApiResult.Ok -> onLoggedIn()
+                when (val r = loginUseCase(form.email, form.password)) {
+                    is ApiResult.Ok -> {
+                        // FR-005: guardar email+password cifrados para el
+                        // servidor activo (respaldo del re-login FR-006b)
+                        storeCredentials(form.email, form.password)
+                        onLoggedIn()
+                    }
                     is ApiResult.Err -> _ui.value = form.copy(loading = false, generalError = r.error.userMessage())
                 }
             }

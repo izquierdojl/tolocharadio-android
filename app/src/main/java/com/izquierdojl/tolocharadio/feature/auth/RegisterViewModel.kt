@@ -6,6 +6,7 @@ import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.userMessage
 import com.izquierdojl.tolocharadio.data.repo.AuthRepo
 import com.izquierdojl.tolocharadio.domain.ValidateAuthUseCase
+import com.izquierdojl.tolocharadio.domain.auth.StoreServerCredentialsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +32,7 @@ class RegisterViewModel
     @Inject
     constructor(
         private val auth: AuthRepo,
+        private val storeCredentials: StoreServerCredentialsUseCase,
         private val validate: ValidateAuthUseCase,
     ) : ViewModel() {
         private val _ui = MutableStateFlow(RegisterForm())
@@ -61,7 +63,12 @@ class RegisterViewModel
             _ui.value = f.copy(loading = true, generalError = null)
             viewModelScope.launch {
                 when (val r = auth.register(f.email, f.password, f.name.ifBlank { null })) {
-                    is ApiResult.Ok -> onRegistered()
+                    is ApiResult.Ok -> {
+                        // FR-005: guardar email+password cifrados para el
+                        // servidor activo (respaldo del auto-login FR-006/006b)
+                        storeCredentials(f.email, f.password)
+                        onRegistered()
+                    }
                     is ApiResult.Err -> _ui.value = f.copy(loading = false, generalError = r.error.userMessage())
                 }
             }

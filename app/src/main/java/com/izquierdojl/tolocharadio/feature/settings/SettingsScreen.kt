@@ -1,4 +1,4 @@
-package com.izquierdojl.tolocharadio.feature.profile
+package com.izquierdojl.tolocharadio.feature.settings
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -6,11 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -21,36 +18,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 
-/** Perfil: nombre, tema, instancia y salir (US-6). */
+/**
+ * Configuración (sustituye a Perfil, FR-011): tema claro/oscuro,
+ * pantalla de arranque (FR-011b) y cerrar sesión. Los servidores
+ * son una sección propia de primer nivel (FR-004).
+ */
 @Composable
-fun ProfileScreen(
-    viewModel: ProfileViewModel = hiltViewModel(),
+fun SettingsScreen(
+    viewModel: SettingsViewModel = hiltViewModel(),
     onLoggedOut: () -> Unit = {},
 ) {
     val ui by viewModel.ui.collectAsState()
     Column(Modifier.fillMaxSize().padding(24.dp)) {
-        Text("Perfil", style = MaterialTheme.typography.headlineMedium)
+        Text("Configuración", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(16.dp))
-        if (ui.loading) {
-            CircularProgressIndicator()
-            return@Column
-        }
-        ui.user?.let { Text(it.email, style = MaterialTheme.typography.bodyLarge) }
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = ui.name,
-            onValueChange = viewModel::onNameChange,
-            label = { Text("Nombre") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(8.dp))
-        Button(onClick = viewModel::saveName, modifier = Modifier.fillMaxWidth()) {
-            Text("Guardar")
-        }
-        Spacer(Modifier.height(8.dp))
+
         Text("Tema", style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(4.dp))
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -75,14 +60,46 @@ fun ProfileScreen(
                 )
             }
         }
+
+        Spacer(Modifier.height(16.dp))
+        Text("Pantalla de arranque", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(4.dp))
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            StartScreen.entries.forEachIndexed { index, screen ->
+                SegmentedButton(
+                    selected = ui.startScreen == screen,
+                    onClick = { viewModel.onStartScreenChange(screen) },
+                    shape =
+                        SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = StartScreen.entries.size,
+                        ),
+                    label = {
+                        Text(
+                            when (screen) {
+                                StartScreen.FAVORITES -> "Favoritos"
+                                StartScreen.HISTORY -> "Historial"
+                                StartScreen.EXPLORE -> "Explorar"
+                            },
+                        )
+                    },
+                )
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Se abrirá automáticamente al arrancar la app con la sesión activa.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+
         ui.message?.let {
             Spacer(Modifier.height(8.dp))
             Text(it)
         }
-        Spacer(Modifier.height(16.dp))
+
+        Spacer(Modifier.height(24.dp))
         OutlinedButton(onClick = { viewModel.logout(onLoggedOut) }, modifier = Modifier.fillMaxWidth()) {
             Text("Cerrar sesión")
         }
     }
 }
-

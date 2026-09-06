@@ -9,6 +9,8 @@ import com.izquierdojl.tolocharadio.data.remote.dto.UserDto
 import com.izquierdojl.tolocharadio.data.repo.AuthRepo
 import com.izquierdojl.tolocharadio.data.repo.SystemRepo
 import com.izquierdojl.tolocharadio.domain.ValidateAuthUseCase
+import com.izquierdojl.tolocharadio.domain.auth.LoginUseCase
+import com.izquierdojl.tolocharadio.domain.auth.StoreServerCredentialsUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -23,10 +25,12 @@ class LoginViewModelTest {
     val main = MainDispatcherRule()
 
     private val auth: AuthRepo = mockk()
+    private val loginUseCase: LoginUseCase = mockk()
+    private val storeCredentials: StoreServerCredentialsUseCase = mockk(relaxed = true)
     private val system: SystemRepo = mockk()
     private val user = UserDto(1, "a@b.c", "Ana", ThemeDto.DARK, 0)
 
-    private fun vm() = LoginViewModel(auth, system, ValidateAuthUseCase())
+    private fun vm() = LoginViewModel(loginUseCase, storeCredentials, system, ValidateAuthUseCase())
 
     private suspend fun LoginViewModel.awaitForm(): LoginUiState.Form {
         var s: LoginUiState = LoginUiState.Form(loading = true)
@@ -47,20 +51,32 @@ class LoginViewModelTest {
             v.onEmailChange("mal")
             v.login {}
             assertTrue(v.awaitForm().emailError != null)
-            coVerify(exactly = 0) { auth.login(any(), any()) }
+            coVerify(exactly = 0) { loginUseCase(any(), any()) }
         }
 
     @Test
     fun `login OK invoca callback`() =
         runTest {
             coEvery { system.config() } returns ApiResult.Ok(AppConfigDto("T", true))
-            coEvery { auth.login("a@b.c", "secreta123") } returns ApiResult.Ok(user)
+            coEvery { loginUseCase("a@b.c", "secreta123") } returns ApiResult.Ok(user)
             val v = vm()
             v.onEmailChange("a@b.c")
             v.onPasswordChange("secreta123")
             var done = false
             v.login { done = true }
             assertTrue(done)
+        }
+
+    @Test
+    fun `login OK guarda credenciales del servidor activo (FR-005)`() =
+        runTest {
+            coEvery { system.config() } returns ApiResult.Ok(AppConfigDto("T", true))
+            coEvery { loginUseCase("a@b.c", "secreta123") } returns ApiResult.Ok(user)
+            val v = vm()
+            v.onEmailChange("a@b.c")
+            v.onPasswordChange("secreta123")
+            v.login {}
+            coVerify { storeCredentials("a@b.c", "secreta123") }
         }
 
     @Test
@@ -76,12 +92,13 @@ class RegisterViewModelTest {
     val main = MainDispatcherRule()
 
     private val auth: AuthRepo = mockk()
+    private val storeCredentials: StoreServerCredentialsUseCase = mockk(relaxed = true)
     private val user = UserDto(1, "a@b.c", "Ana", ThemeDto.DARK, 0)
 
     @Test
     fun `password corta no llama a red`() =
         runTest {
-            val v = RegisterViewModel(auth, ValidateAuthUseCase())
+            val v = RegisterViewModel(auth, storeCredentials, ValidateAuthUseCase())
             v.onEmailChange("a@b.c")
             v.onPasswordChange("corta")
             v.register {}
@@ -96,12 +113,24 @@ class RegisterViewModelTest {
     fun `registro OK invoca callback`() =
         runTest {
             coEvery { auth.register("a@b.c", "secreta123", null) } returns ApiResult.Ok(user)
-            val v = RegisterViewModel(auth, ValidateAuthUseCase())
+            val v = RegisterViewModel(auth, storeCredentials, ValidateAuthUseCase())
             v.onEmailChange("a@b.c")
             v.onPasswordChange("secreta123")
             var done = false
             v.register { done = true }
             assertTrue(done)
+        }
+
+    @Test
+    fun `registro OK guarda credenciales del servidor activo (FR-005)`() =
+        runTest {
+            coEvery { auth.register("a@b.c", "secreta123", "Ana") } returns ApiResult.Ok(user)
+            val v = RegisterViewModel(auth, storeCredentials, ValidateAuthUseCase())
+            v.onNameChange("Ana")
+            v.onEmailChange("a@b.c")
+            v.onPasswordChange("secreta123")
+            v.register {}
+            coVerify { storeCredentials("a@b.c", "secreta123") }
         }
 }
 

@@ -4,13 +4,16 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -20,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -46,24 +50,33 @@ import com.izquierdojl.tolocharadio.feature.home.HomeScreen
 import com.izquierdojl.tolocharadio.feature.onboarding.InstanceSetupScreen
 import com.izquierdojl.tolocharadio.feature.player.MiniPlayer
 import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
-import com.izquierdojl.tolocharadio.feature.profile.ProfileScreen
+import com.izquierdojl.tolocharadio.feature.servers.ServerListScreen
+import com.izquierdojl.tolocharadio.feature.settings.SettingsScreen
 
 private data class BottomDest(val route: String, val label: String, val icon: ImageVector)
 
-/** Paridad web: Explorar, Favoritos, Historial, Mis emisoras + Perfil (Lucide→Material, spec 002). */
+/** Explorar, Favoritos, Historial, Mis emisoras + Configuración (FR-011). */
 private val BOTTOM_DESTS =
     listOf(
         BottomDest(Routes.EXPLORE, "Explorar", Icons.Filled.Search),
         BottomDest(Routes.FAVORITES, "Favoritos", Icons.Filled.Favorite),
         BottomDest(Routes.HISTORY, "Historial", Icons.Filled.History),
         BottomDest(Routes.CUSTOM_STATIONS, "Mis emisoras", Icons.Filled.Radio),
-        BottomDest(Routes.PROFILE, "Perfil", Icons.Filled.Person),
+        BottomDest(Routes.SETTINGS, "Configuración", Icons.Filled.Settings),
     )
 
 /**
  * Shell con bottom bar estilo Pocket Casts + mini-player persistente.
+ * Servidores es una sección propia de primer nivel, accesible desde
+ * la barra superior (FR-004).
+ *
+ * Sin sesión válida al arrancar, la app muestra la lista de
+ * servidores guardados para seleccionar a cuál conectarse (FR-014);
+ * si no hay servidores guardados, va a Login.
  *
  * @param hasInstance false en primer arranque (va a [Routes.SETUP]).
+ * @param hasServers true si hay servidores guardados (FR-014).
+ * @param startScreen pantalla de arranque con sesión restaurada (FR-011b).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +84,8 @@ fun TolochaNavGraph(
     sessionManager: SessionManager,
     hasInstance: Boolean,
     modifier: Modifier = Modifier,
+    hasServers: Boolean = false,
+    startScreen: StartScreen = StartScreen.EXPLORE,
 ) {
     val navController = rememberNavController()
     val authState by sessionManager.authState.collectAsState()
@@ -82,6 +97,37 @@ fun TolochaNavGraph(
     val playerVm: PlayerViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
     val snackbar = remember { SnackbarHostState() }
 
+    // FR-011b: con sesión restaurada, abrir directamente en la pantalla
+    // de arranque configurada. FR-014: sin sesión válida, mostrar la
+    // lista de servidores para seleccionar a cuál conectarse (o Login
+    // si no hay ninguno guardado). Solo actúa en HOME, es decir, en el
+    // arranque de la app.
+    LaunchedEffect(authState, startScreen, hasServers) {
+        if (!hasInstance || currentRoute != Routes.HOME) return@LaunchedEffect
+        when (authState) {
+            is AuthState.Authenticated -> {
+                val target =
+                    when (startScreen) {
+                        StartScreen.FAVORITES -> Routes.FAVORITES
+                        StartScreen.HISTORY -> Routes.HISTORY
+                        StartScreen.EXPLORE -> Routes.EXPLORE
+                    }
+                navController.navigate(target) {
+                    popUpTo(Routes.HOME) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+            is AuthState.Unauthenticated -> {
+                val target = if (hasServers) Routes.SERVERS else Routes.LOGIN
+                navController.navigate(target) {
+                    popUpTo(Routes.HOME) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+            else -> Unit
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbar) },
@@ -89,6 +135,21 @@ fun TolochaNavGraph(
             if (chromeVisible) {
                 TopAppBar(
                     title = { TolochaLogo() },
+                    actions = {
+                        // Servidores: sección propia de primer nivel (FR-004);
+                        // sin sesión es la pantalla de selección de conexión (FR-014)
+                        IconButton(
+                            onClick = {
+                                navController.navigate(Routes.SERVERS) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                        ) {
+                            Icon(Icons.Filled.Dns, contentDescription = "Servidores")
+                        }
+                    },
                     colors =
                         TopAppBarDefaults.topAppBarColors(
                             containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer,
@@ -201,12 +262,23 @@ fun TolochaNavGraph(
                     player = playerVm,
                 )
             }
-            composable(Routes.PROFILE) {
+            composable(Routes.SETTINGS) {
                 if (authState is AuthState.Authenticated) {
-                    ProfileScreen()
+                    SettingsScreen(onLoggedOut = {
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(Routes.SETTINGS) { inclusive = true }
+                        }
+                    })
                 } else {
                     LoginScreen(onLoggedIn = {}, onRegister = { navController.navigate(Routes.REGISTER) })
                 }
+            }
+            composable(Routes.SERVERS) {
+                // Accesible sin sesión: es el selector de conexión (FR-014).
+                ServerListScreen(
+                    onBack = { navController.popBackStack() },
+                    onLogin = { navController.navigate(Routes.LOGIN) },
+                )
             }
         }
     }
@@ -229,4 +301,3 @@ private fun CustomStationsDestination(
         LoginScreen(onLoggedIn = {}, onRegister = onRegister)
     }
 }
-
