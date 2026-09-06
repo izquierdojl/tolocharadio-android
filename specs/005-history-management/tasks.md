@@ -16,8 +16,8 @@
 
 ## Path Conventions
 
-All source under `app/src/main/java/com/example/tolocharadio/`
-All tests under `app/src/test/java/com/example/tolocharadio/`
+All source under `app/src/main/java/com/izquierdojl/tolocharadio/`
+All tests under `app/src/test/java/com/izquierdojl/tolocharadio/`
 
 ---
 
@@ -251,3 +251,4 @@ With multiple developers after Phase 2 completes:
 - [x] T041 [US3] Add loading/disabled state to delete button in `HistoryRow` while API call is pending (partial)
 - [x] T042 Run quickstart.md validation scenarios VS1-VS8 on device/emulator (partial) — pending manual verification
 - [x] T043 Verify Room migration 2→3 preserves existing favorites data (partial) — pending manual verification
+

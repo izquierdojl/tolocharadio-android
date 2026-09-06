@@ -29,8 +29,8 @@
 
 **⚠️ CRITICAL**: ningún trabajo de historias puede empezar hasta completar esta fase
 
-- [X] T003 Crear tests base del VM en `app/src/test/java/com/example/tolocharadio/feature/player/PlayerViewModelTest.kt` (Idle inicial, `play()`→`Buffering` con status ok, `Error` con status no-playable; MockK para `ExoPlayer`/`PlaybackRepo`/`InstancePrefs`/`AuthDataSourceFactory`) — deben FALLAR
-- [X] T004 Compartir un único `PlayerViewModel` a ámbito de Activity y pasarlo a `MiniPlayer`, `FavoritesScreen` y `StationDetailScreen` en `app/src/main/java/com/example/tolocharadio/core/ui/navigation/TolochaNavGraph.kt`, `app/src/main/java/com/example/tolocharadio/feature/player/PlayerUi.kt`, `app/src/main/java/com/example/tolocharadio/feature/favorites/FavoritesScreen.kt` y `app/src/main/java/com/example/tolocharadio/feature/explore/StationDetail.kt` (sustituye los `hiltViewModel()` por defecto)
+- [X] T003 Crear tests base del VM en `app/src/test/java/com/izquierdojl/tolocharadio/feature/player/PlayerViewModelTest.kt` (Idle inicial, `play()`→`Buffering` con status ok, `Error` con status no-playable; MockK para `ExoPlayer`/`PlaybackRepo`/`InstancePrefs`/`AuthDataSourceFactory`) — deben FALLAR
+- [X] T004 Compartir un único `PlayerViewModel` a ámbito de Activity y pasarlo a `MiniPlayer`, `FavoritesScreen` y `StationDetailScreen` en `app/src/main/java/com/izquierdojl/tolocharadio/core/ui/navigation/TolochaNavGraph.kt`, `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerUi.kt`, `app/src/main/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesScreen.kt` y `app/src/main/java/com/izquierdojl/tolocharadio/feature/explore/StationDetail.kt` (sustituye los `hiltViewModel()` por defecto)
 - [X] T005 Verificar compilación y tests base en verde con `./gradlew :app:assembleDebug :app:testDebugUnitTest`
 
 **Checkpoint**: un solo VM vivo al navegar — reproducir en una pantalla y leer el mismo estado desde otra
@@ -47,14 +47,14 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [X] T006 [P] [US1] Crear `PanelHelpersTest.kt` en `app/src/test/java/com/example/tolocharadio/feature/player/PanelHelpersTest.kt` (`panelSubtitle` completa/parcial/vacía→`"Emisora de radio"`; `resolveCopyLink` con URL y en blanco→`null`)
+- [X] T006 [P] [US1] Crear `PanelHelpersTest.kt` en `app/src/test/java/com/izquierdojl/tolocharadio/feature/player/PanelHelpersTest.kt` (`panelSubtitle` completa/parcial/vacía→`"Emisora de radio"`; `resolveCopyLink` con URL y en blanco→`null`)
 
 ### Implementation for User Story 1
 
-- [X] T007 [P] [US1] Crear `PanelHelpers.kt` en `app/src/main/java/com/example/tolocharadio/feature/player/PanelHelpers.kt` (`panelSubtitle(station)`, `resolveCopyLink(station)` puras según `data-model.md`; hace pasar T006)
-- [X] T008 [US1] Reordenar el slot `bottomBar` en `app/src/main/java/com/example/tolocharadio/core/ui/navigation/TolochaNavGraph.kt` a `Column(MiniPanel sobre NavigationBar)`
-- [X] T009 [US1] Reescribir `MiniPlayer` como `MiniPanel` en `app/src/main/java/com/example/tolocharadio/feature/player/PlayerUi.kt` (izquierda: `StationArtwork` 48 dp reutilizado + título 1 línea ellipsis + subtítulo; oculto en `Idle`; derecha conserva play/pausa por ahora)
-- [X] T010 [US1] Conservar `Detener` solo en `FullPlayerSheet` en `app/src/main/java/com/example/tolocharadio/feature/player/PlayerUi.kt` (verificar acción existente stop→`Idle`+oculta panel)
+- [X] T007 [P] [US1] Crear `PanelHelpers.kt` en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PanelHelpers.kt` (`panelSubtitle(station)`, `resolveCopyLink(station)` puras según `data-model.md`; hace pasar T006)
+- [X] T008 [US1] Reordenar el slot `bottomBar` en `app/src/main/java/com/izquierdojl/tolocharadio/core/ui/navigation/TolochaNavGraph.kt` a `Column(MiniPanel sobre NavigationBar)`
+- [X] T009 [US1] Reescribir `MiniPlayer` como `MiniPanel` en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerUi.kt` (izquierda: `StationArtwork` 48 dp reutilizado + título 1 línea ellipsis + subtítulo; oculto en `Idle`; derecha conserva play/pausa por ahora)
+- [X] T010 [US1] Conservar `Detener` solo en `FullPlayerSheet` en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerUi.kt` (verificar acción existente stop→`Idle`+oculta panel)
 
 **Checkpoint**: US1 funciona y se puede probar sola — el panel identifica la emisora y sobrevive a la navegación
 
@@ -70,13 +70,13 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [X] T011 [US2] Ampliar `app/src/test/java/com/example/tolocharadio/feature/player/PlayerViewModelTest.kt` (mute: `toggleMute` solo cambia volumen, coexiste con pausa, reset en `play()`/`stop()`; `cancelLoad()`: `Buffering`→`Idle` con job cancelado)
+- [X] T011 [US2] Ampliar `app/src/test/java/com/izquierdojl/tolocharadio/feature/player/PlayerViewModelTest.kt` (mute: `toggleMute` solo cambia volumen, coexiste con pausa, reset en `play()`/`stop()`; `cancelLoad()`: `Buffering`→`Idle` con job cancelado)
 
 ### Implementation for User Story 2
 
-- [X] T012 [US2] Implementar `isMuted`+`toggleMute` (volumen `0f`/`1f`) y `loadJob`+`cancelLoad()` con reset de mute en `app/src/main/java/com/example/tolocharadio/feature/player/PlayerViewModel.kt` (hace pasar T011)
-- [X] T013 [US2] Añadir botones de silencio y copiar con `LocalClipboardManager`+`SnackbarHostState`/`SnackbarHost` (`"Enlace copiado"` / `"enlace no disponible"`, solo `station.url`) y cablear el botón principal en `Buffering` a `cancelLoad()` en `app/src/main/java/com/example/tolocharadio/feature/player/PlayerUi.kt` y `app/src/main/java/com/example/tolocharadio/core/ui/navigation/TolochaNavGraph.kt`
-- [X] T014 [US2] Implementar layout de error (principal=reintentar, copiar visible, mute oculto + mensaje breve en ES) en `app/src/main/java/com/example/tolocharadio/feature/player/PlayerUi.kt` según `contracts/mini-panel-ui.md`
+- [X] T012 [US2] Implementar `isMuted`+`toggleMute` (volumen `0f`/`1f`) y `loadJob`+`cancelLoad()` con reset de mute en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerViewModel.kt` (hace pasar T011)
+- [X] T013 [US2] Añadir botones de silencio y copiar con `LocalClipboardManager`+`SnackbarHostState`/`SnackbarHost` (`"Enlace copiado"` / `"enlace no disponible"`, solo `station.url`) y cablear el botón principal en `Buffering` a `cancelLoad()` en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerUi.kt` y `app/src/main/java/com/izquierdojl/tolocharadio/core/ui/navigation/TolochaNavGraph.kt`
+- [X] T014 [US2] Implementar layout de error (principal=reintentar, copiar visible, mute oculto + mensaje breve en ES) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerUi.kt` según `contracts/mini-panel-ui.md`
 
 **Checkpoint**: US1+US2 funcionan — panel completo con los 3 controles y sus estados
 
@@ -88,8 +88,8 @@
 
 **Independent Test**: reproducir desde Búsqueda y desde Favoritos comprobando panel idéntico y estado conservado al navegar (spec US3)
 
-- [X] T015 [US3] Abrir `FullPlayerSheet` con la misma emisora al tocar la zona izquierda (los botones no abren el sheet) en `app/src/main/java/com/example/tolocharadio/feature/player/PlayerUi.kt`
-- [X] T016 [US3] Verificar paridad en Mis emisoras/Perfil/inicio+ficha (mismo panel/estado) con `PlayerPanelTest.kt` en `app/src/androidTest/java/com/example/tolocharadio/PlayerPanelTest.kt`, o recorrido manual documentado si el entorno API 37 lo impide (precedente specs 002/003)
+- [X] T015 [US3] Abrir `FullPlayerSheet` con la misma emisora al tocar la zona izquierda (los botones no abren el sheet) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerUi.kt`
+- [X] T016 [US3] Verificar paridad en Mis emisoras/Perfil/inicio+ficha (mismo panel/estado) con `PlayerPanelTest.kt` en `app/src/androidTest/java/com/izquierdojl/tolocharadio/PlayerPanelTest.kt`, o recorrido manual documentado si el entorno API 37 lo impide (precedente specs 002/003)
 
 **Checkpoint**: las 3 historias funcionan de forma independiente y coherente
 
@@ -176,3 +176,4 @@ Task: "Crear PanelHelpers.kt en app/src/main/.../feature/player/PanelHelpers.kt"
 - Cada historia es completable y testeable por separado; parar en cualquier checkpoint para validar
 - Commits tras cada tarea o grupo lógico; copiar jamás incluye la URL del proxy
 - Evitar: tareas vagas, conflictos en el mismo fichero en paralelo, dependencias cruzadas que rompan la independencia
+

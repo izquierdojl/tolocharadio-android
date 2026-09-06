@@ -20,13 +20,13 @@ val defaultBaseUrl: String =
     localProps.getProperty("tolocha.baseUrl", "https://radio.ejemplo.com")
 
 android {
-    namespace = "com.example.tolocharadio"
+    namespace = "com.izquierdojl.tolocharadio"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.tolocharadio"
+        applicationId = "com.izquierdojl.tolocharadio"
         minSdk = 26
         targetSdk = 37
         // Versionado: se resuelve desde env/props para que cada tag vX.Y.Z genere
@@ -185,3 +185,4 @@ detekt {
     config.setFrom(rootProject.file("detekt.yml"))
     buildUponDefaultConfig = true
 }
+

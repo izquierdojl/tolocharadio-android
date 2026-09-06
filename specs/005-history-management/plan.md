@@ -63,7 +63,7 @@ specs/005-history-management/
 ### Source Code (repository root)
 
 ```text
-app/src/main/java/com/example/tolocharadio/
+app/src/main/java/com/izquierdojl/tolocharadio/
 ├── data/
 │   ├── local/
 │   │   ├── HistoryCache.kt          # NEW: CachedHistoryEntry entity + HistoryCacheDao
@@ -85,8 +85,9 @@ app/src/main/java/com/example/tolocharadio/
         └── HistoryViewModel.kt       # NEW: ViewModel
 
 # Modified files:
-app/src/main/java/com/example/tolocharadio/core/ui/navigation/TolochaNavGraph.kt
+app/src/main/java/com/izquierdojl/tolocharadio/core/ui/navigation/TolochaNavGraph.kt
 # Lines 183-185: replace HomeScreen placeholder with HistoryScreen
 ```
 
 **Structure Decision**: Single `app` module, organized by feature (`feature/history/`) mirroring the web structure. Follows the existing pattern established by `feature/favorites/`.
+

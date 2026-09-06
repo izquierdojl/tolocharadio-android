@@ -62,7 +62,7 @@ specs/002-web-look-and-feel/
 
 ```text
 app/src/main/
-├── java/com/example/tolocharadio/
+├── java/com/izquierdojl/tolocharadio/
 │   ├── core/ui/theme/
 │   │   ├── Theme.kt          # escala pine/ochre/moss + schemes dark/light + Shapes/Typography sistema
 │   │   └── ThemeViewModel.kt # expone ThemeMode (si no existe); decide darkTheme para TolochaTheme
@@ -99,3 +99,4 @@ app/src/main/
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | — | — | — |
+

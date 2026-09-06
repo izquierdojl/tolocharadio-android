@@ -33,8 +33,9 @@ Especificación: `specs/001-auth-explore-base/` (spec, plan, tasks).
 
 ## Tema (spec 002)
 
-- Tokens de color en `app/src/main/java/com/example/tolocharadio/core/ui/theme/Theme.kt`
+- Tokens de color en `app/src/main/java/com/izquierdojl/tolocharadio/core/ui/theme/Theme.kt`
   (fuente de verdad; `res/values/colors.xml` solo alimenta los temas XML de
   launcher/splash). Contraste WCAG AA verificado en `ContrastTest`.
 - Selector Sistema/Claro/Oscuro en Perfil → se guarda local en DataStore
   `theme_mode` (default: sistema). Sin fuente externa: solo fuente del sistema.
+

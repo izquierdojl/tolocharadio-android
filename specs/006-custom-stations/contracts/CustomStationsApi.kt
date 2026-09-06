@@ -1,8 +1,8 @@
-package com.example.tolocharadio.data.remote.api
+package com.izquierdojl.tolocharadio.data.remote.api
 
-import com.example.tolocharadio.data.remote.dto.CustomStationResultDto
-import com.example.tolocharadio.data.remote.dto.CreateCustomStationBody
-import com.example.tolocharadio.data.remote.dto.StationListDto
+import com.izquierdojl.tolocharadio.data.remote.dto.CustomStationResultDto
+import com.izquierdojl.tolocharadio.data.remote.dto.CreateCustomStationBody
+import com.izquierdojl.tolocharadio.data.remote.dto.StationListDto
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -31,3 +31,4 @@ interface CustomStationsApi {
         @Path("id") id: String,
     ): Response<OkResult>
 }
+

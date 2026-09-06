@@ -264,9 +264,8 @@ sin tocar Explorar ni el player.
   `StationCard/StationListItem` con Coil, toggle lista/grid,
   `EmptyState`, `FavoriteButton`, tema oscuro Tolocha por defecto
   (verde-bosque/ocre-montaña).
-- **FR-013**: La app MUST usar `applicationId` [NEEDS CLARIFICATION:
-  paquete final no indicado — se propone `dev.tolocha.radio` o el
-  que indiques; hoy es `com.example.tolocharadio`], `minSdk=26`,
+- **FR-013**: La app MUST usar `applicationId`
+  `com.izquierdojl.tolocharadio`, `minSdk=26`,
   HTTPS-only y `versionCode` incremental.
 - **FR-014**: Cada UseCase/Repositorio/ViewModel nuevo MUST tener
   test unitario (JUnit + coroutines-test + Turbine) y los DTOs
@@ -324,3 +323,4 @@ sin tocar Explorar ni el player.
   RadioBrowser y registra historial al hacer proxy.
 - `minSdk=26`, HTTPS-only, sin DRM ni caché offline de audio.
 - Paquete final pendiente de confirmación (FR-013).
+

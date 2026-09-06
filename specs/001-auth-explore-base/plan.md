@@ -46,7 +46,7 @@ pagina 24 ítems, scroll sin jank (Coil + lazy layouts); primer audio
 
 **Constraints**: HTTPS-only; cero secretos en código; Bearer nunca en
 URL/log; `Station.url` directa prohibida; dark Tolocha por defecto;
-`applicationId` final pendiente (hoy `com.example.tolocharadio`).
+`applicationId` `com.izquierdojl.tolocharadio`.
 
 **Scale/Scope**: ~10 pantallas, 6 servicios Retrofit, 1
 `MediaSessionService`, alcance spec FR-001…FR-014 (sin Favoritos
@@ -120,3 +120,4 @@ sin módulos Gradle nuevos (principio V).
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | — | — | — |
+

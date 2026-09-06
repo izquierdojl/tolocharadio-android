@@ -65,7 +65,7 @@ specs/006-custom-stations/
 ### Source Code (repository root)
 
 ```text
-app/src/main/java/com/example/tolocharadio/
+app/src/main/java/com/izquierdojl/tolocharadio/
 ├── data/
 │   ├── local/
 │   │   ├── CustomStationsCache.kt     # NEW: CachedCustomStation entity + DAO + MIGRATION_3_4
@@ -87,9 +87,10 @@ app/src/main/java/com/example/tolocharadio/
         └── CustomStationsViewModel.kt  # NEW: ViewModel (estado lista + estado formulario)
 
 # Modified files:
-app/src/main/java/com/example/tolocharadio/core/ui/navigation/TolochaNavGraph.kt
+app/src/main/java/com/izquierdojl/tolocharadio/core/ui/navigation/TolochaNavGraph.kt
 # Lines 195-197: replace HomeScreen placeholder with CustomStationsScreen + auth guard
 # (patrón idéntico al bloque HISTORY, lines 184-194)
 ```
 
 **Structure Decision**: Single `app` module, organizado por feature (`feature/customstations/`) espejo de la web. Sigue el patrón establecido por `feature/favorites/` y `feature/history/`. La entrada de la barra inferior y `AUTH_REQUIRED` ya incluyen `CUSTOM_STATIONS` — solo falta el contenido del destino.
+

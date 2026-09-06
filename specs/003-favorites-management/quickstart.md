@@ -14,9 +14,9 @@
 # Unitarios + estáticos (gate de merge)
 .\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:detekt
 # Foco en lo nuevo:
-.\gradlew.bat :app:testDebugUnitTest --tests "com.example.tolocharadio.data.repo.FavoritesRepoTest" --tests "com.example.tolocharadio.domain.*" --tests "com.example.tolocharadio.feature.favorites.*" --tests "com.example.tolocharadio.data.local.FavoritesCacheTest"
+.\gradlew.bat :app:testDebugUnitTest --tests "com.izquierdojl.tolocharadio.data.repo.FavoritesRepoTest" --tests "com.izquierdojl.tolocharadio.domain.*" --tests "com.izquierdojl.tolocharadio.feature.favorites.*" --tests "com.izquierdojl.tolocharadio.data.local.FavoritesCacheTest"
 # UI crítica (requiere emulador/dispositivo):
-.\gradlew.bat :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.tolocharadio.feature.favorites.FavoritesScreenTest
+.\gradlew.bat :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.izquierdojl.tolocharadio.feature.favorites.FavoritesScreenTest
 ```
 
 ## Recorrido manual (cuenta con favoritas)
@@ -33,3 +33,4 @@
 
 - [ ] SC-001 < 2 s, SC-003 coherencia 100 %, SC-004 orden persiste, SC-005 audio continuo, SC-006 reversión < 2 s.
 - [ ] Cero XML nuevo, cero dependencias nuevas, Detekt/ktlint/Lint en verde, migración Room v1→v2 con test.
+

@@ -8,7 +8,7 @@
 
 **Organization**: tareas agrupadas por historia; cada historia es implementable y testeable de forma independiente tras la fase Foundational.
 
-**Paths**: `pkg = com.example.tolocharadio` (pendiente rename a applicationId final, FR-013). Base main: `app/src/main/java/com/example/tolocharadio/`. Tests: `app/src/test/java/com/example/tolocharadio/` (unit), `app/src/androidTest/java/com/example/tolocharadio/` (UI).
+**Paths**: `pkg = com.izquierdojl.tolocharadio` (applicationId final, FR-013). Base main: `app/src/main/java/com/izquierdojl/tolocharadio/`. Tests: `app/src/test/java/com/izquierdojl/tolocharadio/` (unit), `app/src/androidTest/java/com/izquierdojl/tolocharadio/` (UI).
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -144,3 +144,4 @@
 - Phase 1 → Phase 2 (bloqueante) → US1+US2+US4+US5 en orden P1 (US3 P2 y US6 P3 pueden ir en paralelo tras foundation) → Polish.
 - MVP incremental: Phase 1+2+US1 (app conecta) → +US2 (sesión) → +US4 (catálogo) → +US5 (radio suena) → +US3/US6.
 - En cada historia: tests PRIMERO (deben FALLAR), luego DTOs/casos de uso, luego UI, luego integración; commit por tarea.
+

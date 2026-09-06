@@ -12,7 +12,7 @@
 
 - **[P]**: paralelizable (archivos distintos, sin dependencias pendientes)
 - **[Story]**: historia propietaria ([US1]–[US4] según spec.md)
-- Rutas base: `app/src/main/java/com/example/tolocharadio/…`, tests en `app/src/test/…`, UI en `app/src/androidTest/…`
+- Rutas base: `app/src/main/java/com/izquierdojl/tolocharadio/…`, tests en `app/src/test/…`, UI en `app/src/androidTest/…`
 
 ---
 
@@ -33,19 +33,19 @@
 
 ### Tests primero (Red-Green: escribir, ver fallar, luego implementar)
 
-- [x] T003 [P] Test de serialización de `ReorderBody` y `FavoriteListDto` (orden) ampliando `app/src/test/java/com/example/tolocharadio/data/remote/dto/DtoSerializationTest.kt`
-- [x] T004 [P] Test de `FavoritesRepo.list/reorder` (éxito, 401, 404, 422, 503, idempotencia de `DELETE`) en `app/src/test/java/com/example/tolocharadio/data/repo/FavoritesRepoTest.kt`
-- [x] T005 [P] Test de `FavoritesCacheDao` (replaceAll/loadOrdered) y de la migración Room v1→v2 en `app/src/test/java/com/example/tolocharadio/data/local/FavoritesCacheTest.kt`
-- [x] T006 [P] Tests de `ObserveFavoritesUseCase` (red + fallback a caché, dedup VR-01) y `ReorderFavoritesUseCase` (permutación exacta VR-02, rechazo de `stationId` en blanco VR-03) en `app/src/test/java/com/example/tolocharadio/domain/ObserveReorderUseCasesTest.kt`
+- [x] T003 [P] Test de serialización de `ReorderBody` y `FavoriteListDto` (orden) ampliando `app/src/test/java/com/izquierdojl/tolocharadio/data/remote/dto/DtoSerializationTest.kt`
+- [x] T004 [P] Test de `FavoritesRepo.list/reorder` (éxito, 401, 404, 422, 503, idempotencia de `DELETE`) en `app/src/test/java/com/izquierdojl/tolocharadio/data/repo/FavoritesRepoTest.kt`
+- [x] T005 [P] Test de `FavoritesCacheDao` (replaceAll/loadOrdered) y de la migración Room v1→v2 en `app/src/test/java/com/izquierdojl/tolocharadio/data/local/FavoritesCacheTest.kt`
+- [x] T006 [P] Tests de `ObserveFavoritesUseCase` (red + fallback a caché, dedup VR-01) y `ReorderFavoritesUseCase` (permutación exacta VR-02, rechazo de `stationId` en blanco VR-03) en `app/src/test/java/com/izquierdojl/tolocharadio/domain/ObserveReorderUseCasesTest.kt`
 
 ### Implementación
 
-- [x] T007 Añadir `PUT favorites/order` (`ReorderBody`) a `app/src/main/java/com/example/tolocharadio/data/remote/api/FavoritesApi.kt` (usa el nombre de campo confirmado en T001)
-- [x] T008 [P] Crear entidad `CachedFavorite` + `FavoritesCacheDao` en `app/src/main/java/com/example/tolocharadio/data/local/FavoritesCache.kt`
-- [x] T009 Subir `TolochaDb` a versión 2 con migración v1→v2 y limpieza al hacer logout/cambiar `baseUrl` en `app/src/main/java/com/example/tolocharadio/data/local/TolochaDb.kt`
-- [x] T010 Ampliar `FavoritesRepo` con `observe()/list()/reorder()` y `Flow<Set<String>> favoriteIds` compartido en `app/src/main/java/com/example/tolocharadio/data/repo/FavoritesRepo.kt`
-- [x] T011 [P] Crear `ObserveFavoritesUseCase` (red + caché offline marcada, verdad = servidor) en `app/src/main/java/com/example/tolocharadio/domain/ObserveFavoritesUseCase.kt`
-- [x] T012 [P] Crear `ReorderFavoritesUseCase` (valida permutación exacta antes del `PUT`) en `app/src/main/java/com/example/tolocharadio/domain/ReorderFavoritesUseCase.kt`
+- [x] T007 Añadir `PUT favorites/order` (`ReorderBody`) a `app/src/main/java/com/izquierdojl/tolocharadio/data/remote/api/FavoritesApi.kt` (usa el nombre de campo confirmado en T001)
+- [x] T008 [P] Crear entidad `CachedFavorite` + `FavoritesCacheDao` en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/FavoritesCache.kt`
+- [x] T009 Subir `TolochaDb` a versión 2 con migración v1→v2 y limpieza al hacer logout/cambiar `baseUrl` en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/TolochaDb.kt`
+- [x] T010 Ampliar `FavoritesRepo` con `observe()/list()/reorder()` y `Flow<Set<String>> favoriteIds` compartido en `app/src/main/java/com/izquierdojl/tolocharadio/data/repo/FavoritesRepo.kt`
+- [x] T011 [P] Crear `ObserveFavoritesUseCase` (red + caché offline marcada, verdad = servidor) en `app/src/main/java/com/izquierdojl/tolocharadio/domain/ObserveFavoritesUseCase.kt`
+- [x] T012 [P] Crear `ReorderFavoritesUseCase` (valida permutación exacta antes del `PUT`) en `app/src/main/java/com/izquierdojl/tolocharadio/domain/ReorderFavoritesUseCase.kt`
 
 **Checkpoint**: `T003–T006` en verde tras implementar `T007–T012`; repo expone lista, ids compartidos y reorder. Las historias pueden empezar.
 
@@ -59,15 +59,15 @@
 
 ### Tests primero
 
-- [x] T013 [P] [US1] Tests del VM (carga, vacío, error+reintento, offline con/sin caché) con Turbine en `app/src/test/java/com/example/tolocharadio/feature/favorites/FavoritesViewModelTest.kt`
-- [x] T014 [P] [US1] Compose Test base (lista visible, vacío con CTA, error con reintento) en `app/src/androidTest/java/com/example/tolocharadio/feature/favorites/FavoritesScreenTest.kt` — escrito y compila; PENDIENTE ejecución en dispositivo (emulador local API 37 incompatible con compose-ui-test, 2026-09-05)
+- [x] T013 [P] [US1] Tests del VM (carga, vacío, error+reintento, offline con/sin caché) con Turbine en `app/src/test/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesViewModelTest.kt`
+- [x] T014 [P] [US1] Compose Test base (lista visible, vacío con CTA, error con reintento) en `app/src/androidTest/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesScreenTest.kt` — escrito y compila; PENDIENTE ejecución en dispositivo (emulador local API 37 incompatible con compose-ui-test, 2026-09-05)
 
 ### Implementación
 
-- [x] T015 [P] [US1] Helper de fecha relativa ("hace X", `addedAt=0`/futuro → ocultar) en `app/src/main/java/com/example/tolocharadio/feature/favorites/RelativeTime.kt`
-- [x] T016 [US1] `FavoritesViewModel` con `FavoritesUiState` sellado (`Loading/Empty/Content/Error`) en `app/src/main/java/com/example/tolocharadio/feature/favorites/FavoritesViewModel.kt`
-- [x] T017 [US1] `FavoritesScreen` (tarjetas con Coil + placeholder, `EmptyState`, offline badge, botón reintento) en `app/src/main/java/com/example/tolocharadio/feature/favorites/FavoritesScreen.kt`
-- [x] T018 [US1] Sustituir el placeholder de `Routes.FAVORITES` por `FavoritesScreen` real en `app/src/main/java/com/example/tolocharadio/core/ui/navigation/TolochaNavGraph.kt`
+- [x] T015 [P] [US1] Helper de fecha relativa ("hace X", `addedAt=0`/futuro → ocultar) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/favorites/RelativeTime.kt`
+- [x] T016 [US1] `FavoritesViewModel` con `FavoritesUiState` sellado (`Loading/Empty/Content/Error`) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesViewModel.kt`
+- [x] T017 [US1] `FavoritesScreen` (tarjetas con Coil + placeholder, `EmptyState`, offline badge, botón reintento) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesScreen.kt`
+- [x] T018 [US1] Sustituir el placeholder de `Routes.FAVORITES` por `FavoritesScreen` real en `app/src/main/java/com/izquierdojl/tolocharadio/core/ui/navigation/TolochaNavGraph.kt`
 
 **Checkpoint**: US-1 funciona sola de extremo a extremo (SC-001). Se puede validar y demostrar sin US-2–US-4.
 
@@ -81,15 +81,15 @@
 
 ### Tests primero
 
-- [x] T019 [P] [US2] Ampliar `app/src/test/java/com/example/tolocharadio/feature/favorites/FavoritesViewModelTest.kt` (toggle+rollback, quitar+deshacer 10 s, expiración confirma)
-- [x] T020 [P] [US2] Ampliar `app/src/androidTest/java/com/example/tolocharadio/feature/favorites/FavoritesScreenTest.kt` (toggle, `Snackbar` deshacer, reversión ante error) — escrito y compila; PENDIENTE ejecución en dispositivo (ver T014, 2026-09-05)
-- [x] T021 [P] [US2] Ampliar `app/src/test/java/com/example/tolocharadio/feature/explore/ExploreViewModelsTest.kt` (favoritas hidratadas desde el flujo compartido, toggle coherente)
+- [x] T019 [P] [US2] Ampliar `app/src/test/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesViewModelTest.kt` (toggle+rollback, quitar+deshacer 10 s, expiración confirma)
+- [x] T020 [P] [US2] Ampliar `app/src/androidTest/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesScreenTest.kt` (toggle, `Snackbar` deshacer, reversión ante error) — escrito y compila; PENDIENTE ejecución en dispositivo (ver T014, 2026-09-05)
+- [x] T021 [P] [US2] Ampliar `app/src/test/java/com/izquierdojl/tolocharadio/feature/explore/ExploreViewModelsTest.kt` (favoritas hidratadas desde el flujo compartido, toggle coherente)
 
 ### Implementación
 
-- [x] T022 [US2] `removeWithUndo()`/`undoRemove()` (reinserción en índice previo, expiración 10 s) en `app/src/main/java/com/example/tolocharadio/feature/favorites/FavoritesViewModel.kt`
-- [x] T023 [US2] `FavoriteButton` + `Snackbar` con Deshacer (10 s, `contentDescription` ES) en `app/src/main/java/com/example/tolocharadio/feature/favorites/FavoritesScreen.kt`
-- [x] T024 [US2] Hidratar `favoriteIds` desde el `Flow` compartido del repo (eliminar set local divergente) en `app/src/main/java/com/example/tolocharadio/feature/explore/ExploreViewModel.kt`
+- [x] T022 [US2] `removeWithUndo()`/`undoRemove()` (reinserción en índice previo, expiración 10 s) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesViewModel.kt`
+- [x] T023 [US2] `FavoriteButton` + `Snackbar` con Deshacer (10 s, `contentDescription` ES) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesScreen.kt`
+- [x] T024 [US2] Hidratar `favoriteIds` desde el `Flow` compartido del repo (eliminar set local divergente) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/explore/ExploreViewModel.kt`
 
 **Checkpoint**: US-1 y US-2 funcionan y el marcado es coherente en todas las pantallas (SC-003).
 
@@ -103,13 +103,13 @@
 
 ### Tests primero
 
-- [x] T025 [P] [US3] Ampliar `app/src/test/java/com/example/tolocharadio/feature/favorites/FavoritesViewModelTest.kt` (`moveItem`+`commitOrder`, error→reversión, divergencia→gana-servidor)
-- [x] T026 [P] [US3] Ampliar `app/src/androidTest/java/com/example/tolocharadio/feature/favorites/FavoritesScreenTest.kt` (arrastrar por el asa cambia el orden visible) — escrito y compila; PENDIENTE ejecución en dispositivo (ver T014, 2026-09-05)
+- [x] T025 [P] [US3] Ampliar `app/src/test/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesViewModelTest.kt` (`moveItem`+`commitOrder`, error→reversión, divergencia→gana-servidor)
+- [x] T026 [P] [US3] Ampliar `app/src/androidTest/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesScreenTest.kt` (arrastrar por el asa cambia el orden visible) — escrito y compila; PENDIENTE ejecución en dispositivo (ver T014, 2026-09-05)
 
 ### Implementación
 
-- [x] T027 [US3] Lógica `moveItem()`/`commitOrder()` (`savingOrder`, reversión, gana-servidor + aviso) en `app/src/main/java/com/example/tolocharadio/feature/favorites/FavoritesViewModel.kt`
-- [x] T028 [US3] Fila arrastrable con asa (`contentDescription` "Reordenar") e indicador de guardado no bloqueante en `app/src/main/java/com/example/tolocharadio/feature/favorites/FavoritesScreen.kt`
+- [x] T027 [US3] Lógica `moveItem()`/`commitOrder()` (`savingOrder`, reversión, gana-servidor + aviso) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesViewModel.kt`
+- [x] T028 [US3] Fila arrastrable con asa (`contentDescription` "Reordenar") e indicador de guardado no bloqueante en `app/src/main/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesScreen.kt`
 
 **Checkpoint**: US-3 funciona sobre la lista de US-1 sin romper US-2 (SC-004).
 
@@ -123,11 +123,11 @@
 
 ### Tests primero
 
-- [x] T029 [P] [US4] Ampliar `app/src/test/java/com/example/tolocharadio/core/ui/navigation/RoutesTest.kt` (`FAVORITES` en `AUTH_REQUIRED`, redirección sin sesión)
+- [x] T029 [P] [US4] Ampliar `app/src/test/java/com/izquierdojl/tolocharadio/core/ui/navigation/RoutesTest.kt` (`FAVORITES` en `AUTH_REQUIRED`, redirección sin sesión)
 
 ### Implementación
 
-- [x] T030 [US4] Navegación tarjeta→ficha (`Routes.stationDetail`), play persistente y estado seleccionado de "Favoritos" en `app/src/main/java/com/example/tolocharadio/core/ui/navigation/TolochaNavGraph.kt` (+ callbacks en `FavoritesScreen.kt` si faltan)
+- [x] T030 [US4] Navegación tarjeta→ficha (`Routes.stationDetail`), play persistente y estado seleccionado de "Favoritos" en `app/src/main/java/com/izquierdojl/tolocharadio/core/ui/navigation/TolochaNavGraph.kt` (+ callbacks en `FavoritesScreen.kt` si faltan)
 
 **Checkpoint**: las 4 historias funcionan de extremo a extremo; SC-005 verificado manual + test.
 
@@ -137,7 +137,7 @@
 
 **Purpose**: gates de merge y validación final (constitución III/IV/V, spec 002 para a11y visual).
 
-- [x] T031 [P] Dejar Android Lint + ktlint + Detekt sin errores ni warnings nuevos y limpiar código muerto en los archivos tocados (`app/src/main/java/com/example/tolocharadio/feature/favorites/`, `data/repo/FavoritesRepo.kt`, `data/local/`, `domain/`)
+- [x] T031 [P] Dejar Android Lint + ktlint + Detekt sin errores ni warnings nuevos y limpiar código muerto en los archivos tocados (`app/src/main/java/com/izquierdojl/tolocharadio/feature/favorites/`, `data/repo/FavoritesRepo.kt`, `data/local/`, `domain/`)
 - [x] T032 [P] Recorrido completo de `specs/003-favorites-management/quickstart.md` (automatizado + manual con las dos cuentas de prueba) y anotar resultado en la PR — automatizado OK; PENDIENTE recorrido manual contra instancia real (2026-09-05)
 
 ---
@@ -205,3 +205,4 @@ Setup + Foundational → +US1 (demo) → +US2 (MVP) → +US3 (demo) → +US4 (ci
 - `PUT /favorites/order` envía la lista COMPLETA (permutación exacta); validar en dominio (VR-02), no solo en UI.
 - Caché Room solo-lectura; verdad = servidor; limpiar al logout/cambiar `baseUrl`.
 - Commit tras cada tarea o grupo lógico; parar en cada checkpoint y validar la historia.
+

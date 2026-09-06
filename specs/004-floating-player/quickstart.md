@@ -7,7 +7,7 @@ Guía de validación manual + automática. Requisito: instancia configurada y un
 ## 1. Tests automáticos
 
 ```powershell
-.\gradlew :app:testDebugUnitTest --tests "com.example.tolocharadio.feature.player.*"
+.\gradlew :app:testDebugUnitTest --tests "com.izquierdojl.tolocharadio.feature.player.*"
 ```
 
 Esperado: en verde `PlayerViewModelTest` ampliado (mute on/off, reset de mute en `play()`/`stop()`, `cancelLoad()` → `Idle`) y tests de `panelSubtitle` / `resolveCopyLink` (subtítulo con datos parciales/ausentes; URL en blanco → `null`).
@@ -32,3 +32,4 @@ Esperado: en verde `PlayerViewModelTest` ampliado (mute on/off, reset de mute en
 ```
 
 Esperado: sin errores (constitución III).
+

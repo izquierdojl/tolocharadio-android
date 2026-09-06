@@ -58,7 +58,7 @@ specs/004-floating-player/
 ### Source Code (repository root)
 
 ```text
-app/src/main/java/com/example/tolocharadio/
+app/src/main/java/com/izquierdojl/tolocharadio/
 ├── feature/player/
 │   ├── PlayerViewModel.kt       # CAMBIO: isMuted + toggleMute, loadJob + cancelLoad, reset mute en play/stop
 │   ├── PlayerUi.kt              # CAMBIO: MiniPlayer → MiniPanel (avatar+2 líneas | play/mute/copiar; layout error reintentar+copiar; tap izquierdo abre sheet)
@@ -69,12 +69,12 @@ app/src/main/java/com/example/tolocharadio/
 │   └── CommonUi.kt              # reutiliza StationArtwork (sin cambios previstos)
 └── di/PlayerModule.kt           # sin cambios (ExoPlayer singleton existente)
 
-app/src/test/java/com/example/tolocharadio/
+app/src/test/java/com/izquierdojl/tolocharadio/
 └── feature/player/
     ├── PlayerViewModelTest.kt   # AMPLÍA: mute on/off+reset, cancelLoad→Idle, error oculta mute
     └── PanelHelpersTest.kt      # NUEVO: panelSubtitle (completa/parcial/vacía), resolveCopyLink (url/blanco)
 
-app/src/androidTest/java/com/example/tolocharadio/
+app/src/androidTest/java/com/izquierdojl/tolocharadio/
 └── PlayerPanelTest.kt           # panel persistente al navegar + copiar con confirmación (o verificación manual si el entorno lo impide)
 ```
 
@@ -83,3 +83,4 @@ app/src/androidTest/java/com/example/tolocharadio/
 ## Complexity Tracking
 
 > Sin violaciones constitucionales que justificar — tabla vacía por diseño.
+

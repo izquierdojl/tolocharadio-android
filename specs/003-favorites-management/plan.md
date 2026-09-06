@@ -59,7 +59,7 @@ specs/003-favorites-management/
 ### Source Code (repository root)
 
 ```text
-app/src/main/java/com/example/tolocharadio/
+app/src/main/java/com/izquierdojl/tolocharadio/
 ├── core/ui/navigation/
 │   ├── Routes.kt                  # sin cambios (FAVORITES ya existe)
 │   └── TolochaNavGraph.kt         # CAMBIO: destino FAVORITES → FavoritesScreen real
@@ -82,14 +82,14 @@ app/src/main/java/com/example/tolocharadio/
     ├── FavoritesViewModel.kt      # NUEVO: UiState sellado, undo, reorder, reintento
     └── RelativeTime.kt            # NUEVO: formato "hace X" (o helper en core; decidir en tasks)
 
-app/src/test/java/com/example/tolocharadio/
+app/src/test/java/com/izquierdojl/tolocharadio/
 ├── data/repo/FavoritesRepoTest.kt       # NUEVO (list/reorder, mapeo errores)
 ├── data/remote/dto/DtoSerializationTest.kt # AMPLIAR (ReorderBody + FavoriteListDto order)
 ├── data/local/FavoritesCacheTest.kt     # NUEVO (dao + migración v1→v2)
 ├── domain/ObserveReorderUseCasesTest.kt # NUEVO
 └── feature/favorites/FavoritesViewModelTest.kt # NUEVO (Turbine: carga, toggle+rollback, undo 10 s, reorder+gana-servidor)
 
-app/src/androidTest/java/com/example/tolocharadio/
+app/src/androidTest/java/com/izquierdojl/tolocharadio/
 └── feature/favorites/FavoritesScreenTest.kt # NUEVO (composeTestRule: lista, toggle, deshacer, error+reintento, drag)
 ```
 
@@ -102,3 +102,4 @@ app/src/androidTest/java/com/example/tolocharadio/
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | — | — | — |
+

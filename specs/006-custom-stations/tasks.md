@@ -16,8 +16,8 @@
 
 ## Path Conventions
 
-All source under `app/src/main/java/com/example/tolocharadio/`
-All tests under `app/src/test/java/com/example/tolocharadio/`
+All source under `app/src/main/java/com/izquierdojl/tolocharadio/`
+All tests under `app/src/test/java/com/izquierdojl/tolocharadio/`
 
 ---
 
@@ -271,3 +271,4 @@ With multiple developers after Phase 2 completes:
 - US5 (P2): 3 tasks (T028-T030) con etiqueta [US5]
 - Phase 7 (Polish): 5 tasks, sin etiqueta de historia
 - Marcadores [P]: solo en tasks de ficheros distintos sin dependencias pendientes
+

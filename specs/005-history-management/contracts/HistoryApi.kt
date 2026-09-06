@@ -1,6 +1,6 @@
-package com.example.tolocharadio.data.remote.api
+package com.izquierdojl.tolocharadio.data.remote.api
 
-import com.example.tolocharadio.data.remote.dto.HistoryListDto
+import com.izquierdojl.tolocharadio.data.remote.dto.HistoryListDto
 import retrofit2.Response
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -22,3 +22,4 @@ interface HistoryApi {
     @DELETE("history")
     suspend fun clear(): Response<OkResult>
 }
+
