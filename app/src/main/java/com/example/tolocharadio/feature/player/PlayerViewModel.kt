@@ -60,7 +60,16 @@ class PlayerViewModel
         private val _state = MutableStateFlow<PlayerState>(PlayerState.Idle)
         val state: StateFlow<PlayerState> = _state.asStateFlow()
 
+        /**
+         * Silencio local (spec 004, FR-005): modificador independiente que
+         * corta el volumen sin detener la emisión. Se resetea en [play]
+         * y [stop] (acuerdo de clarify: siempre vuelve con sonido).
+         */
+        private val _isMuted = MutableStateFlow(false)
+        val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
+
         private var retryJob: Job? = null
+        private var loadJob: Job? = null
         private var controller: MediaController? = null
 
         private val listener =
@@ -106,36 +115,48 @@ class PlayerViewModel
             connectController()
         }
 
+        /**
+         * Conexión best-effort al controlador de sesión (notificación /
+         * controles externos). El estado lo gobierna el listener del
+         * `ExoPlayer` compartido, así que un fallo aquí nunca debe impedir
+         * que el VM nazca en `Idle`.
+         */
         @OptIn(UnstableApi::class)
         private fun connectController() {
-            val token = SessionToken(context, ComponentName(context, RadioPlaybackService::class.java))
-            val future = MediaController.Builder(context, token).buildAsync()
-            future.addListener(
-                { controller = runCatching { future.get() }.getOrNull() },
-                MoreExecutors.directExecutor(),
-            )
+            runCatching {
+                val token = SessionToken(context, ComponentName(context, RadioPlaybackService::class.java))
+                val future = MediaController.Builder(context, token).buildAsync()
+                future.addListener(
+                    { controller = runCatching { future.get() }.getOrNull() },
+                    MoreExecutors.directExecutor(),
+                )
+            }
         }
 
-        /** Reproduce tras el precheck `playable` (FR-007). */
+        /** Reproduce tras el precheck `playable` (FR-007). Resetea el silencio. */
         fun play(station: StationDto) {
             retryJob?.cancel()
+            loadJob?.cancel()
+            _isMuted.value = false
+            exoPlayer.volume = 1f
             _state.value = PlayerState.Buffering(station)
-            viewModelScope.launch {
-                when (val r = playback.status(station.id)) {
-                    is ApiResult.Ok -> {
-                        if (!r.value.playable) {
-                            _state.value =
-                                PlayerState.Error(
-                                    station,
-                                    r.value.reason?.ifBlank { null } ?: "Emisora no disponible.",
-                                )
-                            return@launch
+            loadJob =
+                viewModelScope.launch {
+                    when (val r = playback.status(station.id)) {
+                        is ApiResult.Ok -> {
+                            if (!r.value.playable) {
+                                _state.value =
+                                    PlayerState.Error(
+                                        station,
+                                        r.value.reason?.ifBlank { null } ?: "Emisora no disponible.",
+                                    )
+                                return@launch
+                            }
+                            startStream(station)
                         }
-                        startStream(station)
+                        is ApiResult.Err -> _state.value = PlayerState.Error(station, r.error.userMessage())
                     }
-                    is ApiResult.Err -> _state.value = PlayerState.Error(station, r.error.userMessage())
                 }
-            }
         }
 
         @OptIn(UnstableApi::class)
@@ -151,6 +172,23 @@ class PlayerViewModel
             _state.value = PlayerState.Buffering(station)
         }
 
+        /** Silencia o restaura el sonido sin detener la emisión (spec 004, FR-005). */
+        fun toggleMute() {
+            _isMuted.value = !_isMuted.value
+            exoPlayer.volume = if (_isMuted.value) 0f else 1f
+        }
+
+        /** Cancela un intento de carga en curso y vuelve a `Idle` (spec 004, FR-004). */
+        fun cancelLoad() {
+            loadJob?.cancel()
+            retryJob?.cancel()
+            if (_state.value is PlayerState.Buffering) {
+                exoPlayer.stop()
+                exoPlayer.clearMediaItems()
+                _state.value = PlayerState.Idle
+            }
+        }
+
         /** Pausa o reanuda según el estado actual. */
         fun toggle() {
             when (_state.value) {
@@ -160,9 +198,12 @@ class PlayerViewModel
             }
         }
 
-        /** Detiene y vuelve a Idle. */
+        /** Detiene y vuelve a Idle. Resetea el silencio. */
         fun stop() {
             retryJob?.cancel()
+            loadJob?.cancel()
+            _isMuted.value = false
+            exoPlayer.volume = 1f
             exoPlayer.stop()
             exoPlayer.clearMediaItems()
             _state.value = PlayerState.Idle
@@ -189,6 +230,7 @@ class PlayerViewModel
 
         override fun onCleared() {
             retryJob?.cancel()
+            loadJob?.cancel()
             exoPlayer.removeListener(listener)
             controller?.release()
             super.onCleared()
