@@ -66,3 +66,7 @@ data class FavoriteResultDto(val favorite: FavoriteDto)
 
 @Serializable
 data class StringListDto(val items: List<String> = emptyList())
+
+/** Envoltorio `{items}` del API para historial. */
+@Serializable
+data class HistoryListDto(val items: List<HistoryEntryDto> = emptyList())

@@ -7,6 +7,7 @@ import com.example.tolocharadio.core.session.TokenStore
 import com.example.tolocharadio.data.local.InstancePrefs
 import com.example.tolocharadio.data.remote.api.AuthApi
 import com.example.tolocharadio.data.remote.api.FavoritesApi
+import com.example.tolocharadio.data.remote.api.HistoryApi
 import com.example.tolocharadio.data.remote.api.PlaybackApi
 import com.example.tolocharadio.data.remote.api.StationsApi
 import com.example.tolocharadio.data.remote.api.SystemApi
@@ -65,6 +66,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun favorites(api: Retrofit): FavoritesApi = api.create(FavoritesApi::class.java)
+
+    @Provides
+    @Singleton
+    fun history(api: Retrofit): HistoryApi = api.create(HistoryApi::class.java)
 
     @Provides
     @Singleton
