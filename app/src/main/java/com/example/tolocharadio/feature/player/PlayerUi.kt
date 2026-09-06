@@ -6,12 +6,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -19,6 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -27,22 +32,40 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.tolocharadio.core.ui.components.StationArtwork
+import com.example.tolocharadio.data.remote.dto.StationDto
+import kotlinx.coroutines.launch
 
 /**
- * Mini-player persistente sobre la bottom bar (US-5). Visible en
- * cualquier estado salvo [PlayerState.Idle].
+ * Panel inferior persistente sobre la barra de navegación (spec 004).
+ * Izquierda: avatar + nombre + línea técnica; derecha: controles.
+ * Visible en cualquier estado salvo [PlayerState.Idle].
  */
 @Composable
-fun MiniPlayer(viewModel: PlayerViewModel = hiltViewModel()) {
+fun MiniPlayer(
+    viewModel: PlayerViewModel = hiltViewModel(),
+    snackbar: SnackbarHostState,
+) {
     val state by viewModel.state.collectAsState()
+    val muted by viewModel.isMuted.collectAsState()
+    val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
     var showSheet by remember { mutableStateOf(false) }
-    if (state is PlayerState.Idle) return
+    val station = playerStation(state) ?: return
+    val displayName = station.name.ifBlank { "Emisora" }
+    val error = state as? PlayerState.Error
     Surface(
         tonalElevation = 3.dp,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
@@ -50,60 +73,167 @@ fun MiniPlayer(viewModel: PlayerViewModel = hiltViewModel()) {
         Row(
             modifier =
                 Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                    .clickable { showSheet = true },
+                    .semantics { contentDescription = panelAnnouncement(state, displayName) },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            when (val s = state) {
-                is PlayerState.Buffering -> {
-                    CircularProgressIndicator(Modifier.padding(8.dp))
-                    Text(s.station.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                }
-                is PlayerState.Playing -> {
-                    IconButton(onClick = viewModel::toggle) {
-                        Icon(Icons.Filled.Pause, contentDescription = "Pausar")
-                    }
-                    Text(
-                        s.station.name,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                is PlayerState.Paused -> {
-                    IconButton(onClick = viewModel::toggle) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = "Reanudar")
-                    }
-                    Text(
-                        s.station.name,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                is PlayerState.Error -> {
-                    IconButton(onClick = viewModel::retry) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Reintentar")
-                    }
-                    Text(
-                        s.message,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-                PlayerState.Idle -> Unit
+            PanelIdentity(
+                station = station,
+                title = displayName,
+                subtitle = error?.message ?: panelSubtitle(station),
+                isError = error != null,
+                modifier = Modifier.weight(1f),
+                onOpen = { showSheet = true },
+            )
+            PanelMainAction(
+                state = state,
+                onToggle = viewModel::toggle,
+                onCancelLoad = viewModel::cancelLoad,
+                onRetry = viewModel::retry,
+            )
+            // En error el silencio se oculta (FR-003b); copiar sigue disponible.
+            if (error == null) {
+                PanelMuteButton(muted = muted, onToggleMute = viewModel::toggleMute)
             }
             Spacer(Modifier.width(4.dp))
-            IconButton(onClick = viewModel::stop) {
-                Icon(Icons.Filled.Close, contentDescription = "Detener")
-            }
+            PanelCopyButton(onCopy = {
+                val link = resolveCopyLink(station)
+                if (link != null) {
+                    clipboard.setText(AnnotatedString(link))
+                    scope.launch { snackbar.showSnackbar("Enlace copiado") }
+                } else {
+                    scope.launch { snackbar.showSnackbar("Enlace no disponible") }
+                }
+            })
         }
     }
     if (showSheet) {
-        FullPlayerSheet(stationName = (state as? PlayerState.Playing)?.station?.name.orEmpty()) {
+        FullPlayerSheet(stationName = station.name) {
             showSheet = false
         }
+    }
+}
+
+/** Emisora activa del panel; `null` en `Idle` (el panel no se muestra). */
+private fun playerStation(state: PlayerState): StationDto? =
+    when (state) {
+        is PlayerState.Buffering -> state.station
+        is PlayerState.Playing -> state.station
+        is PlayerState.Paused -> state.station
+        is PlayerState.Error -> state.station
+        PlayerState.Idle -> null
+    }
+
+/** Anuncio de TalkBack del panel según el estado. */
+private fun panelAnnouncement(
+    state: PlayerState,
+    displayName: String,
+): String =
+    when (state) {
+        is PlayerState.Playing -> "Sonando: $displayName"
+        is PlayerState.Paused -> "Pausado: $displayName"
+        is PlayerState.Buffering -> "Cargando: $displayName"
+        is PlayerState.Error -> "Error de reproducción: $displayName"
+        PlayerState.Idle -> ""
+    }
+
+/** Zona izquierda del panel: avatar + nombre + línea técnica; abre el completo (FR-007). */
+@Composable
+private fun PanelIdentity(
+    station: StationDto,
+    title: String,
+    subtitle: String,
+    isError: Boolean,
+    modifier: Modifier = Modifier,
+    onOpen: () -> Unit,
+) {
+    Row(
+        modifier =
+            modifier.clickable(
+                onClickLabel = "Abrir reproductor",
+                role = Role.Button,
+            ) { onOpen() },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        StationArtwork(station = station, modifier = Modifier.size(48.dp))
+        Spacer(Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                subtitle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodySmall,
+                color =
+                    if (isError) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+            )
+        }
+    }
+}
+
+/** Botón principal del panel según el estado (en `Buffering` cancela la carga). */
+@Composable
+private fun PanelMainAction(
+    state: PlayerState,
+    onToggle: () -> Unit,
+    onCancelLoad: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    when (state) {
+        is PlayerState.Buffering -> {
+            IconButton(
+                onClick = onCancelLoad,
+                modifier = Modifier.semantics { contentDescription = "Cancelar carga" },
+            ) {
+                CircularProgressIndicator(Modifier.size(24.dp))
+            }
+        }
+        is PlayerState.Playing -> {
+            IconButton(onClick = onToggle) {
+                Icon(Icons.Filled.Pause, contentDescription = "Pausar")
+            }
+        }
+        is PlayerState.Paused -> {
+            IconButton(onClick = onToggle) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = "Reanudar")
+            }
+        }
+        is PlayerState.Error -> {
+            IconButton(onClick = onRetry) {
+                Icon(Icons.Filled.Refresh, contentDescription = "Reintentar")
+            }
+        }
+        PlayerState.Idle -> Unit
+    }
+}
+
+/** Silencio local sin detener la emisión (FR-005). */
+@Composable
+private fun PanelMuteButton(
+    muted: Boolean,
+    onToggleMute: () -> Unit,
+) {
+    IconButton(onClick = onToggleMute) {
+        Icon(
+            if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
+            contentDescription = if (muted) "Activar sonido" else "Silenciar",
+        )
+    }
+}
+
+/** Copia la URL original del stream al portapapeles (FR-006). */
+@Composable
+private fun PanelCopyButton(onCopy: () -> Unit) {
+    IconButton(onClick = onCopy) {
+        Icon(Icons.Filled.ContentCopy, contentDescription = "Copiar enlace")
     }
 }
 
