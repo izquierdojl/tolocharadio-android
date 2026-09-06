@@ -39,6 +39,8 @@ import androidx.navigation.compose.rememberNavController
 import com.izquierdojl.tolocharadio.core.session.AuthState
 import com.izquierdojl.tolocharadio.core.session.SessionManager
 import com.izquierdojl.tolocharadio.core.ui.components.TolochaLogo
+import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
+import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 import com.izquierdojl.tolocharadio.feature.auth.LoginScreen
 import com.izquierdojl.tolocharadio.feature.auth.RegisterScreen
 import com.izquierdojl.tolocharadio.feature.customstations.CustomStationsScreen
@@ -54,6 +56,9 @@ import com.izquierdojl.tolocharadio.feature.servers.ServerListScreen
 import com.izquierdojl.tolocharadio.feature.settings.SettingsScreen
 
 private data class BottomDest(val route: String, val label: String, val icon: ImageVector)
+
+/** Secciones con listas de emisoras: el alternador de vista es visible (spec 008, FR-001/FR-009). */
+private val VIEW_MODE_ROUTES = setOf(Routes.EXPLORE, Routes.FAVORITES, Routes.HISTORY, Routes.CUSTOM_STATIONS)
 
 /** Explorar, Favoritos, Historial, Mis emisoras + Configuración (FR-011). */
 private val BOTTOM_DESTS =
@@ -95,6 +100,10 @@ fun TolochaNavGraph(
     // Un único PlayerViewModel a ámbito de Activity (spec 004, R3): el panel
     // global y todas las pantallas comparten emisora y estado al navegar.
     val playerVm: PlayerViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
+    // Un único ViewModeViewModel a ámbito de Activity (spec 008): la TopAppBar
+    // compartida y las 4 secciones observan el mismo modo de vista (FR-004).
+    val viewModeVm: ViewModeViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
+    val viewMode by viewModeVm.mode.collectAsState()
     val snackbar = remember { SnackbarHostState() }
 
     // FR-011b: con sesión restaurada, abrir directamente en la pantalla
@@ -136,6 +145,11 @@ fun TolochaNavGraph(
                 TopAppBar(
                     title = { TolochaLogo() },
                     actions = {
+                        // Alternador lista/tarjetas solo en secciones con
+                        // listas de emisoras (spec 008, FR-001/FR-009).
+                        if (currentRoute in VIEW_MODE_ROUTES) {
+                            ViewModeToggle(mode = viewMode, onToggle = viewModeVm::toggle)
+                        }
                         // Servidores: sección propia de primer nivel (FR-004);
                         // sin sesión es la pantalla de selección de conexión (FR-014)
                         IconButton(

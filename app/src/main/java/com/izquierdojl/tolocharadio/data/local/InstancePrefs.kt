@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.izquierdojl.tolocharadio.BuildConfig
+import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -41,6 +42,17 @@ class InstancePrefs
                 } ?: StartScreen.EXPLORE
             }
 
+        /**
+         * Modo de vista global lista/tarjetas (spec 008). Default LIST;
+         * un valor corrupto o ilegible cae a LIST sin error (FR-010).
+         */
+        val viewMode: Flow<ViewMode> =
+            store.data.map {
+                it[KEY_VIEW_MODE]?.let { name ->
+                    runCatching { ViewMode.valueOf(name) }.getOrDefault(ViewMode.LIST)
+                } ?: ViewMode.LIST
+            }
+
         suspend fun setBaseUrl(url: String) {
             store.edit { it[KEY_BASE_URL] = url }
         }
@@ -64,12 +76,18 @@ class InstancePrefs
             store.edit { it[KEY_START_SCREEN] = screen.name }
         }
 
+        /** Persiste el modo de vista; cada toggle sobrescribe el valor previo (FR-006). */
+        suspend fun setViewMode(mode: ViewMode) {
+            store.edit { it[KEY_VIEW_MODE] = mode.name }
+        }
+
         private companion object {
             val KEY_BASE_URL = stringPreferencesKey("base_url")
             val KEY_SETUP_DONE = booleanPreferencesKey("setup_done")
             val KEY_DARK = booleanPreferencesKey("dark_theme")
             val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
             val KEY_START_SCREEN = stringPreferencesKey("start_screen")
+            val KEY_VIEW_MODE = stringPreferencesKey("view_mode")
         }
     }
 

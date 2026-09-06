@@ -1,5 +1,6 @@
 package com.izquierdojl.tolocharadio.feature.favorites
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
@@ -16,6 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -48,15 +52,19 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.ErrorBanner
 import com.izquierdojl.tolocharadio.core.ui.components.FavoriteButton
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
+import com.izquierdojl.tolocharadio.core.ui.components.StationCard
 import com.izquierdojl.tolocharadio.core.ui.components.TagChip
 import com.izquierdojl.tolocharadio.data.remote.dto.FavoriteDto
+import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -94,8 +102,10 @@ fun FavoritesScreen(
     onExplore: () -> Unit,
     viewModel: FavoritesViewModel = hiltViewModel(),
     player: PlayerViewModel = hiltViewModel(),
+    viewModeVm: ViewModeViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
 ) {
     val ui by viewModel.ui.collectAsState()
+    val mode by viewModeVm.mode.collectAsState()
     val snackbar = remember { SnackbarHostState() }
 
     val pendingUndo = (ui as? FavoritesUiState.Content)?.pendingUndo
@@ -122,6 +132,7 @@ fun FavoritesScreen(
         Column(Modifier.fillMaxSize().padding(padding)) {
             FavoritesScreenContent(
                 state = ui,
+                mode = mode,
                 actions =
                     FavoriteListActions(
                         onStation = onStation,
@@ -137,11 +148,12 @@ fun FavoritesScreen(
     }
 }
 
-/** Contenido sin estado (puerta de test sin Hilt). */
+/** Contenido sin estado (puerta de test sin Hilt). El reorden solo existe en modo lista (research D4). */
 @Composable
 fun FavoritesScreenContent(
     state: FavoritesUiState,
     actions: FavoriteListActions,
+    mode: ViewMode = ViewMode.LIST,
 ) {
     when (state) {
         FavoritesUiState.Loading -> CircularProgressIndicator(Modifier.padding(32.dp))
@@ -153,14 +165,53 @@ fun FavoritesScreenContent(
             )
         is FavoritesUiState.Error -> ErrorBanner(state.message, onRetry = actions.onRetry)
         is FavoritesUiState.Content ->
-            FavoritesList(
-                s = state,
-                onStation = actions.onStation,
-                onPlay = actions.onPlay,
-                onRemove = actions.onRemove,
-                onMove = actions.onMove,
-                onCommit = actions.onCommit,
+            if (mode == ViewMode.GRID) {
+                FavoritesGrid(
+                    s = state,
+                    onStation = actions.onStation,
+                    onRemove = actions.onRemove,
+                )
+            } else {
+                FavoritesList(
+                    s = state,
+                    onStation = actions.onStation,
+                    onPlay = actions.onPlay,
+                    onRemove = actions.onRemove,
+                    onMove = actions.onMove,
+                    onCommit = actions.onCommit,
+                )
+            }
+    }
+}
+
+/** Cuadrícula de favoritas: la card abre la ficha y el corazón quita (FR-008). */
+@Composable
+private fun FavoritesGrid(
+    s: FavoritesUiState.Content,
+    onStation: (String) -> Unit,
+    onRemove: (String) -> Unit,
+) {
+    if (s.offline) {
+        Text(
+            "Mostrando caché sin conexión.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+    }
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        contentPadding = PaddingValues(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(s.items, key = { it.station.id }) { fav ->
+            StationCard(
+                station = fav.station,
+                isFavorite = true,
+                onPlay = { onStation(fav.station.id) },
+                onToggleFavorite = { onRemove(fav.station.id) },
             )
+        }
     }
 }
 

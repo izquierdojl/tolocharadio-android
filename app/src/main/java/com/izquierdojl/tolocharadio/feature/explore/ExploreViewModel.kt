@@ -55,9 +55,6 @@ class ExploreViewModel
         var filters = ExploreFilters()
             private set
 
-        var gridMode = false
-            private set
-
         private var offset = 0
         private val loaded = mutableListOf<StationDto>()
         private val favoriteIds = mutableSetOf<String>()
@@ -87,11 +84,6 @@ class ExploreViewModel
         fun setFilters(next: ExploreFilters) {
             filters = next
             refresh()
-        }
-
-        /** Alterna vista lista/grid. */
-        fun toggleGrid() {
-            gridMode = !gridMode
         }
 
         /** Carga la siguiente página si `hasMore`. */
