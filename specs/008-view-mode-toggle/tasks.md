@@ -175,3 +175,12 @@ Task: "Rama GRID en CustomStationsScreen.kt" (T013)
 - Red-Green: T002→T004, T003→T005, T006→T007/T008/T009, T014→T015, T016→T017.
 - Commit por tarea o grupo lógico tras validar su checkpoint.
 - Evitar: reordenar drag en GRID (fuera de alcance, research D4), preferencia por sección (FR-004 prohíbe).
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: Gaps detectados por /speckit.converge tras el cierre (verificación manual OK). Append-only, sin renumerar tareas existentes.
+
+- [X] T021 Ejecutar la suite instrumentada ./gradlew :app:connectedDebugAndroidTest en emulador con los 6 tests de `app/src/androidTest/java/com/izquierdojl/tolocharadio/feature/explore/ViewModeToggleTest.kt` y corregir cualquier fallo per tasks T006/T016 + Constitución III (partial) — ejecutados y en verde: fix del crash ambiental (espresso-core 3.5.1→3.7.0, androidx.test.ext:junit 1.1.5→1.2.1); ViewModeToggleTest 6/6, CommonUiTest 4/4, FavoritesScreenTest 7/7; FavoritesMigrationTest 1 fallo preexistente de Room (schema v6 vs migración 1→2 del test, deuda de features anteriores) (2026-09-06)
+- [X] T022 Actualizar `contracts/ui-contract.md` §4: Historial/Mis emisoras en GRID usan `HistoryGridCard`/`CustomStationGridCard` (acciones propias en la card, hora relativa incluida) en lugar de `StationCard` per contracts/ui-contract.md (contradicts) (2026-09-06)

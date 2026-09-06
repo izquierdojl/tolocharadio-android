@@ -51,8 +51,10 @@ fun ViewModeToggle(mode: ViewMode, onToggle: () -> Unit)
 |---|---|---|
 | Explorar | `LazyColumn` + `StationListItem` (estado actual) | `LazyVerticalGrid` (2 col) + `StationCard` (ya existe) |
 | Favoritos | list item actual (con reorden drag) | `LazyVerticalGrid` + `StationCard` (favorita = acción quitar) |
-| Historial | list item actual (con quitar) | `LazyVerticalGrid` + `StationCard` (sin entrada de tiempo relativo en card) |
-| Mis emisoras | list item actual (con borrar) | `LazyVerticalGrid` + `StationCard` (borrar vía acción de card/menú) |
+| Historial | list item actual (con quitar) | `LazyVerticalGrid` + `HistoryGridCard` (propia: play + quitar en la card, hora relativa incluida) |
+| Mis emisoras | list item actual (con borrar) | `LazyVerticalGrid` + `CustomStationGridCard` (propia: play directo + borrar, URL como metadato) |
+
+Nota de diseño (actualizado en convergence): en Historial y Mis emisoras la card de cuadrícula es propia (no `StationCard`) porque el corazón de `StationCard` significa "favoritos" y las acciones de estas secciones son quitar-del-historial / borrar emisora; se conservan las mismas descripciones de accesibilidad que la lista.
 
 Invariante transversal (FR-007): al alternar, el estado de sección (búsqueda, filtros, items paginados, estado de error con reintento, estado vacío) permanece intacto; solo cambia el contenedor de presentación. En Favoritos, el reorden manual solo existe en modo LIST; en GRID se muestra el orden actual.
 
