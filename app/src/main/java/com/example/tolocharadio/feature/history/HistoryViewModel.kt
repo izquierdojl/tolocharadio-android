@@ -90,16 +90,19 @@ class HistoryViewModel
         fun onRemove(stationId: String) {
             val content = _ui.value as? HistoryUiState.Content ?: return
             if (content.items.none { it.station.id == stationId }) return
-            _ui.value = content.copy(
-                items = content.items.filterNot { it.station.id == stationId },
-                pendingDeletes = content.pendingDeletes + stationId,
-            )
+            _ui.value =
+                content.copy(
+                    items = content.items.filterNot { it.station.id == stationId },
+                    pendingDeletes = content.pendingDeletes + stationId,
+                )
             viewModelScope.launch {
                 when (val r = repo.remove(stationId)) {
                     is ApiResult.Ok -> {
-                        _ui.value = (_ui.value as? HistoryUiState.Content)?.copy(
-                            pendingDeletes = (_ui.value as? HistoryUiState.Content)?.pendingDeletes?.minus(stationId) ?: emptySet(),
-                        ) ?: _ui.value
+                        val current = _ui.value as? HistoryUiState.Content
+                        _ui.value =
+                            current?.copy(
+                                pendingDeletes = current.pendingDeletes - stationId,
+                            ) ?: _ui.value
                     }
                     is ApiResult.Err -> {
                         _ui.value = content

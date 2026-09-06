@@ -8,10 +8,10 @@ import org.junit.Test
 class HistoryDtoTest {
     @Test
     fun `HistoryEntryDto se deserializa con station y playedAt`() {
-        val dto =
-            TolochaJson.decodeFromString<HistoryEntryDto>(
-                """{"station":{"id":"s1","name":"Rock FM","url":"http://x/stream","isCustom":false},"playedAt":1700000000000}""",
-            )
+        val json =
+            "{\"station\":{\"id\":\"s1\",\"name\":\"Rock FM\"}," +
+                "\"playedAt\":1700000000000}"
+        val dto = TolochaJson.decodeFromString<HistoryEntryDto>(json)
         assertEquals("s1", dto.station.id)
         assertEquals("Rock FM", dto.station.name)
         assertEquals(1700000000000, dto.playedAt)
@@ -38,11 +38,10 @@ class HistoryDtoTest {
     @Test
     fun `HistoryListDto se deserializa con multiples entradas`() {
         val json =
-            """{"items":[
-                |{"station":{"id":"s1","name":"Rock","url":"http://x","isCustom":false},"playedAt":3000},
-                |{"station":{"id":"s2","name":"Jazz","url":"http://y","isCustom":false},"playedAt":2000},
-                |{"station":{"id":"s1","name":"Rock","url":"http://x","isCustom":false},"playedAt":1000}
-                |]}""".trimMargin()
+            "{\"items\":[" +
+                "{\"station\":{\"id\":\"s1\",\"name\":\"Rock\"},\"playedAt\":3000}," +
+                "{\"station\":{\"id\":\"s2\",\"name\":\"Jazz\"},\"playedAt\":2000}," +
+                "{\"station\":{\"id\":\"s1\",\"name\":\"Rock\"},\"playedAt\":1000}]}"
         val dto = TolochaJson.decodeFromString<HistoryListDto>(json)
         assertEquals(3, dto.items.size)
         assertEquals("s1", dto.items[0].station.id)

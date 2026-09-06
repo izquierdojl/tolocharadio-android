@@ -70,3 +70,14 @@ data class StringListDto(val items: List<String> = emptyList())
 /** Envoltorio `{items}` del API para historial. */
 @Serializable
 data class HistoryListDto(val items: List<HistoryEntryDto> = emptyList())
+
+/** Cuerpo de `POST /custom-stations` (valores ya recortados por el ViewModel). */
+@Serializable
+data class CreateCustomStationBody(
+    val name: String,
+    val url: String,
+)
+
+/** Respuesta de `POST /custom-stations` (`{station}`). */
+@Serializable
+data class CustomStationResultDto(val station: StationDto)

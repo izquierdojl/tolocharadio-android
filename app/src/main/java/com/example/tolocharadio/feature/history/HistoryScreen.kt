@@ -101,7 +101,10 @@ fun HistoryScreen(
                 state = ui,
                 onStation = onStation,
                 onExplore = onExplore,
-                onPlay = { player.play(it.station); viewModel.onPlayTriggered() },
+                onPlay = {
+                    player.play(it.station)
+                    viewModel.onPlayTriggered()
+                },
                 onRemove = viewModel::onRemove,
                 onRetry = viewModel::retry,
                 onClearAll = { showClearDialog = true },
@@ -262,10 +265,12 @@ private fun HistoryRow(
             Icon(Icons.Filled.PlayArrow, contentDescription = "Reproducir")
         }
         IconButton(onClick = onRemove, enabled = !isDeleting) {
+            val tint =
+                if (isDeleting) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant
             Icon(
                 Icons.Filled.Delete,
                 contentDescription = "Eliminar del historial",
-                tint = if (isDeleting) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = tint,
             )
         }
     }

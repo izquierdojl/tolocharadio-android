@@ -25,6 +25,14 @@ sealed interface DomainError {
 data class FieldError(val field: String, val message: String)
 
 /**
+ * Mensaje del servidor para un campo concreto (422 con `details`), o
+ * null si el error no trae detalle para ese campo. Permite mostrar el
+ * error junto al campo del formulario (FR-010).
+ */
+fun DomainError.fieldMessage(field: String): String? =
+    (this as? DomainError.Validation)?.details?.firstOrNull { it.field == field }?.message
+
+/**
  * Mensaje accionable en español para el usuario. Nunca expone texto
  * técnico crudo del servidor ni PII (constitución IV).
  */

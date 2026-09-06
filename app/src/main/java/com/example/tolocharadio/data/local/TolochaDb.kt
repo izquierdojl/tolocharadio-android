@@ -5,8 +5,8 @@ import androidx.room.RoomDatabase
 
 /** BD local: solo caché de lectura (el servidor es la verdad). */
 @Database(
-    entities = [CachedStation::class, CachedFavorite::class, CachedHistoryEntry::class],
-    version = 3,
+    entities = [CachedStation::class, CachedFavorite::class, CachedHistoryEntry::class, CachedCustomStation::class],
+    version = 4,
     exportSchema = false,
 )
 abstract class TolochaDb : RoomDatabase() {
@@ -15,4 +15,6 @@ abstract class TolochaDb : RoomDatabase() {
     abstract fun favoritesCache(): FavoritesCacheDao
 
     abstract fun historyCache(): HistoryCacheDao
+
+    abstract fun customStationsCache(): CustomStationsCacheDao
 }

@@ -21,4 +21,10 @@ class RoutesTest {
         assertEquals(true, Routes.FAVORITES in AUTH_REQUIRED)
         assertEquals("favorites", Routes.FAVORITES)
     }
+
+    @Test
+    fun `mis emisoras exige auth con paridad web`() {
+        assertEquals(true, Routes.CUSTOM_STATIONS in AUTH_REQUIRED)
+        assertEquals("custom-stations", Routes.CUSTOM_STATIONS)
+    }
 }

@@ -37,6 +37,7 @@ import com.example.tolocharadio.core.session.SessionManager
 import com.example.tolocharadio.core.ui.components.TolochaLogo
 import com.example.tolocharadio.feature.auth.LoginScreen
 import com.example.tolocharadio.feature.auth.RegisterScreen
+import com.example.tolocharadio.feature.customstations.CustomStationsScreen
 import com.example.tolocharadio.feature.explore.ExploreScreen
 import com.example.tolocharadio.feature.explore.StationDetailScreen
 import com.example.tolocharadio.feature.favorites.FavoritesScreen
@@ -193,7 +194,12 @@ fun TolochaNavGraph(
                 }
             }
             composable(Routes.CUSTOM_STATIONS) {
-                HomeScreen(onExplore = { navController.navigate(Routes.EXPLORE) })
+                CustomStationsDestination(
+                    authState = authState,
+                    onExplore = { navController.navigate(Routes.EXPLORE) },
+                    onRegister = { navController.navigate(Routes.REGISTER) },
+                    player = playerVm,
+                )
             }
             composable(Routes.PROFILE) {
                 if (authState is AuthState.Authenticated) {
@@ -203,5 +209,23 @@ fun TolochaNavGraph(
                 }
             }
         }
+    }
+}
+
+/**
+ * Destino Mis emisoras con guardia de sesión (patrón HISTORY/FAVORITES).
+ * Extraído para no aumentar la complejidad ciclomática de [TolochaNavGraph].
+ */
+@Composable
+private fun CustomStationsDestination(
+    authState: AuthState,
+    onExplore: () -> Unit,
+    onRegister: () -> Unit,
+    player: PlayerViewModel,
+) {
+    if (authState is AuthState.Authenticated) {
+        CustomStationsScreen(onExplore = onExplore, player = player)
+    } else {
+        LoginScreen(onLoggedIn = {}, onRegister = onRegister)
     }
 }
