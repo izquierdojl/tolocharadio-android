@@ -20,3 +20,8 @@ out/
 *.jar
 *.log
 .env*
+
+# Keystores de firma release (nunca commitear)
+*.jks
+*.keystore
+/release.keystore
