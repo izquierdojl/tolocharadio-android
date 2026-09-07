@@ -28,6 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.ErrorBanner
+import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.StationCard
 import com.izquierdojl.tolocharadio.core.ui.components.StationListItem
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
@@ -50,6 +51,7 @@ fun ExploreScreen(
     val ui by viewModel.ui.collectAsState()
     val mode by viewModeVm.mode.collectAsState()
     Column(Modifier.fillMaxSize()) {
+        SectionHeader(title = "Explorar")
         OutlinedTextField(
             value = viewModel.filters.name,
             onValueChange = { viewModel.setFilters(viewModel.filters.copy(name = it)) },

@@ -56,6 +56,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.ErrorBanner
+import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
@@ -94,20 +95,12 @@ fun CustomStationsScreen(
         viewModel.messages.collect { snackbar.showSnackbar(it) }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            // Header
-            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Text(
-                    "Mis emisoras",
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                Text(
-                    "Añade emisoras que no están en el catálogo para escucharlas desde el reproductor.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) {
+        Column(Modifier.fillMaxSize()) {
+            SectionHeader(
+                title = "Mis emisoras",
+                subtitle = "Añade emisoras que no están en el catálogo para escucharlas desde el reproductor.",
+            )
             CustomStationForm(
                 form = form,
                 onNameChange = viewModel::onNameChange,

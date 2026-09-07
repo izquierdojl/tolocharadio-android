@@ -60,6 +60,7 @@ import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.ErrorBanner
 import com.izquierdojl.tolocharadio.core.ui.components.FavoriteButton
+import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
 import com.izquierdojl.tolocharadio.core.ui.components.StationCard
 import com.izquierdojl.tolocharadio.core.ui.components.TagChip
@@ -128,8 +129,9 @@ fun FavoritesScreen(
         viewModel.messages.collect { snackbar.showSnackbar(it) }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) {
+        Column(Modifier.fillMaxSize()) {
+            SectionHeader(title = "Tus favoritos")
             FavoritesScreenContent(
                 state = ui,
                 mode = mode,

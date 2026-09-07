@@ -54,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.ErrorBanner
+import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
 import com.izquierdojl.tolocharadio.core.ui.components.TagChip
 import com.izquierdojl.tolocharadio.data.remote.dto.HistoryEntryDto
@@ -127,8 +128,8 @@ fun HistoryScreen(
         )
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) {
+        Column(Modifier.fillMaxSize()) {
             HistoryScreenContent(
                 state = ui,
                 mode = mode,
@@ -191,23 +192,20 @@ private fun HistoryList(
     Column(Modifier.fillMaxSize()) {
         // Header
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
-                Text(
-                    "Tu historial",
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                Text(
-                    "Lo último que has escuchado.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            SectionHeader(
+                title = "Tu historial",
+                subtitle = "Lo último que has escuchado.",
+                modifier = Modifier.weight(1f),
+            )
             if (items.isNotEmpty()) {
-                TextButton(onClick = callbacks.onClearAll) {
+                TextButton(
+                    onClick = callbacks.onClearAll,
+                    modifier = Modifier.padding(end = 16.dp),
+                ) {
                     Icon(
                         Icons.Filled.Delete,
                         contentDescription = null,

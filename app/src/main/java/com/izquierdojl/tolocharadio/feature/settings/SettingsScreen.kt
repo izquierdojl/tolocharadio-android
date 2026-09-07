@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 
@@ -32,74 +33,74 @@ fun SettingsScreen(
     onLoggedOut: () -> Unit = {},
 ) {
     val ui by viewModel.ui.collectAsState()
-    Column(Modifier.fillMaxSize().padding(24.dp)) {
-        Text("Configuración", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(16.dp))
-
-        Text("Tema", style = MaterialTheme.typography.titleSmall)
-        Spacer(Modifier.height(4.dp))
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            ThemeMode.entries.forEachIndexed { index, mode ->
-                SegmentedButton(
-                    selected = ui.themeMode == mode,
-                    onClick = { viewModel.onThemeModeChange(mode) },
-                    shape =
-                        SegmentedButtonDefaults.itemShape(
-                            index = index,
-                            count = ThemeMode.entries.size,
-                        ),
-                    label = {
-                        Text(
-                            when (mode) {
-                                ThemeMode.SYSTEM -> "Sistema"
-                                ThemeMode.DARK -> "Oscuro"
-                                ThemeMode.LIGHT -> "Claro"
-                            },
-                        )
-                    },
-                )
+    Column(Modifier.fillMaxSize()) {
+        SectionHeader(title = "Configuración")
+        Column(Modifier.padding(horizontal = 16.dp)) {
+            Text("Tema", style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(4.dp))
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                ThemeMode.entries.forEachIndexed { index, mode ->
+                    SegmentedButton(
+                        selected = ui.themeMode == mode,
+                        onClick = { viewModel.onThemeModeChange(mode) },
+                        shape =
+                            SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = ThemeMode.entries.size,
+                            ),
+                        label = {
+                            Text(
+                                when (mode) {
+                                    ThemeMode.SYSTEM -> "Sistema"
+                                    ThemeMode.DARK -> "Oscuro"
+                                    ThemeMode.LIGHT -> "Claro"
+                                },
+                            )
+                        },
+                    )
+                }
             }
-        }
 
-        Spacer(Modifier.height(16.dp))
-        Text("Pantalla de arranque", style = MaterialTheme.typography.titleSmall)
-        Spacer(Modifier.height(4.dp))
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            StartScreen.entries.forEachIndexed { index, screen ->
-                SegmentedButton(
-                    selected = ui.startScreen == screen,
-                    onClick = { viewModel.onStartScreenChange(screen) },
-                    shape =
-                        SegmentedButtonDefaults.itemShape(
-                            index = index,
-                            count = StartScreen.entries.size,
-                        ),
-                    label = {
-                        Text(
-                            when (screen) {
-                                StartScreen.FAVORITES -> "Favoritos"
-                                StartScreen.HISTORY -> "Historial"
-                                StartScreen.EXPLORE -> "Explorar"
-                            },
-                        )
-                    },
-                )
+            Spacer(Modifier.height(16.dp))
+            Text("Pantalla de arranque", style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(4.dp))
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                StartScreen.entries.forEachIndexed { index, screen ->
+                    SegmentedButton(
+                        selected = ui.startScreen == screen,
+                        onClick = { viewModel.onStartScreenChange(screen) },
+                        shape =
+                            SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = StartScreen.entries.size,
+                            ),
+                        label = {
+                            Text(
+                                when (screen) {
+                                    StartScreen.FAVORITES -> "Favoritos"
+                                    StartScreen.HISTORY -> "Historial"
+                                    StartScreen.EXPLORE -> "Explorar"
+                                },
+                            )
+                        },
+                    )
+                }
             }
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Se abrirá automáticamente al arrancar la app con la sesión activa.",
-            style = MaterialTheme.typography.bodySmall,
-        )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Se abrirá automáticamente al arrancar la app con la sesión activa.",
+                style = MaterialTheme.typography.bodySmall,
+            )
 
-        ui.message?.let {
-            Spacer(Modifier.height(8.dp))
-            Text(it)
-        }
+            ui.message?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it)
+            }
 
-        Spacer(Modifier.height(24.dp))
-        OutlinedButton(onClick = { viewModel.logout(onLoggedOut) }, modifier = Modifier.fillMaxWidth()) {
-            Text("Cerrar sesión")
+            Spacer(Modifier.height(24.dp))
+            OutlinedButton(onClick = { viewModel.logout(onLoggedOut) }, modifier = Modifier.fillMaxWidth()) {
+                Text("Cerrar sesión")
+            }
         }
     }
 }
