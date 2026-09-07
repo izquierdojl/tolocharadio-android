@@ -3,24 +3,40 @@ package com.izquierdojl.tolocharadio.feature.explore
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -33,15 +49,18 @@ import com.izquierdojl.tolocharadio.core.ui.components.StationCard
 import com.izquierdojl.tolocharadio.core.ui.components.StationListItem
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 
+/** Filtro seleccionado para abrir en el bottom sheet. */
+private enum class ActiveFilter { COUNTRY, LANGUAGE, TAG }
+
 /**
  * Explorar el catálogo con filtros y paginación (US-4, spec 008).
  *
- * El modo de presentación (lista/tarjetas) es la preferencia global
- * compartida con las demás secciones (FR-004); se observa del
- * [ViewModeViewModel] a ámbito de Activity.
+ * Los filtros se muestran como chips compactos. Al tocar uno se abre
+ * un [ModalBottomSheet] con el selector completo (combobox + autocompletado).
  *
  * @param onStation abre la ficha al pulsar la tarjeta.
  */
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(
     onStation: (String) -> Unit,
@@ -50,6 +69,13 @@ fun ExploreScreen(
 ) {
     val ui by viewModel.ui.collectAsState()
     val mode by viewModeVm.mode.collectAsState()
+    val countries by viewModel.countries.collectAsState()
+    val languages by viewModel.languages.collectAsState()
+    val tags by viewModel.tags.collectAsState()
+
+    var sheetFilter by remember { mutableStateOf<ActiveFilter?>(null) }
+    val sheetState = rememberModalBottomSheetState()
+
     Column(Modifier.fillMaxSize()) {
         SectionHeader(title = "Explorar")
         OutlinedTextField(
@@ -57,8 +83,51 @@ fun ExploreScreen(
             onValueChange = { viewModel.setFilters(viewModel.filters.copy(name = it)) },
             label = { Text("Buscar por nombre") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
+        // Chips de filtro compactos
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(
+                selected = viewModel.filters.country != null,
+                onClick = { sheetFilter = ActiveFilter.COUNTRY },
+                label = { Text(viewModel.filters.country ?: "País") },
+                leadingIcon = if (viewModel.filters.country != null) {
+                    { Icon(Icons.Default.Close, contentDescription = "Quitar", modifier = Modifier.padding(2.dp)) }
+                } else {
+                    { Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.padding(2.dp)) }
+                },
+            )
+            FilterChip(
+                selected = viewModel.filters.language != null,
+                onClick = { sheetFilter = ActiveFilter.LANGUAGE },
+                label = { Text(viewModel.filters.language ?: "Idioma") },
+                leadingIcon = if (viewModel.filters.language != null) {
+                    { Icon(Icons.Default.Close, contentDescription = "Quitar", modifier = Modifier.padding(2.dp)) }
+                } else {
+                    { Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.padding(2.dp)) }
+                },
+            )
+            FilterChip(
+                selected = viewModel.filters.tag != null,
+                onClick = { sheetFilter = ActiveFilter.TAG },
+                label = { Text(viewModel.filters.tag ?: "Género") },
+                leadingIcon = if (viewModel.filters.tag != null) {
+                    { Icon(Icons.Default.Close, contentDescription = "Quitar", modifier = Modifier.padding(2.dp)) }
+                } else {
+                    { Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.padding(2.dp)) }
+                },
+            )
+            if (viewModel.filters.country != null || viewModel.filters.language != null || viewModel.filters.tag != null) {
+                TextButton(onClick = {
+                    viewModel.setFilters(ExploreFilters(name = viewModel.filters.name))
+                }) {
+                    Text("Limpiar")
+                }
+            }
+        }
         ExploreContent(
             ui = ui,
             mode = mode,
@@ -67,6 +136,60 @@ fun ExploreScreen(
             onRetry = viewModel::refresh,
             onLoadMore = viewModel::loadMore,
         )
+    }
+
+    // Bottom sheet para seleccionar filtro
+    if (sheetFilter != null) {
+        ModalBottomSheet(
+            onDismissRequest = { sheetFilter = null },
+            sheetState = sheetState,
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                when (sheetFilter) {
+                    ActiveFilter.COUNTRY -> {
+                        Text("País", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(8.dp))
+                        FilterComboBox(
+                            value = viewModel.filters.country.orEmpty(),
+                            onValueChange = {
+                                viewModel.setFilters(viewModel.filters.copy(country = it.ifBlank { null }))
+                                sheetFilter = null
+                            },
+                            label = "Seleccionar país",
+                            catalogList = countries,
+                        )
+                    }
+                    ActiveFilter.LANGUAGE -> {
+                        Text("Idioma", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(8.dp))
+                        FilterComboBox(
+                            value = viewModel.filters.language.orEmpty(),
+                            onValueChange = {
+                                viewModel.setFilters(viewModel.filters.copy(language = it.ifBlank { null }))
+                                sheetFilter = null
+                            },
+                            label = "Seleccionar idioma",
+                            catalogList = languages,
+                        )
+                    }
+                    ActiveFilter.TAG -> {
+                        Text("Género", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(8.dp))
+                        FilterComboBox(
+                            value = viewModel.filters.tag.orEmpty(),
+                            onValueChange = {
+                                viewModel.setFilters(viewModel.filters.copy(tag = it.ifBlank { null }))
+                                sheetFilter = null
+                            },
+                            label = "Seleccionar género",
+                            catalogList = tags,
+                        )
+                    }
+                    null -> {}
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+        }
     }
 }
 

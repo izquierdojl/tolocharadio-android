@@ -100,6 +100,93 @@ class ExploreViewModelTest {
             val content = ExploreViewModel(repo, favorites, toggle).awaitContent()
             assertEquals(setOf("u1"), content.favorites)
         }
+
+    @Test
+    fun `catalog lists loaded on init`() =
+        runTest {
+            coEvery { repo.search(any()) } returns ApiResult.Ok(page)
+            coEvery { repo.countries() } returns ApiResult.Ok(listOf("Spain", "France"))
+            coEvery { repo.languages() } returns ApiResult.Ok(listOf("Spanish", "English"))
+            coEvery { repo.tags() } returns ApiResult.Ok(listOf("rock", "jazz"))
+            coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
+            every { favorites.favoriteIds } returns MutableStateFlow(emptySet())
+            val vm = ExploreViewModel(repo, favorites, toggle)
+            vm.awaitContent()
+            val countries = vm.countries.value as CatalogList.Loaded
+            assertEquals(listOf("France", "Spain"), countries.items)
+            val languages = vm.languages.value as CatalogList.Loaded
+            assertEquals(listOf("English", "Spanish"), languages.items)
+            val tags = vm.tags.value as CatalogList.Loaded
+            assertEquals(listOf("jazz", "rock"), tags.items)
+        }
+
+    @Test
+    fun `catalog list error sets degraded mode`() =
+        runTest {
+            coEvery { repo.search(any()) } returns ApiResult.Ok(page)
+            coEvery { repo.countries() } returns ApiResult.Err(DomainError.Unavailable("fail"))
+            coEvery { repo.languages() } returns ApiResult.Ok(listOf("Spanish"))
+            coEvery { repo.tags() } returns ApiResult.Ok(listOf("rock"))
+            coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
+            every { favorites.favoriteIds } returns MutableStateFlow(emptySet())
+            val vm = ExploreViewModel(repo, favorites, toggle)
+            vm.awaitContent()
+            assertTrue(vm.countries.value is CatalogList.Error)
+            assertTrue(vm.languages.value is CatalogList.Loaded)
+        }
+
+    @Test
+    fun `setFilters with country passes to search`() =
+        runTest {
+            coEvery { repo.search(any()) } returns ApiResult.Ok(page)
+            coEvery { repo.countries() } returns ApiResult.Ok(listOf("Spain"))
+            coEvery { repo.languages() } returns ApiResult.Ok(listOf("Spanish"))
+            coEvery { repo.tags() } returns ApiResult.Ok(listOf("rock"))
+            coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
+            every { favorites.favoriteIds } returns MutableStateFlow(emptySet())
+            val vm = ExploreViewModel(repo, favorites, toggle)
+            vm.awaitContent()
+            vm.setFilters(ExploreFilters(country = "Spain"))
+            vm.awaitContent()
+            coEvery { repo.search(match { it.country == "Spain" }) } returns ApiResult.Ok(page)
+        }
+
+    @Test
+    fun `clear filters resets to no filters`() =
+        runTest {
+            coEvery { repo.search(any()) } returns ApiResult.Ok(page)
+            coEvery { repo.countries() } returns ApiResult.Ok(listOf("Spain"))
+            coEvery { repo.languages() } returns ApiResult.Ok(listOf("Spanish"))
+            coEvery { repo.tags() } returns ApiResult.Ok(listOf("rock"))
+            coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
+            every { favorites.favoriteIds } returns MutableStateFlow(emptySet())
+            val vm = ExploreViewModel(repo, favorites, toggle)
+            vm.awaitContent()
+            vm.setFilters(ExploreFilters(country = "Spain", language = "Spanish"))
+            vm.awaitContent()
+            vm.setFilters(ExploreFilters())
+            vm.awaitContent()
+            assertEquals(null, vm.filters.country)
+            assertEquals(null, vm.filters.language)
+            assertEquals(null, vm.filters.tag)
+        }
+
+    @Test
+    fun `all catalog lists error still allows search`() =
+        runTest {
+            coEvery { repo.search(any()) } returns ApiResult.Ok(page)
+            coEvery { repo.countries() } returns ApiResult.Err(DomainError.Unavailable("fail"))
+            coEvery { repo.languages() } returns ApiResult.Err(DomainError.Unavailable("fail"))
+            coEvery { repo.tags() } returns ApiResult.Err(DomainError.Unavailable("fail"))
+            coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
+            every { favorites.favoriteIds } returns MutableStateFlow(emptySet())
+            val vm = ExploreViewModel(repo, favorites, toggle)
+            val content = vm.awaitContent()
+            assertEquals(2, content.items.size)
+            assertTrue(vm.countries.value is CatalogList.Error)
+            assertTrue(vm.languages.value is CatalogList.Error)
+            assertTrue(vm.tags.value is CatalogList.Error)
+        }
 }
 
 class StationDetailViewModelTest {

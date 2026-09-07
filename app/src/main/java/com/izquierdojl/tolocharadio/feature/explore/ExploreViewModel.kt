@@ -16,6 +16,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Estado de carga de una lista de catálogo (países, idiomas, tags). */
+sealed interface CatalogList {
+    data object Loading : CatalogList
+    data class Loaded(val items: List<String>) : CatalogList
+    data class Error(val message: String) : CatalogList
+}
+
 /** Filtros de Explorar (paridad `/explorar` web). */
 data class ExploreFilters(
     val name: String = "",
@@ -52,6 +59,15 @@ class ExploreViewModel
         private val _ui = MutableStateFlow<ExploreUiState>(ExploreUiState.Loading)
         val ui: StateFlow<ExploreUiState> = _ui.asStateFlow()
 
+        private val _countries = MutableStateFlow<CatalogList>(CatalogList.Loading)
+        val countries: StateFlow<CatalogList> = _countries.asStateFlow()
+
+        private val _languages = MutableStateFlow<CatalogList>(CatalogList.Loading)
+        val languages: StateFlow<CatalogList> = _languages.asStateFlow()
+
+        private val _tags = MutableStateFlow<CatalogList>(CatalogList.Loading)
+        val tags: StateFlow<CatalogList> = _tags.asStateFlow()
+
         var filters = ExploreFilters()
             private set
 
@@ -61,6 +77,7 @@ class ExploreViewModel
 
         init {
             refresh()
+            loadCatalogLists()
             // Marcado coherente (FR-003): la verdad vive en el flujo
             // compartido del repo; además se hidrata en silencio.
             viewModelScope.launch {
@@ -71,6 +88,28 @@ class ExploreViewModel
                 }
             }
             viewModelScope.launch { favorites.list() }
+        }
+
+        /** Carga listas de catálogo (países, idiomas, tags) en paralelo. */
+        private fun loadCatalogLists() {
+            viewModelScope.launch {
+                when (val r = repo.countries()) {
+                    is ApiResult.Ok -> _countries.value = CatalogList.Loaded(r.value.sorted())
+                    is ApiResult.Err -> _countries.value = CatalogList.Error(r.error.userMessage())
+                }
+            }
+            viewModelScope.launch {
+                when (val r = repo.languages()) {
+                    is ApiResult.Ok -> _languages.value = CatalogList.Loaded(r.value.sorted())
+                    is ApiResult.Err -> _languages.value = CatalogList.Error(r.error.userMessage())
+                }
+            }
+            viewModelScope.launch {
+                when (val r = repo.tags()) {
+                    is ApiResult.Ok -> _tags.value = CatalogList.Loaded(r.value.sorted())
+                    is ApiResult.Err -> _tags.value = CatalogList.Error(r.error.userMessage())
+                }
+            }
         }
 
         /** Recarga desde el offset 0 con los filtros actuales. */
