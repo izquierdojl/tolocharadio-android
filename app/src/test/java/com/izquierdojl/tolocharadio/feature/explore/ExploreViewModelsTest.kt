@@ -35,6 +35,12 @@ class ExploreViewModelTest {
             PaginationDto(0, 24, true),
         )
 
+    private fun stubCatalogLists() {
+        coEvery { repo.countries() } returns ApiResult.Ok(listOf("Spain"))
+        coEvery { repo.languages() } returns ApiResult.Ok(listOf("Spanish"))
+        coEvery { repo.tags() } returns ApiResult.Ok(listOf("rock"))
+    }
+
     private suspend fun ExploreViewModel.awaitContent(): ExploreUiState.Content {
         var s: ExploreUiState = ExploreUiState.Loading
         ui.test {
@@ -47,6 +53,7 @@ class ExploreViewModelTest {
     @Test
     fun `init carga primera pagina con hasMore`() =
         runTest {
+            stubCatalogLists()
             coEvery { repo.search(any()) } returns ApiResult.Ok(page)
             coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
             every { favorites.favoriteIds } returns MutableStateFlow(emptySet())
@@ -58,6 +65,7 @@ class ExploreViewModelTest {
     @Test
     fun `error con lista vacia muestra Error`() =
         runTest {
+            stubCatalogLists()
             coEvery { repo.search(any()) } returns ApiResult.Err(DomainError.Unavailable("x"))
             coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
             every { favorites.favoriteIds } returns MutableStateFlow(emptySet())
@@ -72,6 +80,7 @@ class ExploreViewModelTest {
     @Test
     fun `favorito optimista y rollback ante error`() =
         runTest {
+            stubCatalogLists()
             coEvery { repo.search(any()) } returns ApiResult.Ok(page)
             coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
             coEvery { toggle("u1", false) } returns ApiResult.Err(DomainError.Unknown("x"))
@@ -94,6 +103,7 @@ class ExploreViewModelTest {
     @Test
     fun `favoritas hidratadas marcan existentes en Explorar`() =
         runTest {
+            stubCatalogLists()
             coEvery { repo.search(any()) } returns ApiResult.Ok(page)
             coEvery { favorites.list() } returns ApiResult.Ok(FavoritesResult(emptyList(), false))
             every { favorites.favoriteIds } returns MutableStateFlow(setOf("u1"))

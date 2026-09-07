@@ -3,6 +3,7 @@ package com.izquierdojl.tolocharadio.feature.player
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.izquierdojl.tolocharadio.MainDispatcherRule
+import com.izquierdojl.tolocharadio.cast.CastPlayerManager
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.DomainError
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
@@ -40,10 +41,17 @@ class PlayerViewModelTest {
             every { baseUrl } returns flowOf("https://radio.test/")
         }
     private val dataSource: AuthDataSourceFactory = mockk()
+    private val activeStationHolder: ActiveStationHolder = mockk(relaxed = true)
     private val exoPlayer: ExoPlayer = mockk(relaxed = true)
+    private val castExoPlayer: ExoPlayer = mockk(relaxed = true)
+    private val castPlayerManager: CastPlayerManager =
+        mockk(relaxed = true) {
+            every { exoPlayer } returns castExoPlayer
+            every { castState } returns mockk(relaxed = true)
+        }
     private val station = StationDto(id = "u1", name = "Tolocha")
 
-    private fun vm() = PlayerViewModel(context, playback, prefs, dataSource, exoPlayer)
+    private fun vm() = PlayerViewModel(context, playback, prefs, dataSource, activeStationHolder, exoPlayer, castPlayerManager)
 
     @Test
     fun `estado inicial es Idle`() {
@@ -84,10 +92,10 @@ class PlayerViewModelTest {
         val viewModel = vm()
         viewModel.toggleMute()
         assertTrue(viewModel.isMuted.value)
-        verify { exoPlayer.volume = 0f }
+        verify { castExoPlayer.volume = 0f }
         viewModel.toggleMute()
         assertTrue(!viewModel.isMuted.value)
-        verify { exoPlayer.volume = 1f }
+        verify { castExoPlayer.volume = 1f }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
