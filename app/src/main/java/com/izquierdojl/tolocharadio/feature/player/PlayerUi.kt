@@ -1,5 +1,11 @@
 package com.izquierdojl.tolocharadio.feature.player
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -52,6 +58,7 @@ import kotlinx.coroutines.launch
  * Panel inferior persistente sobre la barra de navegación (spec 004).
  * Izquierda: avatar + nombre + línea técnica; derecha: controles.
  * Visible en cualquier estado salvo [PlayerState.Idle].
+ * Transiciones suaves con AnimatedVisibility (spec 010, US4, SC-005).
  */
 @Composable
 fun MiniPlayer(
@@ -62,53 +69,67 @@ fun MiniPlayer(
     val muted by viewModel.isMuted.collectAsState()
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
-    var showSheet by remember { mutableStateOf(false) }
-    val station = playerStation(state) ?: return
-    val displayName = station.name.ifBlank { "Emisora" }
+    var showFullSheet by remember { mutableStateOf(false) }
+    var showStationInfo by remember { mutableStateOf(false) }
+    val station = playerStation(state)
+    val isVisible = station != null
+    val displayName = station?.name?.ifBlank { "Emisora" } ?: ""
     val error = state as? PlayerState.Error
-    Surface(
-        tonalElevation = 3.dp,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
     ) {
-        Row(
-            modifier =
-                Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                    .semantics { contentDescription = panelAnnouncement(state, displayName) },
-            verticalAlignment = Alignment.CenterVertically,
+        Surface(
+            tonalElevation = 3.dp,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
         ) {
-            PanelIdentity(
-                station = station,
-                title = displayName,
-                subtitle = error?.message ?: panelSubtitle(station),
-                isError = error != null,
-                modifier = Modifier.weight(1f),
-                onOpen = { showSheet = true },
-            )
-            PanelMainAction(
-                state = state,
-                onToggle = viewModel::toggle,
-                onCancelLoad = viewModel::cancelLoad,
-                onRetry = viewModel::retry,
-            )
-            // En error el silencio se oculta (FR-003b); copiar sigue disponible.
-            if (error == null) {
-                PanelMuteButton(muted = muted, onToggleMute = viewModel::toggleMute)
-            }
-            Spacer(Modifier.width(4.dp))
-            PanelCopyButton(onCopy = {
-                val link = resolveCopyLink(station)
-                if (link != null) {
-                    clipboard.setText(AnnotatedString(link))
-                    scope.launch { snackbar.showSnackbar("Enlace copiado") }
-                } else {
-                    scope.launch { snackbar.showSnackbar("Enlace no disponible") }
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                        .semantics { contentDescription = panelAnnouncement(state, displayName) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PanelIdentity(
+                    station = station!!,
+                    title = displayName,
+                    subtitle = error?.message ?: panelSubtitle(station),
+                    isError = error != null,
+                    modifier = Modifier.weight(1f),
+                    onOpen = { showStationInfo = true },
+                )
+                PanelMainAction(
+                    state = state,
+                    onToggle = viewModel::toggle,
+                    onCancelLoad = viewModel::cancelLoad,
+                    onRetry = viewModel::retry,
+                )
+                // En error el silencio se oculta (FR-003b); copiar sigue disponible.
+                if (error == null) {
+                    PanelMuteButton(muted = muted, onToggleMute = viewModel::toggleMute)
                 }
-            })
+                Spacer(Modifier.width(4.dp))
+                PanelCopyButton(onCopy = {
+                    val link = resolveCopyLink(station)
+                    if (link != null) {
+                        clipboard.setText(AnnotatedString(link))
+                        scope.launch { snackbar.showSnackbar("Enlace copiado") }
+                    } else {
+                        scope.launch { snackbar.showSnackbar("Enlace no disponible") }
+                    }
+                })
+            }
         }
     }
-    if (showSheet) {
+    if (showStationInfo && station != null) {
+        StationInfoSheet(station = station) {
+            showStationInfo = false
+        }
+    }
+    if (showFullSheet && station != null) {
         FullPlayerSheet(stationName = station.name) {
-            showSheet = false
+            showFullSheet = false
         }
     }
 }
@@ -179,7 +200,9 @@ private fun PanelIdentity(
     }
 }
 
-/** Botón principal del panel según el estado (en `Buffering` cancela la carga). */
+/** Botón principal del panel según el estado (en `Buffering` cancela la carga).
+ *  Crossfade para transiciones suaves entre estados (spec 010, US4, SC-005).
+ */
 @Composable
 private fun PanelMainAction(
     state: PlayerState,
@@ -187,31 +210,36 @@ private fun PanelMainAction(
     onCancelLoad: () -> Unit,
     onRetry: () -> Unit,
 ) {
-    when (state) {
-        is PlayerState.Buffering -> {
-            IconButton(
-                onClick = onCancelLoad,
-                modifier = Modifier.semantics { contentDescription = "Cancelar carga" },
-            ) {
-                CircularProgressIndicator(Modifier.size(24.dp))
+    Crossfade(
+        targetState = state::class,
+        label = "panel-action-crossfade",
+    ) { stateClass ->
+        when (stateClass) {
+            PlayerState.Buffering::class -> {
+                IconButton(
+                    onClick = onCancelLoad,
+                    modifier = Modifier.semantics { contentDescription = "Cancelar carga" },
+                ) {
+                    CircularProgressIndicator(Modifier.size(24.dp))
+                }
             }
-        }
-        is PlayerState.Playing -> {
-            IconButton(onClick = onToggle) {
-                Icon(Icons.Filled.Pause, contentDescription = "Pausar")
+            PlayerState.Playing::class -> {
+                IconButton(onClick = onToggle) {
+                    Icon(Icons.Filled.Pause, contentDescription = "Pausar")
+                }
             }
-        }
-        is PlayerState.Paused -> {
-            IconButton(onClick = onToggle) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = "Reanudar")
+            PlayerState.Paused::class -> {
+                IconButton(onClick = onToggle) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = "Reanudar")
+                }
             }
-        }
-        is PlayerState.Error -> {
-            IconButton(onClick = onRetry) {
-                Icon(Icons.Filled.Refresh, contentDescription = "Reintentar")
+            PlayerState.Error::class -> {
+                IconButton(onClick = onRetry) {
+                    Icon(Icons.Filled.Refresh, contentDescription = "Reintentar")
+                }
             }
+            else -> Unit
         }
-        PlayerState.Idle -> Unit
     }
 }
 
@@ -242,13 +270,27 @@ private fun PanelCopyButton(onCopy: () -> Unit) {
 @Composable
 fun FullPlayerSheet(
     stationName: String,
+    station: StationDto? = null,
     viewModel: PlayerViewModel = hiltViewModel(),
     onDismiss: () -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
+    var showStationInfo by remember { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState()) {
         Column(Modifier.fillMaxWidth().padding(24.dp)) {
-            Text(stationName, style = MaterialTheme.typography.headlineSmall)
+            // Logo tap opens station info sheet (US2)
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .clickable(enabled = station != null) { showStationInfo = true },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (station != null) {
+                    StationArtwork(station = station, modifier = Modifier.size(48.dp))
+                    Spacer(Modifier.width(12.dp))
+                }
+                Text(stationName, style = MaterialTheme.typography.headlineSmall)
+            }
             if (state is PlayerState.Buffering) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = viewModel::toggle) {
@@ -272,6 +314,11 @@ fun FullPlayerSheet(
             (state as? PlayerState.Error)?.let {
                 Text(it.message, color = MaterialTheme.colorScheme.error)
             }
+        }
+    }
+    if (showStationInfo && station != null) {
+        StationInfoSheet(station = station) {
+            showStationInfo = false
         }
     }
 }

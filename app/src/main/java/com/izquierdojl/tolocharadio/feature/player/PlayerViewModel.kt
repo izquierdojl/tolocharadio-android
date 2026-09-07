@@ -41,6 +41,16 @@ sealed interface PlayerState {
     data class Paused(val station: StationDto) : PlayerState
 
     data class Error(val station: StationDto?, val message: String) : PlayerState
+
+    /** Extrae la estación si el estado la contiene, o null en Idle/Error sin estación. */
+    fun stationOrNull(): StationDto? =
+        when (this) {
+            is Buffering -> station
+            is Playing -> station
+            is Paused -> station
+            is Error -> station
+            Idle -> null
+        }
 }
 
 /**
@@ -55,6 +65,7 @@ class PlayerViewModel
         private val playback: PlaybackRepo,
         private val prefs: InstancePrefs,
         private val dataSource: AuthDataSourceFactory,
+        private val activeStationHolder: ActiveStationHolder,
         val exoPlayer: ExoPlayer,
     ) : ViewModel() {
         private val _state = MutableStateFlow<PlayerState>(PlayerState.Idle)
@@ -92,11 +103,13 @@ class PlayerViewModel
                             Player.STATE_ENDED, Player.STATE_IDLE -> PlayerState.Idle
                             else -> _state.value
                         }
+                    syncHolderToState()
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
                     val current = (_state.value as? PlayerState.Playing)?.station
                     _state.value = PlayerState.Error(current, "Se ha interrumpido la reproducción.")
+                    syncHolderToState()
                     scheduleRetry(current, attempt = 1)
                 }
 
@@ -107,12 +120,32 @@ class PlayerViewModel
                             ?: (_state.value as? PlayerState.Buffering)?.station
                             ?: return
                     _state.value = if (isPlaying) PlayerState.Playing(current) else PlayerState.Paused(current)
+                    syncHolderToState()
                 }
             }
 
         init {
             exoPlayer.addListener(listener)
             connectController()
+            syncFromHolder()
+        }
+
+        /**
+         * Sincroniza el estado inicial desde [activeStationHolder] al recrearse
+         * el ViewModel (spec 010, US3 - persistencia del mini-player).
+         * Si el ExoPlayer sigue reproduciendo/pausado, reconstruye el PlayerState.
+         */
+        private fun syncFromHolder() {
+            val station = activeStationHolder.station ?: return
+            val holderState = activeStationHolder.playerState
+            _state.value =
+                when (holderState) {
+                    PlayerStateType.PLAYING -> PlayerState.Playing(station)
+                    PlayerStateType.PAUSED -> PlayerState.Paused(station)
+                    PlayerStateType.BUFFERING -> PlayerState.Buffering(station)
+                    PlayerStateType.ERROR -> PlayerState.Error(station, "Se ha interrumpido la reproducción.")
+                    PlayerStateType.IDLE -> PlayerState.Idle
+                }
         }
 
         /**
@@ -140,6 +173,7 @@ class PlayerViewModel
             _isMuted.value = false
             exoPlayer.volume = 1f
             _state.value = PlayerState.Buffering(station)
+            syncHolderToState()
             loadJob =
                 viewModelScope.launch {
                     when (val r = playback.status(station.id)) {
@@ -150,11 +184,15 @@ class PlayerViewModel
                                         station,
                                         r.value.reason?.ifBlank { null } ?: "Emisora no disponible.",
                                     )
+                                syncHolderToState()
                                 return@launch
                             }
                             startStream(station)
                         }
-                        is ApiResult.Err -> _state.value = PlayerState.Error(station, r.error.userMessage())
+                        is ApiResult.Err -> {
+                            _state.value = PlayerState.Error(station, r.error.userMessage())
+                            syncHolderToState()
+                        }
                     }
                 }
         }
@@ -162,7 +200,18 @@ class PlayerViewModel
         @OptIn(UnstableApi::class)
         private suspend fun startStream(station: StationDto) {
             val base = prefs.baseUrl.first()
-            val item = MediaItem.fromUri(streamUrl(base, station.id))
+            val metadata =
+                androidx.media3.common.MediaMetadata.Builder()
+                    .setTitle(station.name)
+                    .setArtist("Tolocha Radio")
+                    .setArtworkUri(station.favicon?.let { android.net.Uri.parse(it) })
+                    .setAlbumTitle("Tolocha Radio")
+                    .build()
+            val item =
+                MediaItem.Builder()
+                    .setUri(streamUrl(base, station.id))
+                    .setMediaMetadata(metadata)
+                    .build()
             exoPlayer.setMediaSource(
                 androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSource)
                     .createMediaSource(item),
@@ -170,12 +219,30 @@ class PlayerViewModel
             exoPlayer.prepare()
             exoPlayer.playWhenReady = true
             _state.value = PlayerState.Buffering(station)
+            syncHolderToState()
         }
 
         /** Silencia o restaura el sonido sin detener la emisión (spec 004, FR-005). */
         fun toggleMute() {
             _isMuted.value = !_isMuted.value
             exoPlayer.volume = if (_isMuted.value) 0f else 1f
+        }
+
+        /**
+         * Sincroniza el estado actual del [_state] hacia [activeStationHolder]
+         * para persistirlo entre recreaciones de Activity/ViewModel.
+         */
+        private fun syncHolderToState() {
+            val current = _state.value
+            val holderState =
+                when (current) {
+                    is PlayerState.Playing -> PlayerStateType.PLAYING
+                    is PlayerState.Paused -> PlayerStateType.PAUSED
+                    is PlayerState.Buffering -> PlayerStateType.BUFFERING
+                    is PlayerState.Error -> PlayerStateType.ERROR
+                    PlayerState.Idle -> PlayerStateType.IDLE
+                }
+            activeStationHolder.update(current.stationOrNull(), holderState)
         }
 
         /** Cancela un intento de carga en curso y vuelve a `Idle` (spec 004, FR-004). */
@@ -186,6 +253,7 @@ class PlayerViewModel
                 exoPlayer.stop()
                 exoPlayer.clearMediaItems()
                 _state.value = PlayerState.Idle
+                activeStationHolder.clear()
             }
         }
 
@@ -196,6 +264,7 @@ class PlayerViewModel
                 is PlayerState.Paused -> exoPlayer.playWhenReady = true
                 else -> Unit
             }
+            syncHolderToState()
         }
 
         /** Detiene y vuelve a Idle. Resetea el silencio. */
@@ -207,6 +276,7 @@ class PlayerViewModel
             exoPlayer.stop()
             exoPlayer.clearMediaItems()
             _state.value = PlayerState.Idle
+            activeStationHolder.clear()
         }
 
         /** Reintento manual desde el estado Error. */

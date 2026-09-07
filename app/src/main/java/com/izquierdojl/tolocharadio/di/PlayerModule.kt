@@ -3,6 +3,7 @@ package com.izquierdojl.tolocharadio.di
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.izquierdojl.tolocharadio.core.session.SessionManager
+import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
 import com.izquierdojl.tolocharadio.feature.player.AuthDataSourceFactory
 import dagger.Module
 import dagger.Provides
@@ -25,4 +26,8 @@ object PlayerModule {
     @Provides
     @Singleton
     fun authDataSource(session: SessionManager): AuthDataSourceFactory = AuthDataSourceFactory(session, OkHttpClient())
+
+    @Provides
+    @Singleton
+    fun activeStationHolder(): ActiveStationHolder = ActiveStationHolder()
 }
