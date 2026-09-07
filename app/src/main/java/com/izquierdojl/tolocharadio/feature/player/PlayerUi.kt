@@ -29,13 +29,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,6 +53,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.izquierdojl.tolocharadio.cast.CastConnectionState
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import kotlinx.coroutines.launch
@@ -67,14 +71,29 @@ fun MiniPlayer(
 ) {
     val state by viewModel.state.collectAsState()
     val muted by viewModel.isMuted.collectAsState()
+    val castState by viewModel.castState.collectAsState()
+    val castConnectionState by viewModel.castPlayerManager.connectionState.collectAsState()
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     var showFullSheet by remember { mutableStateOf(false) }
     var showStationInfo by remember { mutableStateOf(false) }
+    var wasConnecting by remember { mutableStateOf(false) }
     val station = playerStation(state)
     val isVisible = station != null
     val displayName = station?.name?.ifBlank { "Emisora" } ?: ""
     val error = state as? PlayerState.Error
+
+    // FR-012: Mostrar Snackbar cuando la conexión a Chromecast falla
+    LaunchedEffect(castConnectionState) {
+        if (castConnectionState == CastConnectionState.CONNECTING) {
+            wasConnecting = true
+        } else if (wasConnecting && castConnectionState == CastConnectionState.DISCONNECTED) {
+            wasConnecting = false
+            scope.launch {
+                snackbar.showSnackbar("No se pudo conectar al dispositivo")
+            }
+        }
+    }
 
     AnimatedVisibility(
         visible = isVisible,
@@ -94,7 +113,7 @@ fun MiniPlayer(
                 PanelIdentity(
                     station = station!!,
                     title = displayName,
-                    subtitle = error?.message ?: panelSubtitle(station),
+                    subtitle = error?.message ?: panelSubtitle(station, castState),
                     isError = error != null,
                     modifier = Modifier.weight(1f),
                     onOpen = { showStationInfo = true },
@@ -275,7 +294,11 @@ fun FullPlayerSheet(
     onDismiss: () -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
+    val castState by viewModel.castState.collectAsState()
+    val isCastConnected = castState is com.izquierdojl.tolocharadio.cast.CastPlayerState.Cast
     var showStationInfo by remember { mutableStateOf(false) }
+    var volume by remember { mutableFloatStateOf(1f) }
+
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState()) {
         Column(Modifier.fillMaxWidth().padding(24.dp)) {
             // Logo tap opens station info sheet (US2)
@@ -289,7 +312,17 @@ fun FullPlayerSheet(
                     StationArtwork(station = station, modifier = Modifier.size(48.dp))
                     Spacer(Modifier.width(12.dp))
                 }
-                Text(stationName, style = MaterialTheme.typography.headlineSmall)
+                Column {
+                    Text(stationName, style = MaterialTheme.typography.headlineSmall)
+                    if (isCastConnected) {
+                        val deviceName = (castState as? com.izquierdojl.tolocharadio.cast.CastPlayerState.Cast)?.deviceName ?: "Chromecast"
+                        Text(
+                            deviceName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
             }
             if (state is PlayerState.Buffering) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -313,6 +346,30 @@ fun FullPlayerSheet(
             }
             (state as? PlayerState.Error)?.let {
                 Text(it.message, color = MaterialTheme.colorScheme.error)
+            }
+
+            // FR-006: Volume slider for Cast
+            if (isCastConnected) {
+                Spacer(Modifier.padding(top = 16.dp))
+                Text("Volumen Chromecast", style = MaterialTheme.typography.labelMedium)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        if (volume > 0f) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Slider(
+                        value = volume,
+                        onValueChange = { newVolume ->
+                            volume = newVolume
+                            viewModel.castPlayerManager.exoPlayer.volume = newVolume
+                        },
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                    )
+                }
             }
         }
     }

@@ -13,6 +13,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.izquierdojl.tolocharadio.R
+import com.izquierdojl.tolocharadio.cast.CastPlayerManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -32,6 +33,9 @@ import javax.inject.Inject
 class RadioPlaybackService : MediaSessionService() {
     @Inject
     lateinit var player: ExoPlayer
+
+    @Inject
+    lateinit var castPlayerManager: CastPlayerManager
 
     private var session: MediaSession? = null
 
@@ -97,6 +101,8 @@ class RadioPlaybackService : MediaSessionService() {
                 .setCallback(sessionCallback)
                 .setCustomLayout(listOf(stopButton, muteButton))
                 .build()
+        // Register MediaSession with CastPlayerManager for dynamic player switching
+        castPlayerManager.setMediaSession(session!!)
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider(this).apply {
                 setSmallIcon(R.drawable.sierra_emblem_mono)

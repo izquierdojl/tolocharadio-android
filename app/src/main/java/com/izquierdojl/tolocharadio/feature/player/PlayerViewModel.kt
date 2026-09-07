@@ -13,6 +13,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
+import com.izquierdojl.tolocharadio.cast.CastPlayerManager
+import com.izquierdojl.tolocharadio.cast.CastPlayerState
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.userMessage
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
@@ -67,6 +69,7 @@ class PlayerViewModel
         private val dataSource: AuthDataSourceFactory,
         private val activeStationHolder: ActiveStationHolder,
         val exoPlayer: ExoPlayer,
+        val castPlayerManager: CastPlayerManager,
     ) : ViewModel() {
         private val _state = MutableStateFlow<PlayerState>(PlayerState.Idle)
         val state: StateFlow<PlayerState> = _state.asStateFlow()
@@ -78,6 +81,9 @@ class PlayerViewModel
          */
         private val _isMuted = MutableStateFlow(false)
         val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
+
+        /** Estado de Cast para la UI (FR-006, FR-011). */
+        val castState: StateFlow<CastPlayerState> = castPlayerManager.castState
 
         private var retryJob: Job? = null
         private var loadJob: Job? = null
@@ -94,7 +100,7 @@ class PlayerViewModel
                     _state.value =
                         when (playbackState) {
                             Player.STATE_READY ->
-                                if (exoPlayer.playWhenReady) {
+                                if (castPlayerManager.activePlayer.playWhenReady) {
                                     PlayerState.Playing(current)
                                 } else {
                                     PlayerState.Paused(current)
@@ -104,12 +110,14 @@ class PlayerViewModel
                             else -> _state.value
                         }
                     syncHolderToState()
+                    syncCastState()
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
                     val current = (_state.value as? PlayerState.Playing)?.station
                     _state.value = PlayerState.Error(current, "Se ha interrumpido la reproducción.")
                     syncHolderToState()
+                    syncCastState()
                     scheduleRetry(current, attempt = 1)
                 }
 
@@ -121,6 +129,7 @@ class PlayerViewModel
                             ?: return
                     _state.value = if (isPlaying) PlayerState.Playing(current) else PlayerState.Paused(current)
                     syncHolderToState()
+                    syncCastState()
                 }
             }
 
@@ -146,6 +155,7 @@ class PlayerViewModel
                     PlayerStateType.ERROR -> PlayerState.Error(station, "Se ha interrumpido la reproducción.")
                     PlayerStateType.IDLE -> PlayerState.Idle
                 }
+            syncCastState()
         }
 
         /**
@@ -171,9 +181,10 @@ class PlayerViewModel
             retryJob?.cancel()
             loadJob?.cancel()
             _isMuted.value = false
-            exoPlayer.volume = 1f
+            castPlayerManager.exoPlayer.volume = 1f
             _state.value = PlayerState.Buffering(station)
             syncHolderToState()
+            syncCastState()
             loadJob =
                 viewModelScope.launch {
                     when (val r = playback.status(station.id)) {
@@ -185,6 +196,7 @@ class PlayerViewModel
                                         r.value.reason?.ifBlank { null } ?: "Emisora no disponible.",
                                     )
                                 syncHolderToState()
+                                syncCastState()
                                 return@launch
                             }
                             startStream(station)
@@ -192,6 +204,7 @@ class PlayerViewModel
                         is ApiResult.Err -> {
                             _state.value = PlayerState.Error(station, r.error.userMessage())
                             syncHolderToState()
+                            syncCastState()
                         }
                     }
                 }
@@ -212,20 +225,28 @@ class PlayerViewModel
                     .setUri(streamUrl(base, station.id))
                     .setMediaMetadata(metadata)
                     .build()
-            exoPlayer.setMediaSource(
-                androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSource)
-                    .createMediaSource(item),
-            )
-            exoPlayer.prepare()
-            exoPlayer.playWhenReady = true
+
+            // Si Cast está conectado, enviar al CastPlayer en lugar del ExoPlayer local
+            if (castPlayerManager.isCastConnected) {
+                castPlayerManager.connectToStation(station)
+            } else {
+                castPlayerManager.exoPlayer.setMediaSource(
+                    androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSource)
+                        .createMediaSource(item),
+                )
+                castPlayerManager.exoPlayer.prepare()
+                castPlayerManager.exoPlayer.playWhenReady = true
+            }
+
             _state.value = PlayerState.Buffering(station)
             syncHolderToState()
+            syncCastState()
         }
 
         /** Silencia o restaura el sonido sin detener la emisión (spec 004, FR-005). */
         fun toggleMute() {
             _isMuted.value = !_isMuted.value
-            exoPlayer.volume = if (_isMuted.value) 0f else 1f
+            castPlayerManager.exoPlayer.volume = if (_isMuted.value) 0f else 1f
         }
 
         /**
@@ -245,26 +266,34 @@ class PlayerViewModel
             activeStationHolder.update(current.stationOrNull(), holderState)
         }
 
+        /** Sincroniza el estado de Cast para la UI. */
+        private fun syncCastState() {
+            castPlayerManager.updateCastPlayerState(_state.value)
+        }
+
         /** Cancela un intento de carga en curso y vuelve a `Idle` (spec 004, FR-004). */
         fun cancelLoad() {
             loadJob?.cancel()
             retryJob?.cancel()
             if (_state.value is PlayerState.Buffering) {
-                exoPlayer.stop()
-                exoPlayer.clearMediaItems()
+                castPlayerManager.exoPlayer.stop()
+                castPlayerManager.exoPlayer.clearMediaItems()
                 _state.value = PlayerState.Idle
                 activeStationHolder.clear()
+                syncCastState()
             }
         }
 
         /** Pausa o reanuda según el estado actual. */
         fun toggle() {
+            val player = castPlayerManager.activePlayer
             when (_state.value) {
-                is PlayerState.Playing -> exoPlayer.playWhenReady = false
-                is PlayerState.Paused -> exoPlayer.playWhenReady = true
+                is PlayerState.Playing -> player.playWhenReady = false
+                is PlayerState.Paused -> player.playWhenReady = true
                 else -> Unit
             }
             syncHolderToState()
+            syncCastState()
         }
 
         /** Detiene y vuelve a Idle. Resetea el silencio. */
@@ -272,11 +301,12 @@ class PlayerViewModel
             retryJob?.cancel()
             loadJob?.cancel()
             _isMuted.value = false
-            exoPlayer.volume = 1f
-            exoPlayer.stop()
-            exoPlayer.clearMediaItems()
+            castPlayerManager.exoPlayer.volume = 1f
+            castPlayerManager.activePlayer.stop()
+            castPlayerManager.activePlayer.clearMediaItems()
             _state.value = PlayerState.Idle
             activeStationHolder.clear()
+            syncCastState()
         }
 
         /** Reintento manual desde el estado Error. */
@@ -301,7 +331,8 @@ class PlayerViewModel
         override fun onCleared() {
             retryJob?.cancel()
             loadJob?.cancel()
-            exoPlayer.removeListener(listener)
+            castPlayerManager.exoPlayer.removeListener(listener)
+            castPlayerManager.release()
             controller?.release()
             super.onCleared()
         }

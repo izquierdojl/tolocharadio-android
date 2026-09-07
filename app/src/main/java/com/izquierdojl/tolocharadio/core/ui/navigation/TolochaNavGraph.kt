@@ -30,12 +30,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.mediarouter.app.MediaRouteButton
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.google.android.gms.cast.framework.CastButtonFactory
 import com.izquierdojl.tolocharadio.core.session.AuthState
 import com.izquierdojl.tolocharadio.core.session.SessionManager
 import com.izquierdojl.tolocharadio.core.ui.components.TolochaLogo
@@ -145,6 +148,15 @@ fun TolochaNavGraph(
                 TopAppBar(
                     title = { TolochaLogo() },
                     actions = {
+                        // Botón Cast (Chromecast) — FR-001, FR-002, FR-003
+                        AndroidView(
+                            factory = { ctx ->
+                                MediaRouteButton(ctx).apply {
+                                    CastButtonFactory.setUpMediaRouteButton(ctx, this)
+                                }
+                            },
+                            modifier = Modifier,
+                        )
                         // Alternador lista/tarjetas solo en secciones con
                         // listas de emisoras (spec 008, FR-001/FR-009).
                         if (currentRoute in VIEW_MODE_ROUTES) {

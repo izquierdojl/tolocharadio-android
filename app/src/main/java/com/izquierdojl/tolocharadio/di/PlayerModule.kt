@@ -2,7 +2,9 @@ package com.izquierdojl.tolocharadio.di
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
+import com.izquierdojl.tolocharadio.cast.CastPlayerManager
 import com.izquierdojl.tolocharadio.core.session.SessionManager
+import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
 import com.izquierdojl.tolocharadio.feature.player.AuthDataSourceFactory
 import dagger.Module
@@ -30,4 +32,13 @@ object PlayerModule {
     @Provides
     @Singleton
     fun activeStationHolder(): ActiveStationHolder = ActiveStationHolder()
+
+    @Provides
+    @Singleton
+    fun castPlayerManager(
+        @ApplicationContext context: Context,
+        activeStationHolder: ActiveStationHolder,
+        prefs: InstancePrefs,
+        exoPlayer: ExoPlayer,
+    ): CastPlayerManager = CastPlayerManager(context, activeStationHolder, prefs, exoPlayer)
 }

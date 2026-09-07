@@ -157,6 +157,11 @@ dependencies {
     implementation(libs.media3.ui)
     implementation(libs.media3.datasource.okhttp)
 
+    // Cast (Chromecast integration)
+    implementation(libs.media3.cast)
+    implementation(libs.play.services.cast.framework)
+    implementation(libs.androidx.mediarouter)
+
     // Storage
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
