@@ -1,6 +1,11 @@
 package com.izquierdojl.tolocharadio.core.ui.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -25,11 +30,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.mediarouter.app.MediaRouteButton
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -115,6 +123,27 @@ fun TolochaNavGraph(
         sleepTimerVm.setStopPlayerCallback { playerVm.stop() }
     }
     val snackbar = remember { SnackbarHostState() }
+
+    // Cast permissions: request on first TopAppBar display if missing.
+    // Android 12+ needs ACCESS_FINE_LOCATION for mDNS discovery;
+    // Android 13+ uses NEARBY_WIFI_DEVICES instead.
+    val context = LocalContext.current
+    var castPermissionsGranted by remember {
+        mutableStateOf(areCastPermissionsGranted(context))
+    }
+    val castPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { results ->
+        castPermissionsGranted = results.values.all { it }
+    }
+    LaunchedEffect(chromeVisible) {
+        if (chromeVisible && !castPermissionsGranted) {
+            val perms = requiredCastPermissions()
+            if (perms.isNotEmpty()) {
+                castPermissionLauncher.launch(perms.toTypedArray())
+            }
+        }
+    }
 
     // FR-011b: con sesión restaurada, abrir directamente en la pantalla
     // de arranque configurada. FR-014: sin sesión válida, mostrar la
@@ -339,3 +368,24 @@ private fun CustomStationsDestination(
         LoginScreen(onLoggedIn = {}, onRegister = onRegister)
     }
 }
+
+/**
+ * Returns the Cast-related permissions required for the current API level.
+ * - API 33+ (Android 13): NEARBY_WIFI_DEVICES
+ * - API 31-32 (Android 12-12L): ACCESS_FINE_LOCATION
+ * - API <31: no runtime permission needed for mDNS discovery
+ */
+private fun requiredCastPermissions(): List<String> =
+    when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+            listOf(Manifest.permission.NEARBY_WIFI_DEVICES)
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+            listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        else -> emptyList()
+    }
+
+/** Checks whether all Cast discovery permissions are already granted. */
+private fun areCastPermissionsGranted(context: android.content.Context): Boolean =
+    requiredCastPermissions().all { perm ->
+        ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
+    }

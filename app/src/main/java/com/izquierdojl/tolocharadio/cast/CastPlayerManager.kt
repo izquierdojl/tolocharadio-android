@@ -88,6 +88,8 @@ class CastPlayerManager
                     sessionManagerListener!!,
                     CastSession::class.java,
                 )
+            }.onFailure { e ->
+                android.util.Log.e("CastPlayerManager", "Failed to initialize CastContext", e)
             }
         }
 
