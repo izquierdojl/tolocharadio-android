@@ -24,7 +24,6 @@ import com.izquierdojl.tolocharadio.data.repo.PlaybackRepo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -85,7 +84,6 @@ class PlayerViewModel
         /** Estado de Cast para la UI (FR-006, FR-011). */
         val castState: StateFlow<CastPlayerState> = castPlayerManager.castState
 
-        private var retryJob: Job? = null
         private var loadJob: Job? = null
         private var controller: MediaController? = null
 
@@ -114,11 +112,14 @@ class PlayerViewModel
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    val current = (_state.value as? PlayerState.Playing)?.station
+                    val current =
+                        (_state.value as? PlayerState.Playing)?.station
+                            ?: (_state.value as? PlayerState.Buffering)?.station
+                            ?: (_state.value as? PlayerState.Paused)?.station
+                            ?: return
                     _state.value = PlayerState.Error(current, "Se ha interrumpido la reproducción.")
                     syncHolderToState()
                     syncCastState()
-                    scheduleRetry(current, attempt = 1)
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -178,7 +179,6 @@ class PlayerViewModel
 
         /** Reproduce tras el precheck `playable` (FR-007). Resetea el silencio. */
         fun play(station: StationDto) {
-            retryJob?.cancel()
             loadJob?.cancel()
             _isMuted.value = false
             castPlayerManager.exoPlayer.volume = 1f
@@ -274,7 +274,6 @@ class PlayerViewModel
         /** Cancela un intento de carga en curso y vuelve a `Idle` (spec 004, FR-004). */
         fun cancelLoad() {
             loadJob?.cancel()
-            retryJob?.cancel()
             if (_state.value is PlayerState.Buffering) {
                 castPlayerManager.exoPlayer.stop()
                 castPlayerManager.exoPlayer.clearMediaItems()
@@ -298,7 +297,6 @@ class PlayerViewModel
 
         /** Detiene y vuelve a Idle. Resetea el silencio. */
         fun stop() {
-            retryJob?.cancel()
             loadJob?.cancel()
             _isMuted.value = false
             castPlayerManager.exoPlayer.volume = 1f
@@ -315,30 +313,11 @@ class PlayerViewModel
             play(station)
         }
 
-        private fun scheduleRetry(
-            station: StationDto?,
-            attempt: Int,
-        ) {
-            if (station == null || attempt > MAX_RETRY) return
-            retryJob?.cancel()
-            retryJob =
-                viewModelScope.launch {
-                    delay(RETRY_BASE_MS * attempt)
-                    if (_state.value is PlayerState.Error) play(station)
-                }
-        }
-
         override fun onCleared() {
-            retryJob?.cancel()
             loadJob?.cancel()
             castPlayerManager.exoPlayer.removeListener(listener)
             castPlayerManager.release()
             controller?.release()
             super.onCleared()
-        }
-
-        private companion object {
-            const val MAX_RETRY = 3
-            const val RETRY_BASE_MS = 2_000L
         }
     }

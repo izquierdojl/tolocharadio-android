@@ -10,9 +10,12 @@ import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.PlaybackStatusDto
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.data.repo.PlaybackRepo
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -139,6 +142,48 @@ class PlayerViewModelTest {
         viewModel.cancelLoad()
         assertTrue(viewModel.state.value is PlayerState.Idle)
         Thread.sleep(700)
+        assertTrue(viewModel.state.value is PlayerState.Idle)
+    }
+
+    private fun captureListener(): Player.Listener {
+        val listenerSlot = slot<Player.Listener>()
+        verify { exoPlayer.addListener(capture(listenerSlot)) }
+        return listenerSlot.captured
+    }
+
+    @Test
+    fun `onPlayerError durante Buffering preserva la emisora`() {
+        val viewModel = vm()
+        val listener = captureListener()
+        viewModel.play(station)
+        assertTrue(viewModel.state.value is PlayerState.Buffering)
+        listener.onPlayerError(mockk<PlaybackException>(relaxed = true))
+        val state = viewModel.state.value
+        assertTrue(state is PlayerState.Error)
+        assertEquals(station, (state as PlayerState.Error).station)
+    }
+
+    @Test
+    fun `onPlayerError durante Playing preserva la emisora`() {
+        val viewModel = vm()
+        val listener = captureListener()
+        viewModel.play(station)
+        listener.onPlaybackStateChanged(Player.STATE_READY)
+        every { castPlayerManager.activePlayer } returns mockk { every { playWhenReady } returns true }
+        listener.onIsPlayingChanged(true)
+        assertTrue(viewModel.state.value is PlayerState.Playing)
+        listener.onPlayerError(mockk<PlaybackException>(relaxed = true))
+        val state = viewModel.state.value
+        assertTrue(state is PlayerState.Error)
+        assertEquals(station, (state as PlayerState.Error).station)
+    }
+
+    @Test
+    fun `onPlayerError en Idle no cambia estado`() {
+        val viewModel = vm()
+        val listener = captureListener()
+        assertTrue(viewModel.state.value is PlayerState.Idle)
+        listener.onPlayerError(mockk<PlaybackException>(relaxed = true))
         assertTrue(viewModel.state.value is PlayerState.Idle)
     }
 }

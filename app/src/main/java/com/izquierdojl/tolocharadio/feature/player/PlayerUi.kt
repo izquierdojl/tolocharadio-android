@@ -100,6 +100,7 @@ fun MiniPlayer(
         enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
     ) {
+        val safeStation = station ?: return@AnimatedVisibility
         Surface(
             tonalElevation = 3.dp,
             shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
@@ -111,9 +112,9 @@ fun MiniPlayer(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 PanelIdentity(
-                    station = station!!,
+                    station = safeStation,
                     title = displayName,
-                    subtitle = error?.message ?: panelSubtitle(station, castState),
+                    subtitle = error?.message ?: panelSubtitle(safeStation, castState),
                     isError = error != null,
                     modifier = Modifier.weight(1f),
                     onOpen = { showStationInfo = true },
@@ -130,7 +131,7 @@ fun MiniPlayer(
                 }
                 Spacer(Modifier.width(4.dp))
                 PanelCopyButton(onCopy = {
-                    val link = resolveCopyLink(station)
+                    val link = resolveCopyLink(safeStation)
                     if (link != null) {
                         clipboard.setText(AnnotatedString(link))
                         scope.launch { snackbar.showSnackbar("Enlace copiado") }
