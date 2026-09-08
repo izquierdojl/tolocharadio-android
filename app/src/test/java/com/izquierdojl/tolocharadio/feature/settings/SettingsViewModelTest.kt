@@ -63,4 +63,34 @@ class SettingsViewModelTest {
             coVerify { logoutUseCase() }
             assertEquals(true, done)
         }
+
+    @Test
+    fun `showAppInfoDialog transiciona a Showing`() =
+        runTest {
+            val v = vm()
+            assertEquals(AppInfoUiState.Hidden, v.appInfoUiState.value)
+            v.showAppInfoDialog()
+            assert(v.appInfoUiState.value is AppInfoUiState.Showing)
+        }
+
+    @Test
+    fun `dismissAppInfoDialog transiciona a Hidden`() =
+        runTest {
+            val v = vm()
+            v.showAppInfoDialog()
+            assert(v.appInfoUiState.value is AppInfoUiState.Showing)
+            v.dismissAppInfoDialog()
+            assertEquals(AppInfoUiState.Hidden, v.appInfoUiState.value)
+        }
+
+    @Test
+    fun `AppInfo contiene datos correctos por defecto`() =
+        runTest {
+            val info = AppInfo()
+            assertEquals("Tolocha Radio", info.appName)
+            assertEquals("1.0", info.version)
+            assertEquals("https://github.com/izquierdojl/tolocharadio-android", info.repositoryUrl)
+            assertEquals("izquierdojl", info.developer)
+            assertEquals("MIT", info.license)
+        }
 }

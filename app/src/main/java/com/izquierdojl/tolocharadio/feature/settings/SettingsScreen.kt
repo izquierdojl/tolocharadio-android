@@ -1,5 +1,6 @@
 package com.izquierdojl.tolocharadio.feature.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,8 +17,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.izquierdojl.tolocharadio.core.ui.components.AppInfoDialog
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
@@ -33,6 +37,8 @@ fun SettingsScreen(
     onLoggedOut: () -> Unit = {},
 ) {
     val ui by viewModel.ui.collectAsState()
+    val appInfoUiState by viewModel.appInfoUiState.collectAsState()
+
     Column(Modifier.fillMaxSize()) {
         SectionHeader(title = "Configuración")
         Column(Modifier.padding(horizontal = 16.dp)) {
@@ -101,6 +107,27 @@ fun SettingsScreen(
             OutlinedButton(onClick = { viewModel.logout(onLoggedOut) }, modifier = Modifier.fillMaxWidth()) {
                 Text("Cerrar sesión")
             }
+
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Acerca de",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = "Acerca de la aplicación"
+                        }
+                        .clickable { viewModel.showAppInfoDialog() }
+                        .padding(vertical = 12.dp),
+            )
         }
+    }
+
+    if (appInfoUiState is AppInfoUiState.Showing) {
+        AppInfoDialog(
+            info = (appInfoUiState as AppInfoUiState.Showing).info,
+            onDismiss = { viewModel.dismissAppInfoDialog() },
+        )
     }
 }

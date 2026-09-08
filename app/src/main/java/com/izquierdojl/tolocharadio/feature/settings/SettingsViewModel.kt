@@ -22,6 +22,21 @@ data class SettingsUi(
     val message: String? = null,
 )
 
+/** Información general de la aplicación para el diálogo "Acerca de". */
+data class AppInfo(
+    val appName: String = "Tolocha Radio",
+    val version: String = "1.0",
+    val repositoryUrl: String = "https://github.com/izquierdojl/tolocharadio-android",
+    val developer: String = "izquierdojl",
+    val license: String = "MIT",
+)
+
+/** Estado de la UI del diálogo de información de la aplicación. */
+sealed interface AppInfoUiState {
+    data object Hidden : AppInfoUiState
+    data class Showing(val info: AppInfo = AppInfo()) : AppInfoUiState
+}
+
 /** Configuración: tema claro/oscuro, pantalla de arranque y logout. */
 @HiltViewModel
 class SettingsViewModel
@@ -33,6 +48,9 @@ class SettingsViewModel
     ) : ViewModel() {
         private val _ui = MutableStateFlow(SettingsUi())
         val ui: StateFlow<SettingsUi> = _ui.asStateFlow()
+
+        private val _appInfoUiState = MutableStateFlow<AppInfoUiState>(AppInfoUiState.Hidden)
+        val appInfoUiState: StateFlow<AppInfoUiState> = _appInfoUiState.asStateFlow()
 
         init {
             viewModelScope.launch {
@@ -70,5 +88,15 @@ class SettingsViewModel
                 logoutUseCase()
                 onDone()
             }
+        }
+
+        /** Muestra el diálogo de información de la aplicación. */
+        fun showAppInfoDialog() {
+            _appInfoUiState.value = AppInfoUiState.Showing()
+        }
+
+        /** Cierra el diálogo de información de la aplicación. */
+        fun dismissAppInfoDialog() {
+            _appInfoUiState.value = AppInfoUiState.Hidden
         }
     }
