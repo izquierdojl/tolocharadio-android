@@ -1,5 +1,6 @@
 package com.izquierdojl.tolocharadio.feature.explore
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -7,12 +8,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,13 +24,15 @@ import androidx.compose.ui.unit.dp
  * Combobox reutilizable para filtros de Explorar con autocompletado,
  * estados de carga/error y modo degradado (entrada libre).
  *
+ * Usa una lista inline en lugar de un popup para evitar problemas
+ * de coordenadas cuando se usa dentro de un [ModalBottomSheet].
+ *
  * @param value valor actual del filtro.
- * @param onValueChange callback al cambiar el valor.
+ * @param onValueChange callback al hacer clic en un item de la lista.
  * @param label etiqueta del campo.
  * @param catalogList estado de la lista de catálogo (Loading/Loaded/Error).
  * @param modifier modificador Compose.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterComboBox(
     value: String,
@@ -42,7 +41,6 @@ fun FilterComboBox(
     catalogList: CatalogList,
     modifier: Modifier = Modifier,
 ) {
-    var expanded by remember { mutableStateOf(false) }
     var textValue by remember(value) { mutableStateOf(value) }
 
     when (catalogList) {
@@ -60,10 +58,7 @@ fun FilterComboBox(
         is CatalogList.Error -> {
             OutlinedTextField(
                 value = textValue,
-                onValueChange = {
-                    textValue = it
-                    onValueChange(it)
-                },
+                onValueChange = { textValue = it },
                 label = { Text(label) },
                 supportingText = {
                     Text(
@@ -82,37 +77,28 @@ fun FilterComboBox(
             val filtered = if (textValue.isBlank()) items
             else items.filter { it.contains(textValue, ignoreCase = true) }
 
-            ExposedDropdownMenuBox(
-                expanded = expanded && filtered.isNotEmpty(),
-                onExpandedChange = { expanded = it },
-                modifier = modifier.fillMaxWidth(),
-            ) {
+            Column(modifier = modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = textValue,
-                    onValueChange = {
-                        textValue = it
-                        onValueChange(it)
-                        expanded = true
-                    },
+                    onValueChange = { textValue = it },
                     label = { Text(label) },
                     singleLine = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 if (filtered.isNotEmpty()) {
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 200.dp)
+                            .padding(top = 4.dp),
                     ) {
-                        filtered.take(50).forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option) },
-                                onClick = {
+                        items(filtered.take(50)) { option ->
+                            ListItem(
+                                headlineContent = { Text(option) },
+                                modifier = Modifier.clickable {
                                     textValue = option
                                     onValueChange(option)
-                                    expanded = false
                                 },
-                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                             )
                         }
                     }

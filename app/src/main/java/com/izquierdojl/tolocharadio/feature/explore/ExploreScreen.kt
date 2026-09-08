@@ -1,6 +1,7 @@
 package com.izquierdojl.tolocharadio.feature.explore
 
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -94,30 +96,66 @@ fun ExploreScreen(
                 selected = viewModel.filters.country != null,
                 onClick = { sheetFilter = ActiveFilter.COUNTRY },
                 label = { Text(viewModel.filters.country ?: "País") },
-                leadingIcon = if (viewModel.filters.country != null) {
-                    { Icon(Icons.Default.Close, contentDescription = "Quitar", modifier = Modifier.padding(2.dp)) }
+                trailingIcon = if (viewModel.filters.country != null) {
+                    {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Quitar",
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable {
+                                    viewModel.setFilters(
+                                        viewModel.filters.copy(country = null),
+                                    )
+                                },
+                        )
+                    }
                 } else {
-                    { Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.padding(2.dp)) }
+                    null
                 },
             )
             FilterChip(
                 selected = viewModel.filters.language != null,
                 onClick = { sheetFilter = ActiveFilter.LANGUAGE },
                 label = { Text(viewModel.filters.language ?: "Idioma") },
-                leadingIcon = if (viewModel.filters.language != null) {
-                    { Icon(Icons.Default.Close, contentDescription = "Quitar", modifier = Modifier.padding(2.dp)) }
+                trailingIcon = if (viewModel.filters.language != null) {
+                    {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Quitar",
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable {
+                                    viewModel.setFilters(
+                                        viewModel.filters.copy(language = null),
+                                    )
+                                },
+                        )
+                    }
                 } else {
-                    { Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.padding(2.dp)) }
+                    null
                 },
             )
             FilterChip(
                 selected = viewModel.filters.tag != null,
                 onClick = { sheetFilter = ActiveFilter.TAG },
                 label = { Text(viewModel.filters.tag ?: "Género") },
-                leadingIcon = if (viewModel.filters.tag != null) {
-                    { Icon(Icons.Default.Close, contentDescription = "Quitar", modifier = Modifier.padding(2.dp)) }
+                trailingIcon = if (viewModel.filters.tag != null) {
+                    {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Quitar",
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable {
+                                    viewModel.setFilters(
+                                        viewModel.filters.copy(tag = null),
+                                    )
+                                },
+                        )
+                    }
                 } else {
-                    { Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.padding(2.dp)) }
+                    null
                 },
             )
             if (viewModel.filters.country != null || viewModel.filters.language != null || viewModel.filters.tag != null) {
@@ -140,6 +178,17 @@ fun ExploreScreen(
 
     // Bottom sheet para seleccionar filtro
     if (sheetFilter != null) {
+        var selectedValue by remember(sheetFilter) {
+            mutableStateOf(
+                when (sheetFilter) {
+                    ActiveFilter.COUNTRY -> viewModel.filters.country.orEmpty()
+                    ActiveFilter.LANGUAGE -> viewModel.filters.language.orEmpty()
+                    ActiveFilter.TAG -> viewModel.filters.tag.orEmpty()
+                    null -> ""
+                }
+            )
+        }
+
         ModalBottomSheet(
             onDismissRequest = { sheetFilter = null },
             sheetState = sheetState,
@@ -150,11 +199,8 @@ fun ExploreScreen(
                         Text("País", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(8.dp))
                         FilterComboBox(
-                            value = viewModel.filters.country.orEmpty(),
-                            onValueChange = {
-                                viewModel.setFilters(viewModel.filters.copy(country = it.ifBlank { null }))
-                                sheetFilter = null
-                            },
+                            value = selectedValue,
+                            onValueChange = { selectedValue = it },
                             label = "Seleccionar país",
                             catalogList = countries,
                         )
@@ -163,11 +209,8 @@ fun ExploreScreen(
                         Text("Idioma", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(8.dp))
                         FilterComboBox(
-                            value = viewModel.filters.language.orEmpty(),
-                            onValueChange = {
-                                viewModel.setFilters(viewModel.filters.copy(language = it.ifBlank { null }))
-                                sheetFilter = null
-                            },
+                            value = selectedValue,
+                            onValueChange = { selectedValue = it },
                             label = "Seleccionar idioma",
                             catalogList = languages,
                         )
@@ -176,11 +219,8 @@ fun ExploreScreen(
                         Text("Género", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(8.dp))
                         FilterComboBox(
-                            value = viewModel.filters.tag.orEmpty(),
-                            onValueChange = {
-                                viewModel.setFilters(viewModel.filters.copy(tag = it.ifBlank { null }))
-                                sheetFilter = null
-                            },
+                            value = selectedValue,
+                            onValueChange = { selectedValue = it },
                             label = "Seleccionar género",
                             catalogList = tags,
                         )
@@ -188,6 +228,30 @@ fun ExploreScreen(
                     null -> {}
                 }
                 Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        when (sheetFilter) {
+                            ActiveFilter.COUNTRY ->
+                                viewModel.setFilters(
+                                    viewModel.filters.copy(country = selectedValue.ifBlank { null }),
+                                )
+                            ActiveFilter.LANGUAGE ->
+                                viewModel.setFilters(
+                                    viewModel.filters.copy(language = selectedValue.ifBlank { null }),
+                                )
+                            ActiveFilter.TAG ->
+                                viewModel.setFilters(
+                                    viewModel.filters.copy(tag = selectedValue.ifBlank { null }),
+                                )
+                            null -> {}
+                        }
+                        sheetFilter = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Aceptar")
+                }
+                Spacer(Modifier.height(8.dp))
             }
         }
     }
