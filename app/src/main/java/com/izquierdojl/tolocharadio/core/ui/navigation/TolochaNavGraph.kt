@@ -54,6 +54,8 @@ import com.izquierdojl.tolocharadio.feature.home.HomeScreen
 import com.izquierdojl.tolocharadio.feature.onboarding.InstanceSetupScreen
 import com.izquierdojl.tolocharadio.feature.player.MiniPlayer
 import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
+import com.izquierdojl.tolocharadio.feature.player.SleepTimerButton
+import com.izquierdojl.tolocharadio.feature.player.SleepTimerViewModel
 import com.izquierdojl.tolocharadio.feature.servers.ServerListScreen
 import com.izquierdojl.tolocharadio.feature.settings.SettingsScreen
 
@@ -106,6 +108,12 @@ fun TolochaNavGraph(
     // compartida y las 4 secciones observan el mismo modo de vista (FR-004).
     val viewModeVm: ViewModeViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
     val viewMode by viewModeVm.mode.collectAsState()
+    // SleepTimerViewModel a ámbito de Activity para persistir al navegar (spec 014).
+    val sleepTimerVm: SleepTimerViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
+    val sleepTimerUiState by sleepTimerVm.uiState.collectAsState()
+    LaunchedEffect(Unit) {
+        sleepTimerVm.setStopPlayerCallback { playerVm.stop() }
+    }
     val snackbar = remember { SnackbarHostState() }
 
     // FR-011b: con sesión restaurada, abrir directamente en la pantalla
@@ -161,6 +169,12 @@ fun TolochaNavGraph(
                         if (currentRoute in VIEW_MODE_ROUTES) {
                             ViewModeToggle(mode = viewMode, onToggle = viewModeVm::toggle)
                         }
+                        // Temporizador de apagado (spec 014, FR-001-FR-008).
+                        SleepTimerButton(
+                            uiState = sleepTimerUiState,
+                            onStart = sleepTimerVm::start,
+                            onCancel = sleepTimerVm::cancel,
+                        )
                         // Servidores: sección propia de primer nivel (FR-004);
                         // sin sesión es la pantalla de selección de conexión (FR-014)
                         IconButton(

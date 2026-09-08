@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">TolochaRadio</string>
+    <string name="sleep_timer_inactive_description">Temporizador de apagado</string>
+    <string name="sleep_timer_active_description">Temporizador activo, quedan %d minutos</string>
+    <string name="sleep_timer_minutes">%d minutos</string>
+    <string name="sleep_timer_remaining">Quedan %s</string>
+    <string name="sleep_timer_cancel">Cancelar temporizador</string>
 </resources>
