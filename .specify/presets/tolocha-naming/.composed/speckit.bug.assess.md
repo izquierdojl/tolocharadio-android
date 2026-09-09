@@ -3,7 +3,6 @@ description: Tolocha naming para bugs nuevos - NNNN-author-fecha-slug (wraps bug
 ---
 
 
-<!-- Source: tolocha-naming -->
 # Tolocha Naming — bugs (preset `tolocha-naming`, strategy `wrap`)
 
 > NO editar `.opencode/commands/speckit.bug.assess.md` directamente: se regenera.
@@ -47,7 +46,7 @@ Ejemplo: `.specify/bugs/0017-jlizquierdo-20260909-chromecast-no-devices/`
 
 # Assess Bug
 
-Triage a bug report against the current codebase: understand the symptom, locate the suspected root cause, judge severity, and propose a remediation. The output is a single assessment file at `.specify/bugs/<slug>/assessment.md` that downstream commands (`/speckit.bug.fix`, `/speckit.bug.test`) consume.
+Triage a bug report against the current codebase: understand the symptom, locate the suspected root cause, judge severity, and propose a remediation. The output is a single assessment file at `.specify/bugs/<slug>/assessment.md` that downstream commands (`__SPECKIT_COMMAND_BUG_FIX__`, `__SPECKIT_COMMAND_BUG_TEST__`) consume.
 
 ## User Input
 
@@ -136,7 +135,7 @@ Do not attempt to validate the URL by issuing a preflight `HEAD` (or any other) 
 
 5. **Propose a remediation**
    - Outline one preferred fix and, if non-obvious, one or two alternatives with trade-offs.
-   - Identify files to change and the shape of the change (without writing the patch yet — that is `/speckit.bug.fix`'s job).
+   - Identify files to change and the shape of the change (without writing the patch yet — that is `__SPECKIT_COMMAND_BUG_FIX__`'s job).
    - Call out tests that should exist or be added to lock the fix in.
    - Flag risks: API breakage, migrations, performance, security, observability.
 
@@ -206,7 +205,7 @@ Do not attempt to validate the URL by issuing a preflight `HEAD` (or any other) 
    - The slug used and whether it was user-provided, asked-for, or auto-generated. State it on its own line (e.g. `Slug: <BUG_SLUG>`) so it is easy to spot — downstream commands in the same session may reuse it from context without re-prompting.
    - The path `.specify/bugs/<BUG_SLUG>/assessment.md`.
    - The verdict and severity.
-   - The next suggested step: `/speckit.bug.fix slug=<BUG_SLUG>`.
+   - The next suggested step: `__SPECKIT_COMMAND_BUG_FIX__ slug=<BUG_SLUG>`.
 
 ## Guardrails
 
@@ -214,3 +213,4 @@ Do not attempt to validate the URL by issuing a preflight `HEAD` (or any other) 
 - Never invent reproduction steps or file paths that are not supported by either the report or the codebase.
 - Never overwrite an existing `assessment.md` without confirmation.
 - If the bug report cannot be understood at all (empty, unrelated, spam), set verdict to `invalid` with a clear reason and stop.
+

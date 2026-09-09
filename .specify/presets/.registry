@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "presets": {
+    "tolocha-naming": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:48430c8d1abbda1acddb1f89616cfbf481a2668e1087d0e965a40466cd9938a0",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "speckit.specify",
+          "speckit.git.feature",
+          "speckit.bug.assess"
+        ]
+      },
+      "registered_skills": {},
+      "installed_at": "2026-09-09T21:03:07.417034+00:00"
+    }
+  }
+}

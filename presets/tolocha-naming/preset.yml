@@ -1,0 +1,42 @@
+schema_version: "1.0"
+
+preset:
+  id: "tolocha-naming"
+  name: "Tolocha Naming"
+  version: "1.0.0"
+  description: "Specs y bugs como NNNN-author-fecha-slug; la rama incluye el mismo NNNN para trazabilidad"
+  author: "jlizquierdo"
+  repository: "https://github.com/izquierdojl/tolocharadio-android"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=1.0.0"
+  extensions:
+    - "git"
+    - "bug"
+
+provides:
+  templates:
+    - type: "command"
+      name: "speckit.specify"
+      file: "commands/speckit.specify.md"
+      description: "Specs nuevas en specs/NNNN-author-YYYYMMDD-slug con rama del mismo NNNN"
+      replaces: "speckit.specify"
+      strategy: "wrap"
+    - type: "command"
+      name: "speckit.git.feature"
+      file: "commands/speckit.git.feature.md"
+      description: "Rama exacta via GIT_BRANCH_NAME con NNNN de 4 digitos"
+      replaces: "speckit.git.feature"
+      strategy: "wrap"
+    - type: "command"
+      name: "speckit.bug.assess"
+      file: "commands/speckit.bug.assess.md"
+      description: "Bugs nuevos en .specify/bugs/NNNN-author-YYYYMMDD-slug"
+      replaces: "speckit.bug.assess"
+      strategy: "wrap"
+
+tags:
+  - "naming"
+  - "branching"
+  - "workflow"
