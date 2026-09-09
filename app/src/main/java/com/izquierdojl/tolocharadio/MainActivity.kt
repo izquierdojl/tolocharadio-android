@@ -1,5 +1,6 @@
 package com.izquierdojl.tolocharadio
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,6 +19,7 @@ import com.izquierdojl.tolocharadio.core.ui.theme.resolveDarkTheme
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.local.servers.MigrationHelper
 import com.izquierdojl.tolocharadio.data.repo.servers.ServerRepository
+import com.tolocharadio.ui.notification.NotificationNavigation
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -41,6 +43,8 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var serverRepository: ServerRepository
 
+    private val notificationNavigation = NotificationNavigation()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -51,6 +55,9 @@ class MainActivity : FragmentActivity() {
             // muestre el estado correcto desde el primer frame.
             sessionRestorer.restore()
         }
+
+        // Handle notification tap intent
+        handleNotificationIntent(intent)
 
         enableEdgeToEdge()
         setContent {
@@ -67,6 +74,23 @@ class MainActivity : FragmentActivity() {
                     hasServers = hasServers,
                     startScreen = startScreen,
                 )
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        // Handle custom notification tap action
+        if (intent?.action == NotificationNavigation.NOTIFICATION_TAP_ACTION) {
+            val notificationData = notificationNavigation.extractNotificationData(intent)
+            if (notificationData != null) {
+                // Log the notification tap
+                android.util.Log.d("MainActivity", "Notification tapped: ${notificationData.type} - ${notificationData.title}")
+                // The notification system will handle the navigation
             }
         }
     }
