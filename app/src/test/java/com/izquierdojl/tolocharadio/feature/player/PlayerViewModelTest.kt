@@ -56,7 +56,16 @@ class PlayerViewModelTest {
         }
     private val station = StationDto(id = "u1", name = "Tolocha")
 
-    private fun vm() = PlayerViewModel(context, playback, prefs, dataSource, activeStationHolder, exoPlayer, castPlayerManager)
+    private fun vm() =
+        PlayerViewModel(
+            context,
+            playback,
+            prefs,
+            dataSource,
+            activeStationHolder,
+            exoPlayer,
+            castPlayerManager,
+        )
 
     @Before
     fun setup() {
@@ -192,5 +201,23 @@ class PlayerViewModelTest {
         assertTrue(viewModel.state.value is PlayerState.Idle)
         listener.onPlayerError(mockk<PlaybackException>(relaxed = true))
         assertTrue(viewModel.state.value is PlayerState.Idle)
+    }
+
+    @Test
+    fun `full player visible se abre y cierra`() {
+        val viewModel = vm()
+        assertTrue(!viewModel.fullPlayerVisible.value)
+        viewModel.openFullPlayer()
+        assertTrue(viewModel.fullPlayerVisible.value)
+        viewModel.closeFullPlayer()
+        assertTrue(!viewModel.fullPlayerVisible.value)
+    }
+
+    @Test
+    fun `stop oculta el reproductor completo`() {
+        val viewModel = vm()
+        viewModel.openFullPlayer()
+        viewModel.stop()
+        assertTrue(!viewModel.fullPlayerVisible.value)
     }
 }

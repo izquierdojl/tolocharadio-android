@@ -8,6 +8,7 @@ import com.izquierdojl.tolocharadio.data.local.CacheManager
 import com.izquierdojl.tolocharadio.data.local.servers.SavedServerEntity
 import com.izquierdojl.tolocharadio.data.local.servers.ServerDao
 import com.izquierdojl.tolocharadio.data.remote.api.SystemApi
+import com.izquierdojl.tolocharadio.domain.shortcuts.ShortcutClearer
 import com.izquierdojl.tolocharadio.feature.onboarding.InstanceValidator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -31,6 +32,7 @@ class ServerRepository
         private val systemApi: SystemApi,
         private val cacheManager: CacheManager,
         private val tokenStore: TokenStore,
+        private val shortcutClearer: ShortcutClearer,
     ) {
         /** Lista de servidores guardados (Flow). */
         val servers: Flow<List<SavedServerEntity>> = dao.getAll()
@@ -144,6 +146,9 @@ class ServerRepository
 
             // 4. Limpiar caché del servidor anterior
             cacheManager.clearAll()
+
+            // 5. Eliminar accesos directos del icono de la cuenta anterior (FR-010)
+            shortcutClearer.clear()
 
             return ApiResult.Ok(server)
         }

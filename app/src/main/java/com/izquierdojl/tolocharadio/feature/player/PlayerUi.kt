@@ -73,9 +73,9 @@ fun MiniPlayer(
     val muted by viewModel.isMuted.collectAsState()
     val castState by viewModel.castState.collectAsState()
     val castConnectionState by viewModel.castPlayerManager.connectionState.collectAsState()
+    val fullPlayerVisible by viewModel.fullPlayerVisible.collectAsState()
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
-    var showFullSheet by remember { mutableStateOf(false) }
     var showStationInfo by remember { mutableStateOf(false) }
     var wasConnecting by remember { mutableStateOf(false) }
     val station = playerStation(state)
@@ -147,10 +147,13 @@ fun MiniPlayer(
             showStationInfo = false
         }
     }
-    if (showFullSheet && station != null) {
-        FullPlayerSheet(stationName = station.name) {
-            showFullSheet = false
-        }
+    if (fullPlayerVisible && station != null) {
+        FullPlayerSheet(
+            stationName = station.name,
+            station = station,
+            viewModel = viewModel,
+            onDismiss = { viewModel.closeFullPlayer() },
+        )
     }
 }
 
@@ -316,7 +319,9 @@ fun FullPlayerSheet(
                 Column {
                     Text(stationName, style = MaterialTheme.typography.headlineSmall)
                     if (isCastConnected) {
-                        val deviceName = (castState as? com.izquierdojl.tolocharadio.cast.CastPlayerState.Cast)?.deviceName ?: "Chromecast"
+                        val cast =
+                            castState as? com.izquierdojl.tolocharadio.cast.CastPlayerState.Cast
+                        val deviceName = cast?.deviceName ?: "Chromecast"
                         Text(
                             deviceName,
                             style = MaterialTheme.typography.bodySmall,

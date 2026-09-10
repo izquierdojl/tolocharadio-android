@@ -50,6 +50,7 @@ import com.izquierdojl.tolocharadio.core.session.AuthState
 import com.izquierdojl.tolocharadio.core.session.SessionManager
 import com.izquierdojl.tolocharadio.core.ui.components.TolochaLogo
 import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
+import com.izquierdojl.tolocharadio.domain.shortcuts.ShortcutLaunchResolution
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 import com.izquierdojl.tolocharadio.feature.auth.LoginScreen
 import com.izquierdojl.tolocharadio.feature.auth.RegisterScreen
@@ -66,6 +67,7 @@ import com.izquierdojl.tolocharadio.feature.player.SleepTimerButton
 import com.izquierdojl.tolocharadio.feature.player.SleepTimerViewModel
 import com.izquierdojl.tolocharadio.feature.servers.ServerListScreen
 import com.izquierdojl.tolocharadio.feature.settings.SettingsScreen
+import com.izquierdojl.tolocharadio.feature.shortcuts.ShortcutLaunchViewModel
 
 private data class BottomDest(val route: String, val label: String, val icon: ImageVector)
 
@@ -123,6 +125,31 @@ fun TolochaNavGraph(
         sleepTimerVm.setStopPlayerCallback { playerVm.stop() }
     }
     val snackbar = remember { SnackbarHostState() }
+
+    // Accesos directos del icono (spec 0018): resuelve el pendiente y
+    // reproduce / navega a Login / avisa si no está disponible.
+    val shortcutVm: ShortcutLaunchViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
+    val pendingShortcut by shortcutVm.pending.collectAsState()
+    LaunchedEffect(pendingShortcut, authState) {
+        val request = pendingShortcut ?: return@LaunchedEffect
+        when (val resolution = shortcutVm.resolve(request.stationId)) {
+            is ShortcutLaunchResolution.Play -> {
+                playerVm.play(resolution.station)
+                playerVm.openFullPlayer()
+                shortcutVm.consume()
+            }
+            is ShortcutLaunchResolution.GoLogin -> {
+                shortcutVm.consume()
+                navController.navigate(Routes.LOGIN) { launchSingleTop = true }
+                snackbar.showSnackbar("Tu sesión ha caducado. Inicia sesión de nuevo.")
+            }
+            is ShortcutLaunchResolution.Unavailable -> {
+                shortcutVm.consume()
+                snackbar.showSnackbar(resolution.message)
+            }
+            ShortcutLaunchResolution.Wait -> Unit
+        }
+    }
 
     // Cast permissions: request on first TopAppBar display if missing.
     // Android 12+ needs ACCESS_FINE_LOCATION for mDNS discovery;

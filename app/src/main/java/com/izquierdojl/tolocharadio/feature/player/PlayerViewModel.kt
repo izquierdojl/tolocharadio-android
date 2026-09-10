@@ -57,7 +57,12 @@ sealed interface PlayerState {
 /**
  * Mini-player persistente: precheck `status`, proxy con Bearer,
  * reintento con backoff y supervivencia a navegación/rotación (US-5).
+ *
+ * `TooManyFunctions`/`LongParameterList` suprimidos: el player es un estado
+ * central (spec 004/0018) que agrupa reproducción, silencio, Cast y full player;
+ * fragmentarlo añadiría indirección sin valor (constitución V, YAGNI).
  */
+@Suppress("TooManyFunctions", "LongParameterList")
 @HiltViewModel
 class PlayerViewModel
     @Inject
@@ -80,6 +85,13 @@ class PlayerViewModel
          */
         private val _isMuted = MutableStateFlow(false)
         val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
+
+        /**
+         * Reproductor a pantalla completa visible (spec 0018, FR-005). Se
+         * abre al pulsar un acceso directo del icono y se cierra al detener.
+         */
+        private val _fullPlayerVisible = MutableStateFlow(false)
+        val fullPlayerVisible: StateFlow<Boolean> = _fullPlayerVisible.asStateFlow()
 
         /** Estado de Cast para la UI (FR-006, FR-011). */
         val castState: StateFlow<CastPlayerState> = castPlayerManager.castState
@@ -249,6 +261,16 @@ class PlayerViewModel
             castPlayerManager.exoPlayer.volume = if (_isMuted.value) 0f else 1f
         }
 
+        /** Abre el reproductor a pantalla completa (spec 0018, FR-005). */
+        fun openFullPlayer() {
+            _fullPlayerVisible.value = true
+        }
+
+        /** Cierra el reproductor a pantalla completa (spec 0018, FR-005). */
+        fun closeFullPlayer() {
+            _fullPlayerVisible.value = false
+        }
+
         /**
          * Sincroniza el estado actual del [_state] hacia [activeStationHolder]
          * para persistirlo entre recreaciones de Activity/ViewModel.
@@ -299,6 +321,7 @@ class PlayerViewModel
         fun stop() {
             loadJob?.cancel()
             _isMuted.value = false
+            _fullPlayerVisible.value = false
             castPlayerManager.exoPlayer.volume = 1f
             castPlayerManager.activePlayer.stop()
             castPlayerManager.activePlayer.clearMediaItems()

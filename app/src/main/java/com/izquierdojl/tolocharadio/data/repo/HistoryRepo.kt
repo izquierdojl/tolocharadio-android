@@ -98,6 +98,13 @@ class HistoryRepo
             db.historyCache().clear()
         }
 
+        /**
+         * Última lista cacheada (offline), sin tocar [items]. La usa el
+         * publicador de accesos directos cuando el refresco no está
+         * disponible (FR-015).
+         */
+        suspend fun snapshot(): List<HistoryEntryDto> = db.historyCache().loadOrdered().toHistoryEntries()
+
         private suspend fun fromCache(): ApiResult<HistoryResult>? {
             val cached = db.historyCache().loadOrdered()
             if (cached.isEmpty()) return null

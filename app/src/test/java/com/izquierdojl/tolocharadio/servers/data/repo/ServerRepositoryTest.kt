@@ -6,6 +6,7 @@ import com.izquierdojl.tolocharadio.data.local.CacheManager
 import com.izquierdojl.tolocharadio.data.local.servers.ServerDao
 import com.izquierdojl.tolocharadio.data.remote.api.SystemApi
 import com.izquierdojl.tolocharadio.data.repo.servers.ServerRepository
+import com.izquierdojl.tolocharadio.domain.shortcuts.ShortcutClearer
 import com.izquierdojl.tolocharadio.feature.onboarding.InstanceValidator
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -26,6 +27,7 @@ class ServerRepositoryTest {
     private val systemApi = mockk<SystemApi>(relaxed = true)
     private val cacheManager = mockk<CacheManager>(relaxed = true)
     private val tokens = mockk<TokenStore>(relaxed = true)
+    private val shortcutClearer = mockk<ShortcutClearer>(relaxed = true)
 
     private fun server(
         id: String,
@@ -41,7 +43,7 @@ class ServerRepositoryTest {
 
     @Before
     fun setup() {
-        repo = ServerRepository(dao, validator, systemApi, cacheManager, tokens)
+        repo = ServerRepository(dao, validator, systemApi, cacheManager, tokens, shortcutClearer)
     }
 
     @Test
@@ -64,6 +66,7 @@ class ServerRepositoryTest {
             coVerify { dao.clearActive() }
             coVerify { dao.setActive("b") }
             coVerify { cacheManager.clearAll() }
+            coVerify { shortcutClearer.clear() }
             // El refresh del servidor destino pasa a ser la sesión global
             coVerify { tokens.setServerCredentials("a", "refresh-a", "a@b.c", "secreta123") }
         }

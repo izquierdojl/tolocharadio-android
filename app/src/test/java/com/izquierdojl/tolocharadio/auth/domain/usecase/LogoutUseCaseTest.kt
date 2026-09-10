@@ -3,6 +3,7 @@ package com.izquierdojl.tolocharadio.auth.domain.usecase
 import com.izquierdojl.tolocharadio.core.session.TokenStore
 import com.izquierdojl.tolocharadio.data.repo.AuthRepo
 import com.izquierdojl.tolocharadio.domain.auth.LogoutUseCase
+import com.izquierdojl.tolocharadio.domain.shortcuts.ShortcutClearer
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -14,10 +15,11 @@ class LogoutUseCaseTest {
     private lateinit var useCase: LogoutUseCase
     private val authRepo = mockk<AuthRepo>(relaxed = true)
     private val tokens = mockk<TokenStore>(relaxed = true)
+    private val shortcutClearer = mockk<ShortcutClearer>(relaxed = true)
 
     @Before
     fun setup() {
-        useCase = LogoutUseCase(authRepo, tokens)
+        useCase = LogoutUseCase(authRepo, tokens, shortcutClearer)
     }
 
     @Test
@@ -58,5 +60,15 @@ class LogoutUseCaseTest {
 
             coVerify { authRepo.logout() }
             coVerify(exactly = 0) { tokens.setServerCredentials(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun `logout limpia los accesos directos del icono (FR-010)`() =
+        runTest {
+            every { tokens.getActiveServerId() } returns null
+
+            useCase()
+
+            coVerify { shortcutClearer.clear() }
         }
 }
