@@ -22,7 +22,7 @@ Añadir un temporizador de apagado (sleep timer) a la barra superior de la app. 
 
 **Project Type**: Mobile app (Android)
 
-**Performance Goals**: Activación en <3s (2 pulsaciones), detención en <5s tras expirar
+**Performance Goals**: Activación en <3s (2 pulsaciones), detención en <5s tras expirar, indicador actualizado 1 vez/minuto (sin segundos) para minimizar CPU/batería
 
 **Constraints**: Sin dependencias nuevas, sin comunicación backend, parada silenciosa (sin notificación/sonido)
 

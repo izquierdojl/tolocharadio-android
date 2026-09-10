@@ -50,7 +50,7 @@ fun SleepTimerButton(
                         containerColor = MaterialTheme.colorScheme.error,
                     ) {
                         Text(
-                            text = uiState.remainingFormatted,
+                            text = stringResource(R.string.sleep_timer_badge_minutes, uiState.remainingMinutes),
                             style = MaterialTheme.typography.labelSmall,
                         )
                     }
@@ -93,7 +93,7 @@ fun SleepTimerButton(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = stringResource(R.string.sleep_timer_remaining, uiState.remainingFormatted),
+                            text = stringResource(R.string.sleep_timer_remaining_minutes, uiState.remainingMinutes),
                             style = MaterialTheme.typography.bodyLarge,
                         )
                     },

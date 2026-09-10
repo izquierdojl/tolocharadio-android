@@ -35,7 +35,7 @@ class SleepTimerUseCaseTest {
             val state = useCase.state.value
             assertTrue(state is SleepTimerState.Active)
             assertEquals(15, (state as SleepTimerState.Active).durationMinutes)
-            assertEquals(15 * 60L, state.remainingSeconds)
+            assertEquals(15, state.remainingMinutes)
         }
 
     @Test
@@ -60,15 +60,27 @@ class SleepTimerUseCaseTest {
         }
 
     @Test
-    fun `countdown decrements remaining seconds`() =
+    fun `countdown decrements remaining minutes`() =
         testScope.runTest {
             useCase.start(SleepTimerDuration.MINUTES_15) { }
 
-            advanceTimeBy(3500L)
+            advanceTimeBy(60_500L)
 
             val state = useCase.state.value
             assertTrue(state is SleepTimerState.Active)
-            assertEquals(15 * 60L - 3, (state as SleepTimerState.Active).remainingSeconds)
+            assertEquals(14, (state as SleepTimerState.Active).remainingMinutes)
+        }
+
+    @Test
+    fun `countdown keeps minutes until a full minute elapses`() =
+        testScope.runTest {
+            useCase.start(SleepTimerDuration.MINUTES_15) { }
+
+            advanceTimeBy(59_000L)
+
+            val state = useCase.state.value
+            assertTrue(state is SleepTimerState.Active)
+            assertEquals(15, (state as SleepTimerState.Active).remainingMinutes)
         }
 
     @Test

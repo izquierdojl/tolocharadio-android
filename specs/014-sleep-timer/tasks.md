@@ -191,3 +191,15 @@
 - Constitution III requires tests — included in Phase 2 and Phase 3
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
+
+---
+
+## Phase 8: Convergence — Enmienda: tiempo restante solo en minutos
+
+**Purpose**: Cambio solicitado 2026-09-10: el indicador de tiempo restante muestra solo minutos (sin MM:SS) y se actualiza 1 vez/minuto para reducir consumo de CPU y batería (FR-009).
+
+- [x] T019 Change `SleepTimerState.Active` to `remainingMinutes: Int` and tick every 60 s in `app/src/main/java/com/izquierdojl/tolocharadio/domain/SleepTimerUseCase.kt` per FR-009 (partial)
+- [x] T020 Simplify `SleepTimerUiState.Active` to `remainingMinutes` and remove the MM:SS formatter in `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/SleepTimerViewModel.kt` per FR-006, FR-009 (partial)
+- [x] T021 Show "X min" badge and "Quedan X minutos" header in `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/SleepTimerButton.kt` + `app/src/main/res/values/strings.xml` per FR-006 (partial)
+- [x] T022 Update `SleepTimerUseCaseTest` and `SleepTimerViewModelTest` for minute granularity in `app/src/test/java/com/izquierdojl/tolocharadio/` per Constitution III (partial)
+- [x] T023 Run SleepTimer unit tests + Detekt/ktlint on modified files per Constitution III (partial; Detekt/ktlint failures are pre-existing baseline issues, no new issues introduced)

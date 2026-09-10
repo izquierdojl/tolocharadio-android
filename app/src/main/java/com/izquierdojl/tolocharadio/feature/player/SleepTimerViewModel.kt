@@ -19,7 +19,6 @@ sealed interface SleepTimerUiState {
     data object Inactive : SleepTimerUiState
 
     data class Active(
-        val remainingFormatted: String,
         val remainingMinutes: Int,
     ) : SleepTimerUiState
 }
@@ -47,8 +46,7 @@ class SleepTimerViewModel
                         is SleepTimerState.Inactive -> SleepTimerUiState.Inactive
                         is SleepTimerState.Active ->
                             SleepTimerUiState.Active(
-                                remainingFormatted = formatRemaining(timerState.remainingSeconds),
-                                remainingMinutes = ((timerState.remainingSeconds + 59) / 60).toInt(),
+                                remainingMinutes = timerState.remainingMinutes,
                             )
                     }
                 }
@@ -78,14 +76,5 @@ class SleepTimerViewModel
          */
         fun cancel() {
             sleepTimerUseCase.cancel()
-        }
-
-        /**
-         * Formatea segundos restantes como "MM:SS".
-         */
-        private fun formatRemaining(totalSeconds: Long): String {
-            val minutes = totalSeconds / 60
-            val seconds = totalSeconds % 60
-            return "%d:%02d".format(minutes, seconds)
         }
     }

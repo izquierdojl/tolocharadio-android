@@ -11,6 +11,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** Milisegundos que tiene un minuto. */
+private const val MILLIS_PER_MINUTE = 60_000L
+
 /**
  * Opciones de duración predefinidas para el temporizador de apagado.
  */
@@ -30,7 +33,7 @@ sealed interface SleepTimerState {
 
     data class Active(
         val durationMinutes: Int,
-        val remainingSeconds: Long,
+        val remainingMinutes: Int,
         val expiresAtEpochMs: Long,
     ) : SleepTimerState
 }
@@ -68,25 +71,25 @@ class SleepTimerUseCase
         ) {
             countdownJob?.cancel()
             val now = System.currentTimeMillis()
-            val totalSeconds = duration.minutes * 60L
-            val expiresAt = now + totalSeconds * 1000L
+            val totalMinutes = duration.minutes
+            val expiresAt = now + totalMinutes * MILLIS_PER_MINUTE
 
             _state.value =
                 SleepTimerState.Active(
-                    durationMinutes = duration.minutes,
-                    remainingSeconds = totalSeconds,
+                    durationMinutes = totalMinutes,
+                    remainingMinutes = totalMinutes,
                     expiresAtEpochMs = expiresAt,
                 )
 
             countdownJob =
                 scope.launch {
-                    var remaining = totalSeconds
+                    var remaining = totalMinutes
                     while (remaining > 0) {
-                        delay(1000L)
+                        delay(MILLIS_PER_MINUTE)
                         remaining--
                         val currentState = _state.value
                         if (currentState is SleepTimerState.Active) {
-                            _state.value = currentState.copy(remainingSeconds = remaining)
+                            _state.value = currentState.copy(remainingMinutes = remaining)
                         }
                     }
                     _state.value = SleepTimerState.Inactive

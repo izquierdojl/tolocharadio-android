@@ -22,7 +22,9 @@ En `TolochaNavGraph.kt`, dentro de `TopAppBar.actions`, ANTES del botón de Serv
 | Estado | Icono | Badge | onClick |
 |--------|-------|-------|---------|
 | Inactivo | `Icons.Outlined.Timer` | Ninguno | Abre menú de duraciones |
-| Activo | `Icons.Filled.Timer` | `MM:SS` restante | Abre menú con tiempo restante + cancelar |
+| Activo | `Icons.Filled.Timer` | `X min` restante | Abre menú con tiempo restante + cancelar |
+
+> El badge muestra solo minutos (sin segundos) y se actualiza como máximo una vez por minuto (FR-009: menor consumo de CPU/batería).
 
 ### Menú desplegable (DropdownMenu)
 
@@ -42,7 +44,7 @@ En `TolochaNavGraph.kt`, dentro de `TopAppBar.actions`, ANTES del botón de Serv
 
 ```
 ┌─────────────────────────┐
-│  ⏱ Quedan 23:45        │
+│  ⏱ Quedan 23 minutos   │
 │  ─────────────────────  │
 │  Cancelar temporizador  │
 └─────────────────────────┘
@@ -59,7 +61,7 @@ En `TolochaNavGraph.kt`, dentro de `TopAppBar.actions`, ANTES del botón de Serv
 | State | Descripción |
 |-------|-------------|
 | `SleepTimerUiState.Inactive` | Sin timer activo, botón sin badge |
-| `SleepTimerUiState.Active(remainingFormatted)` | Timer activo, badge con "MM:SS" |
+| `SleepTimerUiState.Active(remainingMinutes)` | Timer activo, badge con "X min" |
 
 ### Interacciones
 

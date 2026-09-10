@@ -14,7 +14,7 @@ SleepTimerState
 ├── Inactive                          # Sin temporizador activo
 └── Active(
 │       durationMinutes: Int,         # Duración seleccionada (15, 30, 45, 60, 90)
-│       remainingSeconds: Long,       # Segundos restantes (decrementa cada segundo)
+│       remainingMinutes: Int,        # Minutos restantes (decrementa cada minuto)
 │       expiresAtEpochMs: Long        # Instante de expiración (epoch ms)
 │   )
 ```
@@ -30,7 +30,7 @@ Active ──[restart with new duration]──► Active
 
 **Validaciones**:
 - `durationMinutes` DEBE ser uno de: 15, 30, 45, 60, 90
-- `remainingSeconds` DEBE ser >= 0
+- `remainingMinutes` DEBE ser >= 0
 - `expiresAtEpochMs` DEBE ser > System.currentTimeMillis()
 
 ### SleepTimerDuration (enum)
@@ -71,5 +71,5 @@ TolochaNavGraph
 ## Consideraciones de threading
 
 - El countdown se ejecuta en `Dispatchers.Default` (no bloquea el Main)
-- La actualización de `remainingSeconds` se emite en `Dispatchers.Main` (para la UI)
+- La actualización de `remainingMinutes` se emite una vez por minuto (no cada segundo), reduciendo el consumo de CPU y batería
 - La expiración (llamada a `PlayerViewModel.stop()`) DEBE ocurrir en el Main dispatcher

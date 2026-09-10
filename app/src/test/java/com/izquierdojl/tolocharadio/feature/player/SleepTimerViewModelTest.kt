@@ -49,7 +49,7 @@ class SleepTimerViewModelTest {
         }
 
     @Test
-    fun `start updates uiState to Active with formatted time`() =
+    fun `start updates uiState to Active with remaining minutes`() =
         testScope.runTest {
             val states = mutableListOf<SleepTimerUiState>()
             val subscription = launch { viewModel.uiState.collect { states.add(it) } }
@@ -58,7 +58,7 @@ class SleepTimerViewModelTest {
 
             val uiState = states.last()
             assertTrue(uiState is SleepTimerUiState.Active)
-            assertEquals("15:00", (uiState as SleepTimerUiState.Active).remainingFormatted)
+            assertEquals(15, (uiState as SleepTimerUiState.Active).remainingMinutes)
             subscription.cancel()
         }
 
@@ -95,29 +95,31 @@ class SleepTimerViewModelTest {
         }
 
     @Test
-    fun `formatting handles single digit minutes`() =
+    fun `uiState keeps remaining minutes until a full minute elapses`() =
         testScope.runTest {
             val states = mutableListOf<SleepTimerUiState>()
             val subscription = launch { viewModel.uiState.collect { states.add(it) } }
 
             viewModel.start(SleepTimerDuration.MINUTES_15)
+            advanceTimeBy(59_000L)
 
-            val uiState = states.last() as SleepTimerUiState.Active
-            assertEquals("15:00", uiState.remainingFormatted)
+            val uiState = states.last()
+            assertTrue(uiState is SleepTimerUiState.Active)
+            assertEquals(15, (uiState as SleepTimerUiState.Active).remainingMinutes)
             subscription.cancel()
         }
 
     @Test
-    fun `formatting handles seconds correctly`() =
+    fun `uiState decrements remaining minutes after a full minute`() =
         testScope.runTest {
             val states = mutableListOf<SleepTimerUiState>()
             val subscription = launch { viewModel.uiState.collect { states.add(it) } }
 
             viewModel.start(SleepTimerDuration.MINUTES_15)
-            advanceTimeBy(3500L)
+            advanceTimeBy(60_500L)
 
             val uiState = states.last() as SleepTimerUiState.Active
-            assertEquals("14:57", uiState.remainingFormatted)
+            assertEquals(14, uiState.remainingMinutes)
             subscription.cancel()
         }
 }

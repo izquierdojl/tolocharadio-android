@@ -63,13 +63,28 @@
 
 ### 5. Indicador visual del temporizador activo
 
-**Decision**: Badge con tiempo restante sobre el icono del reloj.
+**Decision**: Badge con minutos restantes sobre el icono del reloj (p. ej. "23 min").
 
 **Rationale**:
 - Material3 soporta `BadgedBox` nativamente
-- Muestra información útil (tiempo restante) sin abrir el menú
+- Muestra información útil (minutos restantes) sin abrir el menú
+- Solo minutos (sin segundos): el estado se actualiza una vez por minuto en lugar de cada segundo, reduciendo consumo de CPU y batería (FR-009)
 - Patrón estándar en apps de radio (Spotify, Pocket Casts)
 
 **Alternatives considered**:
+- Badge con MM:SS: obliga a actualizar la UI cada segundo; descartado por consumo de CPU/batería
 - Cambio de icono (clock → clock con check): menos informativo
 - Animación de pulso: distractiva para una función de sueño
+
+### 6. Frecuencia de actualización del countdown
+
+**Decision**: El countdown usa `delay(60_000)` y decrementa `remainingMinutes` una vez por minuto.
+
+**Rationale**:
+- El usuario solo necesita precisión en minutos para un temporizador de 15–90 min
+- Menos despertares de corrutina y menos recomposiciones de Compose → menor consumo de CPU y batería
+- La expiración sigue ocurriendo en el instante correcto (el ciclo termina tras el último minuto completo)
+
+**Alternatives considered**:
+- Tick cada segundo con `remainingSeconds`: descartado por el coste de CPU/batería
+- `delay` de la duración completa sin ticks: no permitiría mostrar minutos restantes

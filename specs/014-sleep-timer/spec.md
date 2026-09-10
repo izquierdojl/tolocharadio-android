@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-08
 
-**Status**: Done (2026-09-08; todo verificado manualmente por el usuario)
+**Status**: Done (2026-09-08; todo verificado manualmente por el usuario) — Enmendada 2026-09-10: tiempo restante solo en minutos (actualización 1/min, FR-009)
 
 **Input**: User description: "añadir temporizador de apagado tipico de radio. Se establecerá un tiempo límite y a su llegada se detendrá la reproducción. Será un nuevo botón típico en la barra superior"
 
@@ -29,16 +29,16 @@ El usuario está escuchando una emisora y pulsa el botón de temporizador en la 
 
 ### User Story 2 - Ver tiempo restante del temporizador (Priority: P2)
 
-El usuario quiere saber cuánto tiempo queda antes de que se detenga la reproducción. Al mantener pulsado o al abrir el menú del temporizador, se muestra el tiempo restante en formato minutos:segundos.
+El usuario quiere saber cuánto tiempo queda antes de que se detenga la reproducción. Al mantener pulsado o al abrir el menú del temporizador, se muestra el tiempo restante en minutos (sin segundos). Para minimizar el consumo de CPU y batería, el indicador se actualiza como máximo una vez por minuto.
 
 **Why this priority**: Proporciona feedback al usuario sobre el estado del temporizador, mejorando la experiencia de uso y evitando sorpresas cuando la reproducción se detenga.
 
-**Independent Test**: se puede probar activando un temporizador, esperando unos segundos, y verificando que el tiempo restante se muestra correctamente.
+**Independent Test**: se puede probar activando un temporizador, esperando al menos un minuto, y verificando que el tiempo restante se muestra correctamente en minutos.
 
 **Acceptance Scenarios**:
 
-1. **Given** el temporizador está activo, **When** el usuario pulsa el botón de temporizador, **Then** se muestra el tiempo restante en el menú desplegado.
-2. **Given** quedan 5 minutos, **When** el usuario ve el tiempo restante, **Then** se muestra "5:00" o "5 min" de forma legible.
+1. **Given** el temporizador está activo, **When** el usuario pulsa el botón de temporizador, **Then** se muestra el tiempo restante en minutos en el menú desplegado.
+2. **Given** quedan 5 minutos, **When** el usuario ve el tiempo restante, **Then** se muestra "5 min" de forma legible, sin segundos.
 
 ---
 
@@ -89,9 +89,10 @@ El usuario activa el temporizador y luego navega a otras secciones de la app (Ex
 - **FR-003**: Al seleccionar una duración, el sistema DEBE iniciar un temporizador que detenga la reproducción al expirar el tiempo seleccionado.
 - **FR-004**: El botón DEBE mostrar un indicador visual cuando el temporizador está activo (p. ej. cambio de icono, badge, o animación).
 - **FR-005**: El sistema DEBE permitir al usuario cancelar un temporizador activo desde el mismo menú.
-- **FR-006**: Al pulsar el botón con un temporizador activo, el sistema DEBE mostrar el tiempo restante y la opción de cancelar.
+- **FR-006**: Al pulsar el botón con un temporizador activo, el sistema DEBE mostrar el tiempo restante en minutos (sin segundos) y la opción de cancelar.
 - **FR-007**: El temporizador DEBE seguir funcionando mientras la reproducción continúe en segundo plano (servicio de Media3).
 - **FR-008**: Si el usuario activa un nuevo temporizador estando uno activo, el sistema DEBE reemplazar el anterior por el nuevo.
+- **FR-009**: El indicador del temporizador activo DEBE actualizarse como máximo una vez por minuto (sin descontar segundos), para minimizar el consumo de CPU y batería.
 
 ### Key Entities
 
@@ -111,6 +112,10 @@ El usuario activa el temporizador y luego navega a otras secciones de la app (Ex
 ### Session 2026-09-08
 
 - Q: Cuando el temporizador expira y la reproducción se detiene, ¿debe mostrarse alguna notificación o sonido, o simplemente se detiene en silencio? → A: Parada silenciosa (sin notificación, sin sonido). Es el comportamiento estándar en temporizadores de radio y evita despertar al usuario.
+
+### Session 2026-09-10
+
+- Q: ¿El tiempo restante debe mostrarse con precisión de segundos (MM:SS)? → A: No. Se muestra solo en minutos (p. ej. "23 min") y el contador se actualiza una vez por minuto. Motivo: menos consumo de CPU y de batería, y es suficientemente práctico para un temporizador de 15–90 minutos.
 
 ## Assumptions
 
