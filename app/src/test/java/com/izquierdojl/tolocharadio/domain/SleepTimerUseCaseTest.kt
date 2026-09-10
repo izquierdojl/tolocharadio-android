@@ -12,13 +12,12 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SleepTimerUseCaseTest {
-    private val testDispatcher = StandardTestDispatcher()
-    private val testScope = TestScope(testDispatcher)
+    private val testScope = TestScope(StandardTestDispatcher())
     private lateinit var useCase: SleepTimerUseCase
 
     @Before
     fun setup() {
-        useCase = SleepTimerUseCase()
+        useCase = SleepTimerUseCase(testScope)
     }
 
     @Test
@@ -65,7 +64,7 @@ class SleepTimerUseCaseTest {
         testScope.runTest {
             useCase.start(SleepTimerDuration.MINUTES_15) { }
 
-            advanceTimeBy(3000L)
+            advanceTimeBy(3500L)
 
             val state = useCase.state.value
             assertTrue(state is SleepTimerState.Active)

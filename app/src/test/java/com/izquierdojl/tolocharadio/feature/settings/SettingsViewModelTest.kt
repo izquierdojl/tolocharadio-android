@@ -1,11 +1,13 @@
 package com.izquierdojl.tolocharadio.feature.settings
 
 import com.izquierdojl.tolocharadio.MainDispatcherRule
+import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.repo.UserRepo
 import com.izquierdojl.tolocharadio.domain.auth.LogoutUseCase
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -26,6 +28,7 @@ class SettingsViewModelTest {
     private fun vm(): SettingsViewModel {
         every { prefs.themeMode } returns flowOf(ThemeMode.DARK)
         every { prefs.startScreen } returns flowOf(StartScreen.FAVORITES)
+        coEvery { users.patchMe(any(), any()) } returns ApiResult.Ok(mockk(relaxed = true))
         return SettingsViewModel(prefs, users, logoutUseCase)
     }
 

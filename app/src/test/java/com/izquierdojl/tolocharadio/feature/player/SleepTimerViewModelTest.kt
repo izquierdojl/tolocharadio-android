@@ -1,28 +1,33 @@
 package com.izquierdojl.tolocharadio.feature.player
 
+import com.izquierdojl.tolocharadio.MainDispatcherRule
 import com.izquierdojl.tolocharadio.domain.SleepTimerDuration
 import com.izquierdojl.tolocharadio.domain.SleepTimerState
 import com.izquierdojl.tolocharadio.domain.SleepTimerUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SleepTimerViewModelTest {
-    private val testDispatcher = StandardTestDispatcher()
-    private val testScope = TestScope(testDispatcher)
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
+    private val testScope = TestScope(UnconfinedTestDispatcher())
     private lateinit var useCase: SleepTimerUseCase
     private lateinit var viewModel: SleepTimerViewModel
 
     @Before
     fun setup() {
-        useCase = SleepTimerUseCase()
+        useCase = SleepTimerUseCase(testScope)
         viewModel = SleepTimerViewModel(useCase)
     }
 
@@ -46,11 +51,15 @@ class SleepTimerViewModelTest {
     @Test
     fun `start updates uiState to Active with formatted time`() =
         testScope.runTest {
+            val states = mutableListOf<SleepTimerUiState>()
+            val subscription = launch { viewModel.uiState.collect { states.add(it) } }
+
             viewModel.start(SleepTimerDuration.MINUTES_15)
 
-            val uiState = viewModel.uiState.value
+            val uiState = states.last()
             assertTrue(uiState is SleepTimerUiState.Active)
             assertEquals("15:00", (uiState as SleepTimerUiState.Active).remainingFormatted)
+            subscription.cancel()
         }
 
     @Test
@@ -88,19 +97,27 @@ class SleepTimerViewModelTest {
     @Test
     fun `formatting handles single digit minutes`() =
         testScope.runTest {
+            val states = mutableListOf<SleepTimerUiState>()
+            val subscription = launch { viewModel.uiState.collect { states.add(it) } }
+
             viewModel.start(SleepTimerDuration.MINUTES_15)
 
-            val uiState = viewModel.uiState.value as SleepTimerUiState.Active
+            val uiState = states.last() as SleepTimerUiState.Active
             assertEquals("15:00", uiState.remainingFormatted)
+            subscription.cancel()
         }
 
     @Test
     fun `formatting handles seconds correctly`() =
         testScope.runTest {
-            viewModel.start(SleepTimerDuration.MINUTES_15)
-            advanceTimeBy(3000L)
+            val states = mutableListOf<SleepTimerUiState>()
+            val subscription = launch { viewModel.uiState.collect { states.add(it) } }
 
-            val uiState = viewModel.uiState.value as SleepTimerUiState.Active
+            viewModel.start(SleepTimerDuration.MINUTES_15)
+            advanceTimeBy(3500L)
+
+            val uiState = states.last() as SleepTimerUiState.Active
             assertEquals("14:57", uiState.remainingFormatted)
+            subscription.cancel()
         }
 }

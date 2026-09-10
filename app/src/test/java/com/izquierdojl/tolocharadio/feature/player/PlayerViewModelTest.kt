@@ -18,12 +18,14 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -55,6 +57,11 @@ class PlayerViewModelTest {
     private val station = StationDto(id = "u1", name = "Tolocha")
 
     private fun vm() = PlayerViewModel(context, playback, prefs, dataSource, activeStationHolder, exoPlayer, castPlayerManager)
+
+    @Before
+    fun setup() {
+        coEvery { playback.status(any()) } coAnswers { awaitCancellation() }
+    }
 
     @Test
     fun `estado inicial es Idle`() {

@@ -1,10 +1,8 @@
 package com.izquierdojl.tolocharadio.domain
 
+import com.izquierdojl.tolocharadio.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,13 +41,14 @@ sealed interface SleepTimerState {
  * Gestiona la lógica de countdown con corrutinas. Cuando el temporizador expira,
  * notifica al caller mediante [onExpired].
  *
- * Thread-safety: todas las operaciones se ejecutan en [Dispatchers.Default].
+ * Thread-safety: todas las operaciones se ejecutan en el [CoroutineScope] inyectado.
  */
 @Singleton
 class SleepTimerUseCase
     @Inject
-    constructor() {
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    constructor(
+        @ApplicationScope private val scope: CoroutineScope,
+    ) {
 
         private val _state = MutableStateFlow<SleepTimerState>(SleepTimerState.Inactive)
         val state: StateFlow<SleepTimerState> = _state.asStateFlow()
@@ -105,9 +104,9 @@ class SleepTimerUseCase
         }
 
         /**
-         * Libera recursos del CoroutineScope.
+         * Cancela el temporizador activo y libera recursos.
          */
         fun release() {
-            scope.cancel()
+            cancel()
         }
     }
