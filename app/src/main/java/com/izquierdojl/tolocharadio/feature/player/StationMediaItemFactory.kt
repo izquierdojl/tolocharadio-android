@@ -20,9 +20,10 @@ import javax.inject.Singleton
  * Único punto de construcción de `MediaItem`/`MediaSource` para reproducción
  * local, Cast y reanudación post-Cast (spec 0019, research R7).
  *
- * Desde la spec 0022 la URI es **siempre** la del proxy del servidor, sin
- * credenciales: HLS se reproduce con `HlsMediaSource` sobre el manifiesto
- * reescrito y el resto con `ProgressiveMediaSource`.
+ * La reproducción local usa **siempre** el proxy del servidor (spec 0021/0022):
+ * HLS con `HlsMediaSource` sobre el manifiesto reescrito y el resto con
+ * `ProgressiveMediaSource`. Para **Cast** se usa la URL pública de la emisora
+ * ([createForCast]), porque el receptor no puede autenticarse contra el proxy.
  */
 @OptIn(UnstableApi::class)
 @Singleton
@@ -36,6 +37,17 @@ class StationMediaItemFactory
             source: PlaybackSource,
             baseUrl: String,
         ): String = streamUrl(baseUrl, source.stationId)
+
+        /**
+         * URI para Cast: la **URL pública** de la emisora. El receptor descarga
+         * el stream por su cuenta y no puede enviar `Authorization`, así que el
+         * proxy autenticado no le sirve. Si la emisora no tuviera URL, cae al
+         * proxy (comportamiento anterior).
+         */
+        fun castUriFor(
+            station: StationDto,
+            fallbackBaseUrl: String,
+        ): String = station.url.ifBlank { streamUrl(fallbackBaseUrl, station.id) }
 
         /**
          * `mimeType` del `MediaItem`. **Nunca `null`**: `CastPlayer` exige que el
@@ -71,21 +83,36 @@ class StationMediaItemFactory
             station: StationDto,
             source: PlaybackSource,
             baseUrl: String,
-        ): MediaItem {
-            val metadata =
-                MediaMetadata.Builder()
-                    .setTitle(station.name)
-                    .setArtist("Tolocha Radio")
-                    .setArtworkUri(station.favicon?.let { Uri.parse(it) })
-                    .setAlbumTitle("Tolocha Radio")
-                    .build()
-            val builder =
-                MediaItem.Builder()
-                    .setUri(uriFor(source, baseUrl))
-                    .setMediaMetadata(metadata)
-                    .setMimeType(mimeTypeFor(station, source))
-            return builder.build()
-        }
+        ): MediaItem =
+            MediaItem.Builder()
+                .setUri(uriFor(source, baseUrl))
+                .setMediaMetadata(metadataFor(station))
+                .setMimeType(mimeTypeFor(station, source))
+                .build()
+
+        /**
+         * `MediaItem` para Cast: usa la **URL pública** de la emisora porque el
+         * receptor descarga el stream por su cuenta y no puede autenticarse
+         * contra el proxy (`Authorization: Bearer`). Conserva el `mimeType`.
+         */
+        fun createForCast(
+            station: StationDto,
+            source: PlaybackSource,
+            fallbackBaseUrl: String,
+        ): MediaItem =
+            MediaItem.Builder()
+                .setUri(castUriFor(station, fallbackBaseUrl))
+                .setMediaMetadata(metadataFor(station))
+                .setMimeType(mimeTypeFor(station, source))
+                .build()
+
+        private fun metadataFor(station: StationDto): MediaMetadata =
+            MediaMetadata.Builder()
+                .setTitle(station.name)
+                .setArtist("Tolocha Radio")
+                .setArtworkUri(station.favicon?.let { Uri.parse(it) })
+                .setAlbumTitle("Tolocha Radio")
+                .build()
 
         /** Crea la `MediaSource` adecuada: HLS o progresiva, siempre por proxy. */
         fun createMediaSource(

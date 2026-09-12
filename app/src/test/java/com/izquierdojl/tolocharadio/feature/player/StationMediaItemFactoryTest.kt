@@ -50,4 +50,15 @@ class StationMediaItemFactoryTest {
             factory.mimeTypeFor(station("https://host/live.m3u8"), source),
         )
     }
+
+    @Test
+    fun `cast usa la url publica de la emisora`() {
+        val url = "https://stream.example.com/live.mp3"
+        assertEquals(url, factory.castUriFor(station(url), base))
+    }
+
+    @Test
+    fun `cast cae al proxy si la emisora no tiene url`() {
+        assertEquals("https://radio.test/api/v1/playback/s1", factory.castUriFor(station(""), base))
+    }
 }
