@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-12
 
-**Status**: Draft
+**Status**: Done (2026-09-12; todo verificado en emulador por el usuario)
 
 **Input**: User description: "El backend ya resuelve las listas m3u/m3u8/pls en el proxy de playback. Hay que revertir la excepción que dejamos en la spec 0019 y volver a reproducir todas las emisoras por el proxy autenticado, restaurando el historial server-side y el preestado de disponibilidad, y eliminando el código de resolución de listas que ya no hace falta en el cliente."
 
