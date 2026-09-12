@@ -281,7 +281,7 @@ class CastPlayerManager
             val player = castPlayer ?: return
 
             val baseUrl = runBlocking { prefs.baseUrl.first() }
-            val item = mediaItemFactory.create(station, source, baseUrl)
+            val item = mediaItemFactory.createForCast(station, source, baseUrl)
             player.setMediaItem(item)
             player.prepare()
             player.playWhenReady = true
