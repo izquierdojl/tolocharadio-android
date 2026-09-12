@@ -320,7 +320,10 @@ function Format-SpecKitCommand {
 # Find a usable Python 3 executable (python3, python, or py -3).
 # Returns the command/arguments as an array, or $null if none found.
 function Get-Python3Command {
-    if (Get-Command python3 -ErrorAction SilentlyContinue) { return @('python3') }
+    if (Get-Command python3 -ErrorAction SilentlyContinue) {
+        $ver = & python3 --version 2>&1
+        if ($ver -match 'Python 3') { return @('python3') }
+    }
     if (Get-Command python -ErrorAction SilentlyContinue) {
         $ver = & python --version 2>&1
         if ($ver -match 'Python 3') { return @('python') }
