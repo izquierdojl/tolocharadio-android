@@ -9,7 +9,6 @@ import com.tolocharadio.domain.notification.NotificationAction
  * Handles navigation from notifications to the appropriate screens.
  */
 class NotificationNavigation {
-    
     companion object {
         const val NOTIFICATION_TAP_ACTION = "com.tolocharadio.NOTIFICATION_TAP"
         const val NOTIFICATION_TYPE_EXTRA = "notification_type"
@@ -18,7 +17,7 @@ class NotificationNavigation {
         const val NOTIFICATION_TITLE_EXTRA = "notification_title"
         const val NOTIFICATION_MESSAGE_EXTRA = "notification_message"
     }
-    
+
     /**
      * Creates an intent for handling notification taps.
      * @param context The context
@@ -35,7 +34,7 @@ class NotificationNavigation {
         notificationAction: String,
         contentId: String? = null,
         title: String,
-        message: String
+        message: String,
     ): Intent {
         return Intent(context, com.izquierdojl.tolocharadio.MainActivity::class.java).apply {
             action = NOTIFICATION_TAP_ACTION
@@ -44,12 +43,12 @@ class NotificationNavigation {
             contentId?.let { putExtra(CONTENT_ID_EXTRA, it) }
             putExtra(NOTIFICATION_TITLE_EXTRA, title)
             putExtra(NOTIFICATION_MESSAGE_EXTRA, message)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or 
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
     }
-    
+
     /**
      * Navigates to the appropriate screen based on the notification action.
      * @param navController The navigation controller
@@ -59,7 +58,7 @@ class NotificationNavigation {
     fun navigateToScreen(
         navController: NavController,
         action: NotificationAction,
-        contentId: String? = null
+        contentId: String? = null,
     ) {
         when (action) {
             NotificationAction.OPEN_PLAYER -> {
@@ -90,7 +89,7 @@ class NotificationNavigation {
             }
         }
     }
-    
+
     /**
      * Navigates to player screen with focus on current playback.
      * @param navController The navigation controller
@@ -98,13 +97,13 @@ class NotificationNavigation {
      */
     fun navigateToPlayerWithFocus(
         navController: NavController,
-        stationId: String
+        stationId: String,
     ) {
         navController.navigate("player/$stationId") {
             popUpTo("player") { inclusive = true }
         }
     }
-    
+
     /**
      * Extracts notification data from an intent.
      * @param intent The intent containing notification data
@@ -116,19 +115,20 @@ class NotificationNavigation {
         val title = intent.getStringExtra(NOTIFICATION_TITLE_EXTRA) ?: return null
         val message = intent.getStringExtra(NOTIFICATION_MESSAGE_EXTRA) ?: return null
         val contentId = intent.getStringExtra(CONTENT_ID_EXTRA)
-        
+
         return try {
             val notificationType = com.tolocharadio.domain.notification.NotificationType.valueOf(type)
             val notificationAction = com.tolocharadio.domain.notification.NotificationAction.valueOf(action)
-            
+
             com.tolocharadio.domain.notification.NotificationData(
                 type = notificationType,
                 title = title,
                 message = message,
                 contentId = contentId,
-                action = notificationAction
+                action = notificationAction,
             )
         } catch (e: IllegalArgumentException) {
+            android.util.Log.w("NotificationNavigation", "Extras de notificación inválidos", e)
             null
         }
     }

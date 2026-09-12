@@ -13,13 +13,12 @@ import com.tolocharadio.domain.notification.NotificationType
  * Builds content notifications.
  */
 class ContentNotificationBuilder(
-    private val context: Context
+    private val context: Context,
 ) {
-    
     companion object {
         const val CONTENT_NOTIFICATION_ID = 1002
     }
-    
+
     /**
      * Builds a content notification.
      * @param contentId The content ID
@@ -30,11 +29,11 @@ class ContentNotificationBuilder(
     fun buildNotification(
         contentId: String,
         contentTitle: String,
-        contentMessage: String
+        contentMessage: String,
     ): Notification {
         val intent = createNotificationTapIntent(contentId, contentTitle, contentMessage)
         val pendingIntent = createPendingIntent(intent)
-        
+
         return NotificationCompat.Builder(context, NotificationChannels.CONTENT_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(contentTitle)
@@ -45,14 +44,14 @@ class ContentNotificationBuilder(
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .build()
     }
-    
+
     /**
      * Creates an intent for notification tap.
      */
     private fun createNotificationTapIntent(
         contentId: String,
         contentTitle: String,
-        contentMessage: String
+        contentMessage: String,
     ): Intent {
         return Intent(context, com.izquierdojl.tolocharadio.MainActivity::class.java).apply {
             action = NotificationNavigation.NOTIFICATION_TAP_ACTION
@@ -61,12 +60,12 @@ class ContentNotificationBuilder(
             putExtra(NotificationNavigation.CONTENT_ID_EXTRA, contentId)
             putExtra(NotificationNavigation.NOTIFICATION_TITLE_EXTRA, contentTitle)
             putExtra(NotificationNavigation.NOTIFICATION_MESSAGE_EXTRA, contentMessage)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or 
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
     }
-    
+
     /**
      * Creates a PendingIntent for the notification.
      */
@@ -75,10 +74,10 @@ class ContentNotificationBuilder(
             context,
             CONTENT_NOTIFICATION_ID,
             intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
     }
-    
+
     /**
      * Shows the notification.
      * @param notification The notification to show
@@ -87,7 +86,7 @@ class ContentNotificationBuilder(
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(CONTENT_NOTIFICATION_ID, notification)
     }
-    
+
     /**
      * Cancels the content notification.
      */

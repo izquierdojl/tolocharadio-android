@@ -27,8 +27,9 @@ class ShortcutLaunchViewModel
 
         val authState: StateFlow<AuthState> = sessionManager.authState
 
-        suspend fun resolve(stationId: String): ShortcutLaunchResolution =
-            resolveLaunch(stationId, sessionManager.authState.value)
+        suspend fun resolve(stationId: String): ShortcutLaunchResolution {
+            return resolveLaunch(stationId, sessionManager.authState.value)
+        }
 
         fun consume() = pendingHolder.clear()
     }

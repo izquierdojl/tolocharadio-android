@@ -3,7 +3,6 @@ package com.izquierdojl.tolocharadio.feature.player
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
-import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
@@ -99,18 +98,20 @@ class RadioPlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
-        val sessionActivityIntent = Intent(this, com.izquierdojl.tolocharadio.MainActivity::class.java).apply {
-            action = NotificationNavigation.NOTIFICATION_TAP_ACTION
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+        val sessionActivityIntent =
+            Intent(this, com.izquierdojl.tolocharadio.MainActivity::class.java).apply {
+                action = NotificationNavigation.NOTIFICATION_TAP_ACTION
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
                     Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        val sessionActivityPendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            sessionActivityIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
+            }
+        val sessionActivityPendingIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                sessionActivityIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
 
         session =
             MediaSession.Builder(this, player)

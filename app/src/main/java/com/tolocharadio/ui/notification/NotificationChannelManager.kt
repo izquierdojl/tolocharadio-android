@@ -9,11 +9,10 @@ import com.tolocharadio.domain.notification.NotificationChannels
  * Manages notification channels for the application.
  */
 class NotificationChannelManager(
-    private val context: Context
+    private val context: Context,
 ) {
-    
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    
+
     /**
      * Creates all notification channels.
      */
@@ -23,7 +22,7 @@ class NotificationChannelManager(
             createChannel(config.id, config.name, config.description, config.importance)
         }
     }
-    
+
     /**
      * Creates a notification channel.
      * @param channelId The channel ID
@@ -35,19 +34,20 @@ class NotificationChannelManager(
         channelId: String,
         channelName: String,
         channelDescription: String,
-        importance: Int
+        importance: Int,
     ) {
-        val channel = NotificationChannel(
-            channelId,
-            channelName,
-            importance
-        ).apply {
-            description = channelDescription
-        }
-        
+        val channel =
+            NotificationChannel(
+                channelId,
+                channelName,
+                importance,
+            ).apply {
+                description = channelDescription
+            }
+
         notificationManager.createNotificationChannel(channel)
     }
-    
+
     /**
      * Checks if a notification channel exists.
      * @param channelId The channel ID
@@ -56,7 +56,7 @@ class NotificationChannelManager(
     fun channelExists(channelId: String): Boolean {
         return notificationManager.getNotificationChannel(channelId) != null
     }
-    
+
     /**
      * Deletes a notification channel.
      * @param channelId The channel ID
@@ -64,7 +64,7 @@ class NotificationChannelManager(
     fun deleteChannel(channelId: String) {
         notificationManager.deleteNotificationChannel(channelId)
     }
-    
+
     /**
      * Gets all notification channel IDs.
      * @return List of channel IDs

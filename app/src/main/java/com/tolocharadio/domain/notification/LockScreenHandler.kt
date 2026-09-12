@@ -7,11 +7,10 @@ import android.content.Context
  * Handles lock screen detection and security requirements.
  */
 class LockScreenHandler(
-    private val context: Context
+    private val context: Context,
 ) {
-    
     private val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-    
+
     /**
      * Checks if the device is locked.
      * @return true if the device is locked, false otherwise
@@ -19,7 +18,7 @@ class LockScreenHandler(
     fun isDeviceLocked(): Boolean {
         return keyguardManager.isKeyguardLocked
     }
-    
+
     /**
      * Checks if the notification should require device unlock.
      * @param notificationData The notification data
@@ -30,7 +29,7 @@ class LockScreenHandler(
         // except for playback notifications when audio is playing
         return isDeviceLocked()
     }
-    
+
     /**
      * Checks if the notification can bypass lock screen.
      * @param notificationData The notification data

@@ -4,7 +4,6 @@ package com.tolocharadio.domain.notification
  * Handles notification errors.
  */
 class NotificationErrorHandler {
-    
     /**
      * Handles invalid notification data error.
      * @param notificationData The invalid notification data
@@ -14,25 +13,31 @@ class NotificationErrorHandler {
         NotificationLogger.logError("Invalid notification data")
         return NotificationAction.OPEN_MAIN
     }
-    
+
     /**
      * Handles navigation error.
      * @param deepLink The deep link that failed
      * @param cause The cause of the error
      * @return The action to perform
      */
-    fun handleNavigationError(deepLink: String, cause: Throwable? = null): NotificationAction {
+    fun handleNavigationError(
+        deepLink: String,
+        cause: Throwable? = null,
+    ): NotificationAction {
         NotificationLogger.logError("Navigation failed for deepLink: $deepLink", cause)
         return NotificationAction.OPEN_MAIN
     }
-    
+
     /**
      * Handles content unavailable error.
      * @param contentId The content ID
      * @param notificationType The notification type
      * @return The action to perform
      */
-    fun handleContentUnavailable(contentId: String?, notificationType: NotificationType): NotificationAction {
+    fun handleContentUnavailable(
+        contentId: String?,
+        notificationType: NotificationType,
+    ): NotificationAction {
         NotificationLogger.logError("Content unavailable: contentId=$contentId, type=$notificationType")
         return when (notificationType) {
             NotificationType.PLAYBACK -> NotificationAction.OPEN_PLAYER
@@ -40,7 +45,7 @@ class NotificationErrorHandler {
             NotificationType.SYSTEM -> NotificationAction.OPEN_MAIN
         }
     }
-    
+
     /**
      * Handles lock screen error.
      * @param notificationData The notification data
@@ -50,7 +55,7 @@ class NotificationErrorHandler {
         NotificationLogger.logSecurityEvent("Lock screen error for notification: ${notificationData.type}")
         return NotificationAction.OPEN_MAIN
     }
-    
+
     /**
      * Handles force stop error.
      * @return The action to perform
@@ -59,7 +64,7 @@ class NotificationErrorHandler {
         NotificationLogger.logSecurityEvent("Force stop error")
         return NotificationAction.OPEN_MAIN
     }
-    
+
     /**
      * Handles unknown error.
      * @param cause The cause of the error

@@ -9,7 +9,10 @@ import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
  * ausente. Sin ningún dato devuelve `"Emisora de radio"`.
  * Si hay conexión Cast activa, muestra el nombre del dispositivo.
  */
-fun panelSubtitle(station: StationDto, castState: CastPlayerState? = null): String {
+fun panelSubtitle(
+    station: StationDto,
+    castState: CastPlayerState? = null,
+): String {
     // FR-006: Si hay conexión Cast, mostrar nombre del dispositivo
     if (castState is CastPlayerState.Cast) {
         return castState.deviceName

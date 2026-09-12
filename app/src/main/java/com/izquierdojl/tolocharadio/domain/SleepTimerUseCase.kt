@@ -52,7 +52,6 @@ class SleepTimerUseCase
     constructor(
         @ApplicationScope private val scope: CoroutineScope,
     ) {
-
         private val _state = MutableStateFlow<SleepTimerState>(SleepTimerState.Inactive)
         val state: StateFlow<SleepTimerState> = _state.asStateFlow()
 

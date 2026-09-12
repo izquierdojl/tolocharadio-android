@@ -63,10 +63,11 @@ fun AppInfoDialog(
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = "Ver repositorio",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline,
-                    ),
+                    style =
+                        MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.primary,
+                            textDecoration = TextDecoration.Underline,
+                        ),
                     modifier =
                         Modifier
                             .fillMaxWidth()
@@ -82,9 +83,10 @@ fun AppInfoDialog(
         confirmButton = {
             TextButton(
                 onClick = onDismiss,
-                modifier = Modifier.semantics {
-                    contentDescription = "Cerrar diálogo de información"
-                },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "Cerrar diálogo de información"
+                    },
             ) {
                 Text("Cerrar")
             }
@@ -92,7 +94,10 @@ fun AppInfoDialog(
     )
 }
 
-private fun openUrl(context: Context, url: String) {
+private fun openUrl(
+    context: Context,
+    url: String,
+) {
     try {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
         context.startActivity(intent)
