@@ -1,6 +1,7 @@
 package com.izquierdojl.tolocharadio.feature.player
 
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
+import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,6 +13,9 @@ import javax.inject.Singleton
  * [PlayerViewModel.stop] / [PlayerViewModel.cancelLoad]. Se lee en
  * el init del ViewModel para sincronizar el estado del ExoPlayer
  * compartido al recrearse la Activity.
+ *
+ * Desde spec 0019 también conserva la [resolvedSource] para reanudar tras
+ * Cast sin repetir la resolución de red.
  */
 @Singleton
 class ActiveStationHolder
@@ -23,14 +27,25 @@ class ActiveStationHolder
         var playerState: PlayerStateType = PlayerStateType.IDLE
             private set
 
-        fun update(station: StationDto?, state: PlayerStateType) {
+        var resolvedSource: PlaybackSource? = null
+            private set
+
+        fun update(
+            station: StationDto?,
+            state: PlayerStateType,
+        ) {
             this.station = station
             this.playerState = state
+        }
+
+        fun updateResolvedSource(source: PlaybackSource?) {
+            this.resolvedSource = source
         }
 
         fun clear() {
             station = null
             playerState = PlayerStateType.IDLE
+            resolvedSource = null
         }
     }
 

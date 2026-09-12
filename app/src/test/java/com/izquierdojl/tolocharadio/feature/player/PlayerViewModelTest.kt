@@ -1,6 +1,8 @@
 package com.izquierdojl.tolocharadio.feature.player
 
 import android.content.Context
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.izquierdojl.tolocharadio.MainDispatcherRule
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
@@ -10,9 +12,11 @@ import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.PlaybackStatusDto
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.data.repo.PlaybackRepo
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
+import com.izquierdojl.tolocharadio.domain.playback.PlaylistContent
+import com.izquierdojl.tolocharadio.domain.playback.PlaylistFetcher
+import com.izquierdojl.tolocharadio.domain.playback.ResolvePlaybackSourceUseCase
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -45,7 +49,6 @@ class PlayerViewModelTest {
         mockk {
             every { baseUrl } returns flowOf("https://radio.test/")
         }
-    private val dataSource: AuthDataSourceFactory = mockk()
     private val activeStationHolder: ActiveStationHolder = mockk(relaxed = true)
     private val exoPlayer: ExoPlayer = mockk(relaxed = true)
     private val castExoPlayer: ExoPlayer = mockk(relaxed = true)
@@ -54,17 +57,21 @@ class PlayerViewModelTest {
             every { exoPlayer } returns castExoPlayer
             every { castState } returns mockk(relaxed = true)
         }
+    private val fetcher: PlaylistFetcher = PlaylistFetcher { PlaylistContent("", it) }
+    private val resolveSource = ResolvePlaybackSourceUseCase(fetcher)
+    private val mediaItemFactory: StationMediaItemFactory = mockk(relaxed = true)
     private val station = StationDto(id = "u1", name = "Tolocha")
 
-    private fun vm() =
+    private fun vm(resolver: ResolvePlaybackSourceUseCase = resolveSource) =
         PlayerViewModel(
             context,
             playback,
             prefs,
-            dataSource,
             activeStationHolder,
             exoPlayer,
             castPlayerManager,
+            resolver,
+            mediaItemFactory,
         )
 
     @Before
@@ -220,4 +227,38 @@ class PlayerViewModelTest {
         viewModel.stop()
         assertTrue(!viewModel.fullPlayerVisible.value)
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `play con m3u8 no bloquea con el precheck`() =
+        runTest {
+            val hls = StationDto(id = "h1", name = "HLS", url = "https://host/live.m3u8")
+            val viewModel = vm()
+            viewModel.play(hls)
+            advanceUntilIdle()
+            coVerify(exactly = 0) { playback.status(any()) }
+            assertTrue(viewModel.state.value is PlayerState.Buffering)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `fallback avanza al siguiente candidato y luego falla`() =
+        runTest {
+            val resolver =
+                ResolvePlaybackSourceUseCase(
+                    PlaylistFetcher { PlaylistContent("https://a/1.mp3\nhttps://b/2.mp3\n", "https://host/list.m3u") },
+                )
+            val viewModel = vm(resolver)
+            val listStation = StationDto(id = "l1", name = "Lista", url = "https://host/list.m3u")
+            viewModel.play(listStation)
+            advanceUntilIdle()
+            assertTrue(viewModel.state.value is PlayerState.Buffering)
+            val listener = captureListener()
+            listener.onPlayerError(mockk<PlaybackException>(relaxed = true))
+            advanceUntilIdle()
+            assertTrue(viewModel.state.value is PlayerState.Buffering)
+            listener.onPlayerError(mockk<PlaybackException>(relaxed = true))
+            advanceUntilIdle()
+            assertTrue(viewModel.state.value is PlayerState.Error)
+        }
 }
