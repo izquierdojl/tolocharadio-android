@@ -12,6 +12,7 @@ import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.izquierdojl.tolocharadio.data.remote.api.streamUrl
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
+import java.net.URI
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,10 +37,36 @@ class StationMediaItemFactory
             baseUrl: String,
         ): String = streamUrl(baseUrl, source.stationId)
 
-        /** `mimeType` del `MediaItem`; HLS para emisoras `.m3u8`, ninguno en el resto. */
-        fun mimeTypeFor(source: PlaybackSource): String? = if (source.hls) MimeTypes.APPLICATION_M3U8 else null
+        /**
+         * `mimeType` del `MediaItem`. **Nunca `null`**: `CastPlayer` exige que el
+         * item lo especifique (`DefaultMediaItemConverter`); sin él la app se
+         * cierra al enviar a Cast. HLS → `application/x-mpegURL`; progresivo →
+         * según la extensión de la emisora, con `audio/mpeg` por defecto.
+         */
+        fun mimeTypeFor(
+            station: StationDto,
+            source: PlaybackSource,
+        ): String = if (source.hls) MimeTypes.APPLICATION_M3U8 else audioMimeTypeFor(station.url)
 
-        /** Construye el `MediaItem` con metadata y `mimeType` HLS cuando aplica. */
+        private fun audioMimeTypeFor(url: String): String {
+            val extension =
+                runCatching { URI(url).path }
+                    .getOrNull()
+                    ?.substringAfterLast('/')
+                    ?.substringAfterLast('.', "")
+                    ?.lowercase()
+                    .orEmpty()
+            return when (extension) {
+                "aac" -> MimeTypes.AUDIO_AAC
+                "m4a", "mp4" -> MimeTypes.AUDIO_MP4
+                "ogg", "oga" -> MimeTypes.AUDIO_OGG
+                "opus" -> MimeTypes.AUDIO_OPUS
+                "flac" -> MimeTypes.AUDIO_FLAC
+                else -> MimeTypes.AUDIO_MPEG
+            }
+        }
+
+        /** Construye el `MediaItem` con metadata y `mimeType` (siempre presente). */
         fun create(
             station: StationDto,
             source: PlaybackSource,
@@ -56,7 +83,7 @@ class StationMediaItemFactory
                 MediaItem.Builder()
                     .setUri(uriFor(source, baseUrl))
                     .setMediaMetadata(metadata)
-            mimeTypeFor(source)?.let(builder::setMimeType)
+                    .setMimeType(mimeTypeFor(station, source))
             return builder.build()
         }
 
