@@ -1,8 +1,5 @@
 package com.izquierdojl.tolocharadio.core.ui.navigation
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -36,8 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.mediarouter.app.MediaRouteButton
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -49,6 +47,7 @@ import androidx.navigation.navArgument
 import com.google.android.gms.cast.framework.CastButtonFactory
 import com.izquierdojl.tolocharadio.core.ui.components.TolochaLogo
 import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
+import com.izquierdojl.tolocharadio.core.util.CastPermissions
 import com.izquierdojl.tolocharadio.domain.servers.StartupGate
 import com.izquierdojl.tolocharadio.domain.shortcuts.ShortcutLaunchResolution
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
@@ -134,21 +133,29 @@ fun TolochaNavGraph(
         }
     }
 
-    // Permisos de Cast (Android 12+ mDNS / Android 13+ nearby).
+    // Cast: descubrir dispositivos es una operación de red local (mDNS).
+    // Android 12 usa ACCESS_FINE_LOCATION, Android 13+ NEARBY_WIFI_DEVICES y
+    // Android 17 (API 37) exige ACCESS_LOCAL_NETWORK o el selector queda vacío.
     var castPermissionsGranted by remember {
-        mutableStateOf(areCastPermissionsGranted(context))
+        mutableStateOf(CastPermissions.areGranted(context))
     }
     val castPermissionLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions(),
-        ) { results ->
-            castPermissionsGranted = results.values.all { it }
+        ) {
+            // Reevaluar contra el sistema: en API 37 el grupo NEARBY_DEVICES
+            // puede conceder ACCESS_LOCAL_NETWORK de forma implícita.
+            castPermissionsGranted = CastPermissions.areGranted(context)
         }
-    LaunchedEffect(chromeVisible) {
+    // Al volver de Ajustes refrescar el estado por si el usuario concedió a mano.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        castPermissionsGranted = CastPermissions.areGranted(context)
+    }
+    LaunchedEffect(chromeVisible, castPermissionsGranted) {
         if (chromeVisible && !castPermissionsGranted) {
-            val perms = requiredCastPermissions()
-            if (perms.isNotEmpty()) {
-                castPermissionLauncher.launch(perms.toTypedArray())
+            val permissions = CastPermissions.required()
+            if (permissions.isNotEmpty()) {
+                castPermissionLauncher.launch(permissions.toTypedArray())
             }
         }
     }
@@ -334,24 +341,3 @@ fun TolochaNavGraph(
         }
     }
 }
-
-/**
- * Returns the Cast-related permissions required for the current API level.
- * - API 33+ (Android 13): NEARBY_WIFI_DEVICES
- * - API 31-32 (Android 12-12L): ACCESS_FINE_LOCATION
- * - API <31: no runtime permission needed for mDNS discovery
- */
-private fun requiredCastPermissions(): List<String> =
-    when {
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
-            listOf(Manifest.permission.NEARBY_WIFI_DEVICES)
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            listOf(Manifest.permission.ACCESS_FINE_LOCATION)
-        else -> emptyList()
-    }
-
-/** Checks whether all Cast discovery permissions are already granted. */
-private fun areCastPermissionsGranted(context: android.content.Context): Boolean =
-    requiredCastPermissions().all { perm ->
-        ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
-    }
