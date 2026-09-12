@@ -5,7 +5,6 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import androidx.annotation.OptIn
-import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -14,18 +13,17 @@ import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
-import com.izquierdojl.tolocharadio.data.remote.api.streamUrl
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
+import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
 import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
-import com.izquierdojl.tolocharadio.feature.player.AuthDataSourceFactory
 import com.izquierdojl.tolocharadio.feature.player.PlayerState
 import com.izquierdojl.tolocharadio.feature.player.PlayerStateType
+import com.izquierdojl.tolocharadio.feature.player.StationMediaItemFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import okhttp3.OkHttpClient
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -37,6 +35,7 @@ class CastPlayerManager
         private val activeStationHolder: ActiveStationHolder,
         private val prefs: InstancePrefs,
         val exoPlayer: ExoPlayer,
+        private val mediaItemFactory: StationMediaItemFactory,
     ) {
         private val _connectionState = MutableStateFlow(CastConnectionState.DISCONNECTED)
         val connectionState: StateFlow<CastConnectionState> = _connectionState.asStateFlow()
@@ -198,27 +197,9 @@ class CastPlayerManager
             val holderState = activeStationHolder.playerState
             if (holderState == PlayerStateType.PLAYING || holderState == PlayerStateType.BUFFERING) {
                 val baseUrl = runBlocking { prefs.baseUrl.first() }
-                val streamUrl = streamUrl(baseUrl, station.id)
-                val metadata = androidx.media3.common.MediaMetadata.Builder()
-                    .setTitle(station.name)
-                    .setArtist("Tolocha Radio")
-                    .setArtworkUri(station.favicon?.let { android.net.Uri.parse(it) })
-                    .setAlbumTitle("Tolocha Radio")
-                    .build()
-                val item = MediaItem.Builder()
-                    .setUri(streamUrl)
-                    .setMediaMetadata(metadata)
-                    .build()
-                val dataSource = AuthDataSourceFactory(
-                    com.izquierdojl.tolocharadio.core.session.SessionManager(
-                        com.izquierdojl.tolocharadio.core.session.TokenStore(context),
-                    ),
-                    OkHttpClient(),
-                )
-                exoPlayer.setMediaSource(
-                    androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSource)
-                        .createMediaSource(item),
-                )
+                val source = activeStationHolder.resolvedSource ?: PlaybackSource.Proxied(station.id)
+                val item = mediaItemFactory.create(station, source, baseUrl)
+                exoPlayer.setMediaSource(mediaItemFactory.createMediaSource(item, source))
                 exoPlayer.prepare()
                 exoPlayer.playWhenReady = true
             }
@@ -256,25 +237,13 @@ class CastPlayerManager
         }
 
         @OptIn(UnstableApi::class)
-        fun connectToStation(station: StationDto) {
+        fun connectToStation(station: StationDto, source: PlaybackSource) {
             if (!isCastConnected) return
             val player = castPlayer ?: return
 
             val baseUrl = runBlocking { prefs.baseUrl.first() }
-            val streamUrl = streamUrl(baseUrl, station.id)
-            val mediaItem =
-                MediaItem.Builder()
-                    .setUri(streamUrl)
-                    .setMediaMetadata(
-                        androidx.media3.common.MediaMetadata.Builder()
-                            .setTitle(station.name)
-                            .setArtist("Tolocha Radio")
-                            .setArtworkUri(station.favicon?.let { android.net.Uri.parse(it) })
-                            .setAlbumTitle("Tolocha Radio")
-                            .build(),
-                    )
-                    .build()
-            player.setMediaItem(mediaItem)
+            val item = mediaItemFactory.create(station, source, baseUrl)
+            player.setMediaItem(item)
             player.prepare()
             player.playWhenReady = true
         }

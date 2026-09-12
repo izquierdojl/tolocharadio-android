@@ -5,7 +5,6 @@ import android.content.Context
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -18,9 +17,11 @@ import com.izquierdojl.tolocharadio.cast.CastPlayerState
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.userMessage
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
-import com.izquierdojl.tolocharadio.data.remote.api.streamUrl
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.data.repo.PlaybackRepo
+import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
+import com.izquierdojl.tolocharadio.domain.playback.ResolutionResult
+import com.izquierdojl.tolocharadio.domain.playback.ResolvePlaybackSourceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -55,12 +56,13 @@ sealed interface PlayerState {
 }
 
 /**
- * Mini-player persistente: precheck `status`, proxy con Bearer,
- * reintento con backoff y supervivencia a navegación/rotación (US-5).
+ * Mini-player persistente: precheck `status`, proxy con Bearer o fuentes
+ * directas resueltas (HLS/listas, spec 0019), reintento acotado de candidatos
+ * y supervivencia a navegación/rotación (US-5).
  *
  * `TooManyFunctions`/`LongParameterList` suprimidos: el player es un estado
- * central (spec 004/0018) que agrupa reproducción, silencio, Cast y full player;
- * fragmentarlo añadiría indirección sin valor (constitución V, YAGNI).
+ * central (spec 004/0018/0019) que agrupa reproducción, silencio, Cast y full
+ * player; fragmentarlo añadiría indirección sin valor (constitución V, YAGNI).
  */
 @Suppress("TooManyFunctions", "LongParameterList")
 @HiltViewModel
@@ -70,10 +72,11 @@ class PlayerViewModel
         @ApplicationContext private val context: Context,
         private val playback: PlaybackRepo,
         private val prefs: InstancePrefs,
-        private val dataSource: AuthDataSourceFactory,
         private val activeStationHolder: ActiveStationHolder,
         val exoPlayer: ExoPlayer,
         val castPlayerManager: CastPlayerManager,
+        private val resolveSource: ResolvePlaybackSourceUseCase,
+        private val mediaItemFactory: StationMediaItemFactory,
     ) : ViewModel() {
         private val _state = MutableStateFlow<PlayerState>(PlayerState.Idle)
         val state: StateFlow<PlayerState> = _state.asStateFlow()
@@ -99,14 +102,14 @@ class PlayerViewModel
         private var loadJob: Job? = null
         private var controller: MediaController? = null
 
+        /** Cola de candidatos activa (solo emisoras de lista) y saltos consumidos. */
+        private var playlistQueue: PlaylistPlaybackQueue? = null
+        private var playlistAttempts = 0
+
         private val listener =
             object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
-                    val current =
-                        (_state.value as? PlayerState.Playing)?.station
-                            ?: (_state.value as? PlayerState.Buffering)?.station
-                            ?: (_state.value as? PlayerState.Paused)?.station
-                            ?: return
+                    val current = activeStation() ?: return
                     _state.value =
                         when (playbackState) {
                             Player.STATE_READY ->
@@ -124,22 +127,19 @@ class PlayerViewModel
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    val current =
-                        (_state.value as? PlayerState.Playing)?.station
-                            ?: (_state.value as? PlayerState.Buffering)?.station
-                            ?: (_state.value as? PlayerState.Paused)?.station
-                            ?: return
-                    _state.value = PlayerState.Error(current, "Se ha interrumpido la reproducción.")
-                    syncHolderToState()
-                    syncCastState()
+                    val current = activeStation() ?: return
+                    val queue = playlistQueue
+                    if (queue != null && playlistAttempts < MAX_PLAYLIST_ATTEMPTS && !queue.exhausted) {
+                        queue.advance()
+                        playlistAttempts++
+                        loadJob = viewModelScope.launch { startSource(current, queue.current) }
+                        return
+                    }
+                    setError(current, "Se ha interrumpido la reproducción.")
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    val current =
-                        (_state.value as? PlayerState.Playing)?.station
-                            ?: (_state.value as? PlayerState.Paused)?.station
-                            ?: (_state.value as? PlayerState.Buffering)?.station
-                            ?: return
+                    val current = activeStation() ?: return
                     _state.value = if (isPlaying) PlayerState.Playing(current) else PlayerState.Paused(current)
                     syncHolderToState()
                     syncCastState()
@@ -155,7 +155,6 @@ class PlayerViewModel
         /**
          * Sincroniza el estado inicial desde [activeStationHolder] al recrearse
          * el ViewModel (spec 010, US3 - persistencia del mini-player).
-         * Si el ExoPlayer sigue reproduciendo/pausado, reconstruye el PlayerState.
          */
         private fun syncFromHolder() {
             val station = activeStationHolder.station ?: return
@@ -189,67 +188,60 @@ class PlayerViewModel
             }
         }
 
-        /** Reproduce tras el precheck `playable` (FR-007). Resetea el silencio. */
+        /**
+         * Reproduce [station]: resuelve la fuente (proxy, HLS o lista) y arranca
+         * la reproducción. Resetea silencio y estado de fallback.
+         */
         fun play(station: StationDto) {
             loadJob?.cancel()
-            _isMuted.value = false
-            castPlayerManager.exoPlayer.volume = 1f
+            resetPlaybackSession()
             _state.value = PlayerState.Buffering(station)
             syncHolderToState()
             syncCastState()
             loadJob =
                 viewModelScope.launch {
-                    when (val r = playback.status(station.id)) {
-                        is ApiResult.Ok -> {
-                            if (!r.value.playable) {
-                                _state.value =
-                                    PlayerState.Error(
-                                        station,
-                                        r.value.reason?.ifBlank { null } ?: "Emisora no disponible.",
-                                    )
-                                syncHolderToState()
-                                syncCastState()
-                                return@launch
-                            }
-                            startStream(station)
+                    when (val result = resolveSource(station)) {
+                        is ResolutionResult.Proxied -> playProxied(station)
+                        is ResolutionResult.Single -> startSource(station, result.source)
+                        is ResolutionResult.Candidates -> {
+                            playlistQueue = PlaylistPlaybackQueue(result.sources)
+                            playlistAttempts = 1
+                            startSource(station, result.sources.first())
                         }
-                        is ApiResult.Err -> {
-                            _state.value = PlayerState.Error(station, r.error.userMessage())
-                            syncHolderToState()
-                            syncCastState()
-                        }
+                        is ResolutionResult.Unavailable -> setError(station, result.error.userMessage())
                     }
                 }
         }
 
-        @OptIn(UnstableApi::class)
-        private suspend fun startStream(station: StationDto) {
-            val base = prefs.baseUrl.first()
-            val metadata =
-                androidx.media3.common.MediaMetadata.Builder()
-                    .setTitle(station.name)
-                    .setArtist("Tolocha Radio")
-                    .setArtworkUri(station.favicon?.let { android.net.Uri.parse(it) })
-                    .setAlbumTitle("Tolocha Radio")
-                    .build()
-            val item =
-                MediaItem.Builder()
-                    .setUri(streamUrl(base, station.id))
-                    .setMediaMetadata(metadata)
-                    .build()
+        /** Emisora directa: mantiene el precheck `playable` bloqueante (FR-007). */
+        private suspend fun playProxied(station: StationDto) {
+            when (val r = playback.status(station.id)) {
+                is ApiResult.Ok -> {
+                    if (!r.value.playable) {
+                        setError(station, r.value.reason?.ifBlank { null } ?: "Emisora no disponible.")
+                    } else {
+                        startSource(station, PlaybackSource.Proxied(station.id))
+                    }
+                }
+                is ApiResult.Err -> setError(station, r.error.userMessage())
+            }
+        }
 
-            // Si Cast está conectado, enviar al CastPlayer en lugar del ExoPlayer local
+        @OptIn(UnstableApi::class)
+        private suspend fun startSource(
+            station: StationDto,
+            source: PlaybackSource,
+        ) {
+            val base = prefs.baseUrl.first()
+            activeStationHolder.updateResolvedSource(source)
             if (castPlayerManager.isCastConnected) {
-                castPlayerManager.connectToStation(station)
+                castPlayerManager.connectToStation(station, source)
             } else {
-                castPlayerManager.exoPlayer.setMediaSource(
-                    androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSource)
-                        .createMediaSource(item),
-                )
+                val item = mediaItemFactory.create(station, source, base)
+                castPlayerManager.exoPlayer.setMediaSource(mediaItemFactory.createMediaSource(item, source))
                 castPlayerManager.exoPlayer.prepare()
                 castPlayerManager.exoPlayer.playWhenReady = true
             }
-
             _state.value = PlayerState.Buffering(station)
             syncHolderToState()
             syncCastState()
@@ -269,6 +261,28 @@ class PlayerViewModel
         /** Cierra el reproductor a pantalla completa (spec 0018, FR-005). */
         fun closeFullPlayer() {
             _fullPlayerVisible.value = false
+        }
+
+        private fun activeStation(): StationDto? =
+            (_state.value as? PlayerState.Playing)?.station
+                ?: (_state.value as? PlayerState.Buffering)?.station
+                ?: (_state.value as? PlayerState.Paused)?.station
+                ?: (_state.value as? PlayerState.Error)?.station
+
+        private fun setError(
+            station: StationDto?,
+            message: String,
+        ) {
+            _state.value = PlayerState.Error(station, message)
+            syncHolderToState()
+            syncCastState()
+        }
+
+        private fun resetPlaybackSession() {
+            _isMuted.value = false
+            castPlayerManager.exoPlayer.volume = 1f
+            playlistQueue = null
+            playlistAttempts = 0
         }
 
         /**
@@ -301,6 +315,8 @@ class PlayerViewModel
                 castPlayerManager.exoPlayer.clearMediaItems()
                 _state.value = PlayerState.Idle
                 activeStationHolder.clear()
+                playlistQueue = null
+                playlistAttempts = 0
                 syncCastState()
             }
         }
@@ -317,7 +333,7 @@ class PlayerViewModel
             syncCastState()
         }
 
-        /** Detiene y vuelve a Idle. Resetea el silencio. */
+        /** Detiene y vuelve a Idle. Resetea el silencio y el fallback. */
         fun stop() {
             loadJob?.cancel()
             _isMuted.value = false
@@ -327,10 +343,12 @@ class PlayerViewModel
             castPlayerManager.activePlayer.clearMediaItems()
             _state.value = PlayerState.Idle
             activeStationHolder.clear()
+            playlistQueue = null
+            playlistAttempts = 0
             syncCastState()
         }
 
-        /** Reintento manual desde el estado Error. */
+        /** Reintento manual desde el estado Error (reinicia la resolución). */
         fun retry() {
             val station = (_state.value as? PlayerState.Error)?.station ?: return
             play(station)
@@ -342,5 +360,9 @@ class PlayerViewModel
             castPlayerManager.release()
             controller?.release()
             super.onCleared()
+        }
+
+        private companion object {
+            const val MAX_PLAYLIST_ATTEMPTS = 3
         }
     }
