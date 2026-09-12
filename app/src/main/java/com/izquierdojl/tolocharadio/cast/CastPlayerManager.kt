@@ -5,10 +5,10 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import androidx.annotation.OptIn
+import androidx.media3.cast.CastPlayer
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.cast.CastPlayer
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
@@ -28,6 +28,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+@OptIn(UnstableApi::class)
 class CastPlayerManager
     @Inject
     constructor(
@@ -51,19 +52,20 @@ class CastPlayerManager
         // FR-009: Audio focus management
         private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         private var audioFocusRequest: AudioFocusRequest? = null
-        private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
-            when (focusChange) {
-                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                    castPlayer?.playWhenReady = false
-                }
-                AudioManager.AUDIOFOCUS_LOSS -> {
-                    castPlayer?.playWhenReady = false
-                }
-                AudioManager.AUDIOFOCUS_GAIN -> {
-                    castPlayer?.playWhenReady = true
+        private val audioFocusChangeListener =
+            AudioManager.OnAudioFocusChangeListener { focusChange ->
+                when (focusChange) {
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                        castPlayer?.playWhenReady = false
+                    }
+                    AudioManager.AUDIOFOCUS_LOSS -> {
+                        castPlayer?.playWhenReady = false
+                    }
+                    AudioManager.AUDIOFOCUS_GAIN -> {
+                        castPlayer?.playWhenReady = true
+                    }
                 }
             }
-        }
 
         val isCastConnected: Boolean
             get() = _connectionState.value == CastConnectionState.CONNECTED
@@ -98,12 +100,18 @@ class CastPlayerManager
                     _connectionState.value = CastConnectionState.CONNECTING
                 }
 
-                override fun onSessionStarted(session: CastSession, sessionId: String) {
+                override fun onSessionStarted(
+                    session: CastSession,
+                    sessionId: String,
+                ) {
                     _connectionState.value = CastConnectionState.CONNECTED
-                    createCastPlayer(session)
+                    createCastPlayer()
                 }
 
-                override fun onSessionStartFailed(session: CastSession, error: Int) {
+                override fun onSessionStartFailed(
+                    session: CastSession,
+                    error: Int,
+                ) {
                     _connectionState.value = CastConnectionState.DISCONNECTED
                     castPlayer = null
                 }
@@ -112,41 +120,57 @@ class CastPlayerManager
                     // Will be handled in onSessionEnded
                 }
 
-                override fun onSessionEnded(session: CastSession, error: Int) {
+                override fun onSessionEnded(
+                    session: CastSession,
+                    error: Int,
+                ) {
                     _connectionState.value = CastConnectionState.DISCONNECTED
                     releaseCastPlayer()
                     // FR-008: Auto-resume local playback on unexpected disconnect
                     resumeLocalPlayback()
                 }
 
-                override fun onSessionResuming(session: CastSession, sessionId: String) {
+                override fun onSessionResuming(
+                    session: CastSession,
+                    sessionId: String,
+                ) {
                     _connectionState.value = CastConnectionState.RECONNECTING
                 }
 
-                override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) {
+                override fun onSessionResumed(
+                    session: CastSession,
+                    wasSuspended: Boolean,
+                ) {
                     _connectionState.value = CastConnectionState.CONNECTED
-                    createCastPlayer(session)
+                    createCastPlayer()
                 }
 
-                override fun onSessionResumeFailed(session: CastSession, error: Int) {
+                override fun onSessionResumeFailed(
+                    session: CastSession,
+                    error: Int,
+                ) {
                     _connectionState.value = CastConnectionState.DISCONNECTED
                     releaseCastPlayer()
                     // FR-008: Auto-resume local playback on resume failure
                     resumeLocalPlayback()
                 }
 
-                override fun onSessionSuspended(session: CastSession, reason: Int) {
+                override fun onSessionSuspended(
+                    session: CastSession,
+                    reason: Int,
+                ) {
                     _connectionState.value = CastConnectionState.RECONNECTING
                 }
             }
 
         @OptIn(UnstableApi::class)
-        private fun createCastPlayer(session: CastSession) {
+        private fun createCastPlayer() {
             castPlayer?.release()
             castContext?.let { ctx ->
-                castPlayer = CastPlayer(ctx).apply {
-                    addListener(castPlayerListener)
-                }
+                castPlayer =
+                    CastPlayer(ctx).apply {
+                        addListener(castPlayerListener)
+                    }
             }
             // FR-009: Request audio focus when connecting to Cast
             requestAudioFocus()
@@ -170,15 +194,17 @@ class CastPlayerManager
 
         // FR-009: Request audio focus for Cast playback
         private fun requestAudioFocus() {
-            val attrs = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build()
-            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                .setAudioAttributes(attrs)
-                .setOnAudioFocusChangeListener(audioFocusChangeListener)
-                .setAcceptsDelayedFocusGain(true)
-                .build()
+            val attrs =
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+            val request =
+                AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(attrs)
+                    .setOnAudioFocusChangeListener(audioFocusChangeListener)
+                    .setAcceptsDelayedFocusGain(true)
+                    .build()
             audioFocusRequest = request
             audioManager.requestAudioFocus(request)
         }
@@ -229,7 +255,9 @@ class CastPlayerManager
                 }
             _castState.value =
                 if (isCastConnected) {
-                    val deviceName = castContext?.sessionManager?.currentCastSession?.castDevice?.friendlyName ?: "Chromecast"
+                    val deviceName =
+                        castContext?.sessionManager?.currentCastSession
+                            ?.castDevice?.friendlyName ?: "Chromecast"
                     CastPlayerState.Cast(playerState, deviceName, _connectionState.value)
                 } else {
                     CastPlayerState.Local(playerState)
@@ -237,7 +265,10 @@ class CastPlayerManager
         }
 
         @OptIn(UnstableApi::class)
-        fun connectToStation(station: StationDto, source: PlaybackSource) {
+        fun connectToStation(
+            station: StationDto,
+            source: PlaybackSource,
+        ) {
             if (!isCastConnected) return
             val player = castPlayer ?: return
 
@@ -264,7 +295,9 @@ class CastPlayerManager
 
         fun updateCastPlayerState(state: PlayerState) {
             if (isCastConnected) {
-                val deviceName = castContext?.sessionManager?.currentCastSession?.castDevice?.friendlyName ?: "Chromecast"
+                val deviceName =
+                    castContext?.sessionManager?.currentCastSession
+                        ?.castDevice?.friendlyName ?: "Chromecast"
                 _castState.value = CastPlayerState.Cast(state, deviceName, _connectionState.value)
             }
         }

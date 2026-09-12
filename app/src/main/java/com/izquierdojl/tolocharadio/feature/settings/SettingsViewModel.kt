@@ -34,6 +34,7 @@ data class AppInfo(
 /** Estado de la UI del diálogo de información de la aplicación. */
 sealed interface AppInfoUiState {
     data object Hidden : AppInfoUiState
+
     data class Showing(val info: AppInfo = AppInfo()) : AppInfoUiState
 }
 

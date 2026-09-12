@@ -19,7 +19,9 @@ import javax.inject.Inject
 /** Estado de carga de una lista de catálogo (países, idiomas, tags). */
 sealed interface CatalogList {
     data object Loading : CatalogList
+
     data class Loaded(val items: List<String>) : CatalogList
+
     data class Error(val message: String) : CatalogList
 }
 

@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -96,69 +95,79 @@ fun ExploreScreen(
                 selected = viewModel.filters.country != null,
                 onClick = { sheetFilter = ActiveFilter.COUNTRY },
                 label = { Text(viewModel.filters.country ?: "País") },
-                trailingIcon = if (viewModel.filters.country != null) {
-                    {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Quitar",
-                            modifier = Modifier
-                                .size(18.dp)
-                                .clickable {
-                                    viewModel.setFilters(
-                                        viewModel.filters.copy(country = null),
-                                    )
-                                },
-                        )
-                    }
-                } else {
-                    null
-                },
+                trailingIcon =
+                    if (viewModel.filters.country != null) {
+                        {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Quitar",
+                                modifier =
+                                    Modifier
+                                        .size(18.dp)
+                                        .clickable {
+                                            viewModel.setFilters(
+                                                viewModel.filters.copy(country = null),
+                                            )
+                                        },
+                            )
+                        }
+                    } else {
+                        null
+                    },
             )
             FilterChip(
                 selected = viewModel.filters.language != null,
                 onClick = { sheetFilter = ActiveFilter.LANGUAGE },
                 label = { Text(viewModel.filters.language ?: "Idioma") },
-                trailingIcon = if (viewModel.filters.language != null) {
-                    {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Quitar",
-                            modifier = Modifier
-                                .size(18.dp)
-                                .clickable {
-                                    viewModel.setFilters(
-                                        viewModel.filters.copy(language = null),
-                                    )
-                                },
-                        )
-                    }
-                } else {
-                    null
-                },
+                trailingIcon =
+                    if (viewModel.filters.language != null) {
+                        {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Quitar",
+                                modifier =
+                                    Modifier
+                                        .size(18.dp)
+                                        .clickable {
+                                            viewModel.setFilters(
+                                                viewModel.filters.copy(language = null),
+                                            )
+                                        },
+                            )
+                        }
+                    } else {
+                        null
+                    },
             )
             FilterChip(
                 selected = viewModel.filters.tag != null,
                 onClick = { sheetFilter = ActiveFilter.TAG },
                 label = { Text(viewModel.filters.tag ?: "Género") },
-                trailingIcon = if (viewModel.filters.tag != null) {
-                    {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Quitar",
-                            modifier = Modifier
-                                .size(18.dp)
-                                .clickable {
-                                    viewModel.setFilters(
-                                        viewModel.filters.copy(tag = null),
-                                    )
-                                },
-                        )
-                    }
-                } else {
-                    null
-                },
+                trailingIcon =
+                    if (viewModel.filters.tag != null) {
+                        {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Quitar",
+                                modifier =
+                                    Modifier
+                                        .size(18.dp)
+                                        .clickable {
+                                            viewModel.setFilters(
+                                                viewModel.filters.copy(tag = null),
+                                            )
+                                        },
+                            )
+                        }
+                    } else {
+                        null
+                    },
             )
-            if (viewModel.filters.country != null || viewModel.filters.language != null || viewModel.filters.tag != null) {
+            if (
+                viewModel.filters.country != null ||
+                viewModel.filters.language != null ||
+                viewModel.filters.tag != null
+            ) {
                 TextButton(onClick = {
                     viewModel.setFilters(ExploreFilters(name = viewModel.filters.name))
                 }) {
@@ -185,7 +194,7 @@ fun ExploreScreen(
                     ActiveFilter.LANGUAGE -> viewModel.filters.language.orEmpty()
                     ActiveFilter.TAG -> viewModel.filters.tag.orEmpty()
                     null -> ""
-                }
+                },
             )
         }
 

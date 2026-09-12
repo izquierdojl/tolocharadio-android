@@ -13,13 +13,12 @@ import com.tolocharadio.domain.notification.NotificationType
  * Builds playback notifications.
  */
 class PlaybackNotificationBuilder(
-    private val context: Context
+    private val context: Context,
 ) {
-    
     companion object {
         const val PLAYBACK_NOTIFICATION_ID = 1001
     }
-    
+
     /**
      * Builds a playback notification.
      * @param stationId The station ID
@@ -30,14 +29,14 @@ class PlaybackNotificationBuilder(
     fun buildNotification(
         stationId: String,
         stationName: String,
-        isPlaying: Boolean
+        isPlaying: Boolean,
     ): Notification {
         val intent = createNotificationTapIntent(stationId, stationName, isPlaying)
         val pendingIntent = createPendingIntent(intent)
-        
+
         val title = if (isPlaying) "Now Playing" else "Paused"
         val message = stationName
-        
+
         return NotificationCompat.Builder(context, NotificationChannels.PLAYBACK_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle(title)
@@ -49,14 +48,14 @@ class PlaybackNotificationBuilder(
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .build()
     }
-    
+
     /**
      * Creates an intent for notification tap.
      */
     private fun createNotificationTapIntent(
         stationId: String,
         stationName: String,
-        isPlaying: Boolean
+        isPlaying: Boolean,
     ): Intent {
         return Intent(context, com.izquierdojl.tolocharadio.MainActivity::class.java).apply {
             action = NotificationNavigation.NOTIFICATION_TAP_ACTION
@@ -65,12 +64,12 @@ class PlaybackNotificationBuilder(
             putExtra(NotificationNavigation.CONTENT_ID_EXTRA, stationId)
             putExtra(NotificationNavigation.NOTIFICATION_TITLE_EXTRA, if (isPlaying) "Now Playing" else "Paused")
             putExtra(NotificationNavigation.NOTIFICATION_MESSAGE_EXTRA, stationName)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or 
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
     }
-    
+
     /**
      * Creates a PendingIntent for the notification.
      */
@@ -79,10 +78,10 @@ class PlaybackNotificationBuilder(
             context,
             PLAYBACK_NOTIFICATION_ID,
             intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
     }
-    
+
     /**
      * Shows the notification.
      * @param notification The notification to show
@@ -91,7 +90,7 @@ class PlaybackNotificationBuilder(
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(PLAYBACK_NOTIFICATION_ID, notification)
     }
-    
+
     /**
      * Cancels the playback notification.
      */

@@ -4,7 +4,6 @@ package com.tolocharadio.domain.notification
  * Handles unavailable content scenarios.
  */
 class UnavailableContentHandler {
-    
     /**
      * Checks if content is available.
      * @param contentId The content ID to check
@@ -15,7 +14,7 @@ class UnavailableContentHandler {
         // For now, we assume content is available if contentId is not null
         return contentId != null && contentId.isNotBlank()
     }
-    
+
     /**
      * Gets the appropriate action when content is unavailable.
      * @param notificationType The notification type
@@ -28,7 +27,7 @@ class UnavailableContentHandler {
             NotificationType.SYSTEM -> NotificationAction.OPEN_MAIN
         }
     }
-    
+
     /**
      * Gets the appropriate message when content is unavailable.
      * @param notificationType The notification type
@@ -41,14 +40,17 @@ class UnavailableContentHandler {
             NotificationType.SYSTEM -> "Información no disponible"
         }
     }
-    
+
     /**
      * Handles unavailable content scenario.
      * @param contentId The content ID
      * @param notificationType The notification type
      * @return The action to perform
      */
-    fun handleUnavailableContent(contentId: String?, notificationType: NotificationType): NotificationAction {
+    fun handleUnavailableContent(
+        contentId: String?,
+        notificationType: NotificationType,
+    ): NotificationAction {
         if (isContentAvailable(contentId)) {
             // Content is available, proceed with normal action
             return when (notificationType) {

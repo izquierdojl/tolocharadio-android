@@ -64,6 +64,8 @@ style:
     ignoreNumbers: ['-1', '0', '1', '2', '24', '100']
     ignorePropertyDeclaration: true
     ignoreConstantDeclaration: true
+    # Las duraciones del SleepTimer son valores intrínsecos del enum.
+    ignoreEnums: true
 
 potential-bugs:
   active: true

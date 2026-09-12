@@ -20,6 +20,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+private const val MAX_VISIBLE_OPTIONS = 50
+
 /**
  * Combobox reutilizable para filtros de Explorar con autocompletado,
  * estados de carga/error y modo degradado (entrada libre).
@@ -74,8 +76,12 @@ fun FilterComboBox(
 
         is CatalogList.Loaded -> {
             val items = catalogList.items
-            val filtered = if (textValue.isBlank()) items
-            else items.filter { it.contains(textValue, ignoreCase = true) }
+            val filtered =
+                if (textValue.isBlank()) {
+                    items
+                } else {
+                    items.filter { it.contains(textValue, ignoreCase = true) }
+                }
 
             Column(modifier = modifier.fillMaxWidth()) {
                 OutlinedTextField(
@@ -87,18 +93,20 @@ fun FilterComboBox(
                 )
                 if (filtered.isNotEmpty()) {
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 200.dp)
-                            .padding(top = 4.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 200.dp)
+                                .padding(top = 4.dp),
                     ) {
-                        items(filtered.take(50)) { option ->
+                        items(filtered.take(MAX_VISIBLE_OPTIONS)) { option ->
                             ListItem(
                                 headlineContent = { Text(option) },
-                                modifier = Modifier.clickable {
-                                    textValue = option
-                                    onValueChange(option)
-                                },
+                                modifier =
+                                    Modifier.clickable {
+                                        textValue = option
+                                        onValueChange(option)
+                                    },
                             )
                         }
                     }

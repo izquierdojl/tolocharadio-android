@@ -158,11 +158,12 @@ fun TolochaNavGraph(
     var castPermissionsGranted by remember {
         mutableStateOf(areCastPermissionsGranted(context))
     }
-    val castPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) { results ->
-        castPermissionsGranted = results.values.all { it }
-    }
+    val castPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { results ->
+            castPermissionsGranted = results.values.all { it }
+        }
     LaunchedEffect(chromeVisible) {
         if (chromeVisible && !castPermissionsGranted) {
             val perms = requiredCastPermissions()
