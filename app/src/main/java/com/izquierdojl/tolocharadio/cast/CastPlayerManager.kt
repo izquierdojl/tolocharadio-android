@@ -12,6 +12,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
+import com.izquierdojl.tolocharadio.core.util.CastPermissions
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.domain.playback.HlsStation
@@ -83,6 +84,12 @@ class CastPlayerManager
         }
 
         private fun initCastContext() {
+            if (!CastPermissions.areGranted(context)) {
+                android.util.Log.w(
+                    "CastPlayerManager",
+                    "Faltan permisos de descubrimiento Cast: el selector no mostrará dispositivos",
+                )
+            }
             runCatching {
                 castContext = CastContext.getSharedInstance(context)
                 sessionManagerListener = createSessionManagerListener()
