@@ -5,10 +5,13 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.izquierdojl.tolocharadio.core.session.TokenStore
@@ -69,32 +72,40 @@ class MainActivity : FragmentActivity() {
         setContent {
             val mode by instancePrefs.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
             val startScreen by instancePrefs.startScreen.collectAsState(initial = StartScreen.EXPLORE)
-            val servers by serverRepository.servers.collectAsState(initial = emptyList())
-            val startupServer =
-                servers.firstOrNull { it.isActive }
-                    ?: servers.firstOrNull { it.isDefault }
-                    ?: servers.firstOrNull()
-            val startupHasCredentials = startupServer?.let { tokenStore.hasCredentials(it.id) } == true
-            val gate =
-                remember(servers, startupHasCredentials) {
-                    when {
-                        servers.isEmpty() -> StartupGate.NoServers
-                        !startupHasCredentials -> StartupGate.NeedsCredentials
-                        else -> StartupGate.Ready
-                    }
-                }
-
-            // Auto-login silencioso con el servidor de arranque (FR-004).
-            LaunchedEffect(gate) {
-                if (gate == StartupGate.Ready) authenticateServer()
-            }
+            // `null` mientras Room emite la primera vez: evita mostrar el
+            // formulario de servidor antes de saber si ya hay uno guardado.
+            val servers by serverRepository.servers.collectAsState(initial = null)
 
             TolochaTheme(darkTheme = resolveDarkTheme(mode, isSystemInDarkTheme())) {
-                TolochaNavGraph(
-                    startupGate = gate,
-                    startupServerId = startupServer?.id,
-                    startScreen = startScreen,
-                )
+                val loadedServers = servers
+                if (loadedServers == null) {
+                    Surface(Modifier.fillMaxSize()) {}
+                } else {
+                    val startupServer =
+                        loadedServers.firstOrNull { it.isActive }
+                            ?: loadedServers.firstOrNull { it.isDefault }
+                            ?: loadedServers.firstOrNull()
+                    val startupHasCredentials = startupServer?.let { tokenStore.hasCredentials(it.id) } == true
+                    val gate =
+                        remember(loadedServers, startupHasCredentials) {
+                            when {
+                                loadedServers.isEmpty() -> StartupGate.NoServers
+                                !startupHasCredentials -> StartupGate.NeedsCredentials
+                                else -> StartupGate.Ready
+                            }
+                        }
+
+                    // Auto-login silencioso con el servidor de arranque (FR-004).
+                    LaunchedEffect(gate) {
+                        if (gate == StartupGate.Ready) authenticateServer()
+                    }
+
+                    TolochaNavGraph(
+                        startupGate = gate,
+                        startupServerId = startupServer?.id,
+                        startScreen = startScreen,
+                    )
+                }
             }
         }
     }

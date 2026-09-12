@@ -105,6 +105,8 @@ class PlayerViewModel
         private val listener =
             object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
+                    // Con Cast conectado el estado lo gobierna el CastPlayer.
+                    if (castPlayerManager.isCastConnected) return
                     val current = activeStation() ?: return
                     _state.value =
                         when (playbackState) {
@@ -123,11 +125,13 @@ class PlayerViewModel
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
+                    if (castPlayerManager.isCastConnected) return
                     val current = activeStation() ?: return
                     setError(current, "Se ha interrumpido la reproducción.")
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (castPlayerManager.isCastConnected) return
                     val current = activeStation() ?: return
                     _state.value = if (isPlaying) PlayerState.Playing(current) else PlayerState.Paused(current)
                     syncHolderToState()
@@ -217,8 +221,6 @@ class PlayerViewModel
                 castPlayerManager.exoPlayer.prepare()
                 castPlayerManager.exoPlayer.playWhenReady = true
             }
-            _state.value = PlayerState.Buffering(station)
-            syncHolderToState()
             syncCastState()
         }
 
@@ -243,6 +245,10 @@ class PlayerViewModel
                 ?: (_state.value as? PlayerState.Buffering)?.station
                 ?: (_state.value as? PlayerState.Paused)?.station
                 ?: (_state.value as? PlayerState.Error)?.station
+
+        /** Estado efectivo: el de Cast si hay sesión activa, si no el local. */
+        private fun effectiveState(): PlayerState =
+            (castPlayerManager.castState.value as? CastPlayerState.Cast)?.playerState ?: _state.value
 
         private fun setError(
             station: StationDto?,
@@ -275,27 +281,29 @@ class PlayerViewModel
             activeStationHolder.update(current.stationOrNull(), holderState)
         }
 
-        /** Sincroniza el estado de Cast para la UI. */
+        /** Refleja el estado local en el estado de Cast (solo sin conexión Cast). */
         private fun syncCastState() {
-            castPlayerManager.updateCastPlayerState(_state.value)
+            if (!castPlayerManager.isCastConnected) {
+                castPlayerManager.updateLocalState(_state.value)
+            }
         }
 
         /** Cancela un intento de carga en curso y vuelve a `Idle` (spec 004, FR-004). */
         fun cancelLoad() {
             loadJob?.cancel()
-            if (_state.value is PlayerState.Buffering) {
-                castPlayerManager.exoPlayer.stop()
-                castPlayerManager.exoPlayer.clearMediaItems()
+            if (effectiveState() is PlayerState.Buffering) {
+                castPlayerManager.activePlayer.stop()
+                castPlayerManager.activePlayer.clearMediaItems()
                 _state.value = PlayerState.Idle
                 activeStationHolder.clear()
                 syncCastState()
             }
         }
 
-        /** Pausa o reanuda según el estado actual. */
+        /** Pausa o reanuda según el estado actual (local o Cast). */
         fun toggle() {
             val player = castPlayerManager.activePlayer
-            when (_state.value) {
+            when (effectiveState()) {
                 is PlayerState.Playing -> player.playWhenReady = false
                 is PlayerState.Paused -> player.playWhenReady = true
                 else -> Unit
