@@ -1,13 +1,24 @@
 package com.izquierdojl.tolocharadio.domain.servers
 
-/** Destino de arranque según los servidores configurados (FR-002). */
+/** Destino de arranque según los servidores y sus credenciales (FR-010/FR-011). */
 sealed interface StartupGate {
-    /** No hay ningún servidor: pantalla de bienvenida bloqueante. */
+    /** No hay ningún servidor: pantalla unificada de alta (bloqueante). */
     data object NoServers : StartupGate
 
-    /** Hay al menos un servidor: se puede acceder al contenido. */
+    /** El servidor de arranque no tiene credenciales: edición bloqueante. */
+    data object NeedsCredentials : StartupGate
+
+    /** Hay servidor con credenciales: sesión automática y contenido. */
     data object Ready : StartupGate
 }
 
-/** Deriva el destino de arranque del número de servidores guardados. */
-fun startupGateFor(serverCount: Int): StartupGate = if (serverCount > 0) StartupGate.Ready else StartupGate.NoServers
+/** Deriva el destino de arranque del número de servidores y sus credenciales. */
+fun startupGateFor(
+    serverCount: Int,
+    activeHasCredentials: Boolean,
+): StartupGate =
+    when {
+        serverCount <= 0 -> StartupGate.NoServers
+        !activeHasCredentials -> StartupGate.NeedsCredentials
+        else -> StartupGate.Ready
+    }

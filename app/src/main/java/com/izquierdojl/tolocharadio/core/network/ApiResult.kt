@@ -46,7 +46,7 @@ fun mapHttpError(
         HTTP_NOT_FOUND -> DomainError.NotFound(body?.code ?: "NOT_FOUND")
         HTTP_CONFLICT -> DomainError.Conflict(body?.code ?: "CONFLICT", body?.message.orEmpty())
         HTTP_UNPROCESSABLE -> DomainError.Validation(body?.details?.map { FieldError(it.field, it.message) }.orEmpty())
-        HTTP_UNAVAILABLE -> DomainError.Unavailable(body?.message.orEmpty())
+        HTTP_UNAVAILABLE -> DomainError.Unavailable("")
         else -> DomainError.Unknown(body?.message?.ifBlank { null } ?: "Error $code")
     }
 }
@@ -67,7 +67,7 @@ suspend fun <T> safeCall(call: suspend () -> Response<T>): ApiResult<T> {
             ApiResult.Err(mapHttpError(response.code(), response.errorBody()?.string()))
         }
     } catch (e: IOException) {
-        ApiResult.Err(DomainError.Unavailable("Sin conexión", e))
+        ApiResult.Err(DomainError.Unavailable("Sin conexión a internet.", e))
     } catch (e: Exception) {
         ApiResult.Err(DomainError.Unknown(e.message ?: "Error inesperado", e))
     }

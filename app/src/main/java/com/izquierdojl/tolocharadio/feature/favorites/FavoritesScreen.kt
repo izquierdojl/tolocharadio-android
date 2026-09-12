@@ -88,6 +88,7 @@ data class FavoriteListActions(
     val onMove: (Int, Int) -> Unit,
     val onCommit: () -> Unit,
     val onRetry: () -> Unit,
+    val onEditServer: () -> Unit = {},
 )
 
 /**
@@ -101,6 +102,7 @@ data class FavoriteListActions(
 fun FavoritesScreen(
     onStation: (String) -> Unit,
     onExplore: () -> Unit,
+    onEditServer: () -> Unit = {},
     viewModel: FavoritesViewModel = hiltViewModel(),
     player: PlayerViewModel = hiltViewModel(),
     viewModeVm: ViewModeViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
@@ -144,6 +146,7 @@ fun FavoritesScreen(
                         onMove = viewModel::moveItem,
                         onCommit = viewModel::commitOrder,
                         onRetry = viewModel::retry,
+                        onEditServer = onEditServer,
                     ),
             )
         }
@@ -165,7 +168,12 @@ fun FavoritesScreenContent(
                 actionLabel = "Explorar",
                 onAction = actions.onExplore,
             )
-        is FavoritesUiState.Error -> ErrorBanner(state.message, onRetry = actions.onRetry)
+        is FavoritesUiState.Error ->
+            ErrorBanner(
+                message = state.message,
+                onRetry = if (state.isAuthError) actions.onEditServer else actions.onRetry,
+                retryLabel = if (state.isAuthError) "Editar servidor" else "Reintentar",
+            )
         is FavoritesUiState.Content ->
             if (mode == ViewMode.GRID) {
                 FavoritesGrid(

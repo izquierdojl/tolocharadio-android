@@ -1,11 +1,6 @@
 package com.izquierdojl.tolocharadio.feature.onboarding
 
-import com.izquierdojl.tolocharadio.core.network.TolochaJson
-import com.izquierdojl.tolocharadio.data.remote.api.SystemApi
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import retrofit2.Retrofit
+import com.izquierdojl.tolocharadio.data.remote.InstanceApiFactory
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,17 +8,13 @@ import javax.inject.Singleton
 @Singleton
 class InstanceValidator
     @Inject
-    constructor() {
+    constructor(
+        private val apiFactory: InstanceApiFactory,
+    ) {
         /** true si responde como instancia TolochaRadio válida. Nunca lanza: es una sonda. */
         suspend fun validate(baseUrl: String): Boolean =
             runCatching {
-                val api =
-                    Retrofit.Builder()
-                        .baseUrl(baseUrl.trimEnd('/') + "/api/v1/")
-                        .client(OkHttpClient())
-                        .addConverterFactory(TolochaJson.asConverterFactory("application/json".toMediaType()))
-                        .build()
-                        .create(SystemApi::class.java)
+                val api = apiFactory.systemApi(baseUrl)
                 api.health().isSuccessful && api.config().isSuccessful
             }.getOrDefault(false)
     }

@@ -5,13 +5,18 @@ import org.junit.Test
 
 class StartupGateTest {
     @Test
-    fun `sin servidores el arranque requiere configuracion`() {
-        assertEquals(StartupGate.NoServers, startupGateFor(0))
+    fun `sin servidores el arranque pide el formulario de alta`() {
+        assertEquals(StartupGate.NoServers, startupGateFor(0, activeHasCredentials = false))
     }
 
     @Test
-    fun `con un servidor el arranque esta listo`() {
-        assertEquals(StartupGate.Ready, startupGateFor(1))
-        assertEquals(StartupGate.Ready, startupGateFor(3))
+    fun `servidor sin credenciales pide completarlas`() {
+        assertEquals(StartupGate.NeedsCredentials, startupGateFor(1, activeHasCredentials = false))
+    }
+
+    @Test
+    fun `servidor con credenciales esta listo`() {
+        assertEquals(StartupGate.Ready, startupGateFor(1, activeHasCredentials = true))
+        assertEquals(StartupGate.Ready, startupGateFor(3, activeHasCredentials = true))
     }
 }

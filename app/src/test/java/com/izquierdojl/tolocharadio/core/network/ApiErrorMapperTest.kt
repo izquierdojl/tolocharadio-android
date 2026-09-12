@@ -46,7 +46,7 @@ class ApiErrorMapperTest {
 
     @Test
     fun `mensajes de usuario en espanol sin texto tecnico`() {
-        assertTrue(DomainError.Unauthorized("X").userMessage().contains("instancia"))
-        assertTrue(DomainError.Unavailable("x").userMessage().contains("conexión"))
+        assertTrue(DomainError.Unauthorized("X").userMessage().contains("autenticar"))
+        assertTrue(DomainError.Unavailable("").userMessage().contains("conexión"))
     }
 }

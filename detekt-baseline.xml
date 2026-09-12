@@ -4,14 +4,17 @@
   <CurrentIssues>
     <ID>CyclomaticComplexMethod:ExploreScreen.kt$@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class) @Composable fun ExploreScreen( onStation: (String) -&gt; Unit, viewModel: ExploreViewModel = hiltViewModel(), viewModeVm: ViewModeViewModel = hiltViewModel(LocalContext.current as ComponentActivity), )</ID>
     <ID>CyclomaticComplexMethod:StationInfoSheet.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable fun StationInfoSheet( station: StationDto, onDismiss: () -&gt; Unit, )</ID>
-    <ID>CyclomaticComplexMethod:TolochaNavGraph.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun TolochaNavGraph( modifier: Modifier = Modifier, hasServers: Boolean = false, startScreen: StartScreen = StartScreen.EXPLORE, )</ID>
+    <ID>CyclomaticComplexMethod:TokenAuthenticator.kt$TokenAuthenticator$override fun authenticate( route: Route?, response: Response, ): Request?</ID>
+    <ID>CyclomaticComplexMethod:TolochaNavGraph.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun TolochaNavGraph( modifier: Modifier = Modifier, startupGate: StartupGate = StartupGate.NoServers, startupServerId: String? = null, startScreen: StartScreen = StartScreen.EXPLORE, )</ID>
     <ID>FunctionOnlyReturningConstant:LockScreenHandler.kt$LockScreenHandler$fun canBypassLockScreen(notificationData: NotificationData): Boolean</ID>
+    <ID>LongParameterList:ServerFormScreen.kt$( ui: ServerFormUi, showCancel: Boolean, onUrlChange: (String) -&gt; Unit, onAliasChange: (String) -&gt; Unit, onEmailChange: (String) -&gt; Unit, onPasswordChange: (String) -&gt; Unit, onSave: () -&gt; Unit, onCancel: () -&gt; Unit, )</ID>
+    <ID>LongParameterList:ServerRepository.kt$ServerRepository$( private val dao: ServerDao, private val instanceValidator: InstanceValidator, private val systemApi: SystemApi, private val cacheManager: CacheManager, private val shortcutClearer: ShortcutClearer, private val tokens: TokenStore, private val authRepo: AuthRepo, )</ID>
     <ID>MagicNumber:UrlNormalizer.kt$UrlNormalizer$3</ID>
-    <ID>MatchingDeclarationName:ValidateUseCases.kt$NormalizeBaseUrlUseCase</ID>
     <ID>MaxLineLength:ExploreViewModel.kt$ExploreViewModel$private</ID>
     <ID>MaxLineLength:ServerListScreen.kt$Text("Activo", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)</ID>
     <ID>MaxLineLength:ServerListScreen.kt$Text("Por defecto", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)</ID>
     <ID>TooGenericExceptionCaught:NotificationViewModel.kt$NotificationViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:TokenStore.kt$TokenStore$e: Exception</ID>
     <ID>TooManyFunctions:CastPlayerManager.kt$CastPlayerManager</ID>
     <ID>TooManyFunctions:ServerDao.kt$ServerDao</ID>
     <ID>UnusedParameter:LockScreenHandler.kt$LockScreenHandler$notificationData: NotificationData</ID>

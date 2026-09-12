@@ -3,6 +3,7 @@ package com.izquierdojl.tolocharadio.feature.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.izquierdojl.tolocharadio.core.network.ApiResult
+import com.izquierdojl.tolocharadio.core.network.DomainError
 import com.izquierdojl.tolocharadio.core.network.userMessage
 import com.izquierdojl.tolocharadio.data.remote.dto.HistoryEntryDto
 import com.izquierdojl.tolocharadio.data.repo.HistoryRepo
@@ -32,7 +33,11 @@ sealed interface HistoryUiState {
         val pendingDeletes: Set<String> = emptySet(),
     ) : HistoryUiState
 
-    data class Error(val message: String) : HistoryUiState
+    /** Error con marca de credenciales: en ese caso se ofrece editar el servidor (FR-006). */
+    data class Error(
+        val message: String,
+        val isAuthError: Boolean = false,
+    ) : HistoryUiState
 }
 
 /**
@@ -71,7 +76,11 @@ class HistoryViewModel
                     }
                     is ApiResult.Err -> {
                         if (_ui.value !is HistoryUiState.Content) {
-                            _ui.value = HistoryUiState.Error(r.error.userMessage())
+                            _ui.value =
+                                HistoryUiState.Error(
+                                    r.error.userMessage(),
+                                    isAuthError = r.error is DomainError.Unauthorized,
+                                )
                         } else {
                             _messages.tryEmit(r.error.userMessage())
                         }

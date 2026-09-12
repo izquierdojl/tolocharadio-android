@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.userMessage
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
-import com.izquierdojl.tolocharadio.domain.servers.AddServerUseCase
 import com.izquierdojl.tolocharadio.domain.servers.DeleteServerUseCase
 import com.izquierdojl.tolocharadio.domain.servers.GetServersUseCase
 import com.izquierdojl.tolocharadio.domain.servers.SavedServer
@@ -25,19 +24,17 @@ import javax.inject.Inject
 
 /** Estado UI de la pantalla de servidores. */
 data class ServerListUiState(
-    val servers: List<SavedServer> = emptyList(),
-    val isAdding: Boolean = false,
     val isSwitching: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null,
 )
 
+/** Lista de servidores: activar, editar (vía formulario) y eliminar. */
 @HiltViewModel
 class ServerListViewModel
     @Inject
     constructor(
         private val getServers: GetServersUseCase,
-        private val addServerUseCase: AddServerUseCase,
         private val switchServerUseCase: SwitchServerUseCase,
         private val deleteServerUseCase: DeleteServerUseCase,
         private val instancePrefs: InstancePrefs,
@@ -50,33 +47,9 @@ class ServerListViewModel
             getServers()
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-        fun addServer(
-            url: String,
-            alias: String,
-        ) {
-            viewModelScope.launch {
-                _uiState.value = _uiState.value.copy(isAdding = true, error = null)
-                val result = addServerUseCase(url, alias)
-                if (result is ApiResult.Err) {
-                    _uiState.value =
-                        _uiState.value.copy(
-                            isAdding = false,
-                            error = result.error.userMessage(),
-                        )
-                } else {
-                    _uiState.value =
-                        _uiState.value.copy(
-                            isAdding = false,
-                            successMessage = "Servidor añadido",
-                        )
-                }
-            }
-        }
-
         /**
-         * Cambia al servidor activo (sin tocar el por defecto, FR-006),
-         * re-apunta la red a su URL y renace el proceso para recrear
-         * Retrofit (sin credenciales que restaurar).
+         * Cambia al servidor activo: asegura su sesión (refresh/re-login),
+         * re-apunta la red y renace el proceso.
          */
         fun switchServer(serverId: String) {
             viewModelScope.launch {
@@ -96,10 +69,7 @@ class ServerListViewModel
             }
         }
 
-        /**
-         * Elimina un servidor. Si era el último, avisa para volver a la
-         * bienvenida (FR-013).
-         */
+        /** Elimina un servidor; si era el último, avisa para volver al formulario. */
         fun deleteServer(
             serverId: String,
             onNoServers: () -> Unit = {},

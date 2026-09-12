@@ -38,10 +38,11 @@ fun DomainError.fieldMessage(field: String): String? =
  */
 fun DomainError.userMessage(): String =
     when (this) {
-        is DomainError.Unauthorized -> "Esta instancia requiere autenticación. Actualiza el servidor."
+        is DomainError.Unauthorized -> "No se pudo autenticar con el servidor. Revisa el email y la contraseña."
         is DomainError.NotFound -> "No se ha encontrado lo que buscabas."
         is DomainError.Conflict -> message.ifBlank { "Esa acción entra en conflicto con tus datos." }
         is DomainError.Validation -> details.firstOrNull()?.message ?: "Revisa los datos introducidos."
-        is DomainError.Unavailable -> "Servicio no disponible. Comprueba tu conexión e inténtalo de nuevo."
+        is DomainError.Unavailable ->
+            message.ifBlank { "Servicio no disponible. Comprueba tu conexión e inténtalo de nuevo." }
         is DomainError.Unknown -> "Algo ha fallado. Inténtalo de nuevo."
     }

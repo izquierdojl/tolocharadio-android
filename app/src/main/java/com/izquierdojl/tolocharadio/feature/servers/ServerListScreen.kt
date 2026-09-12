@@ -14,9 +14,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,33 +24,32 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.izquierdojl.tolocharadio.domain.servers.SavedServer
 
-/** Sección Servidores (primer nivel, FR-006): activo ≠ por defecto. Sin credenciales (FR-009). */
+/**
+ * Sección Servidores: activo ≠ por defecto; el icono Editar abre el
+ * formulario unificado y el toque de la tarjeta cambia el activo (FR-002).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerListScreen(
     viewModel: ServerListViewModel = hiltViewModel(),
     onBack: () -> Unit = {},
+    onAdd: () -> Unit = {},
+    onEdit: (String) -> Unit = {},
     onNoServers: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val servers by viewModel.servers.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -63,7 +62,7 @@ fun ServerListScreen(
             }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(onClick = onAdd) {
                 Icon(Icons.Filled.Add, contentDescription = "Añadir servidor")
             }
         },
@@ -87,6 +86,7 @@ fun ServerListScreen(
                         ServerCard(
                             server = server,
                             onSwitch = { viewModel.switchServer(server.id) },
+                            onEdit = { onEdit(server.id) },
                             onDelete = { viewModel.deleteServer(server.id, onNoServers) },
                         )
                     }
@@ -106,22 +106,13 @@ fun ServerListScreen(
             }
         }
     }
-
-    if (showAddDialog) {
-        AddServerDialog(
-            onDismiss = { showAddDialog = false },
-            onConfirm = { url, alias ->
-                viewModel.addServer(url, alias)
-                showAddDialog = false
-            },
-        )
-    }
 }
 
 @Composable
 internal fun ServerCard(
     server: SavedServer,
     onSwitch: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Card(
@@ -173,56 +164,13 @@ internal fun ServerCard(
                         tint = MaterialTheme.colorScheme.secondary,
                     )
                 }
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Filled.Edit, contentDescription = "Editar")
+                }
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Filled.Delete, contentDescription = "Eliminar")
                 }
             }
         }
     }
-}
-
-@Composable
-private fun AddServerDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (url: String, alias: String) -> Unit,
-) {
-    var url by remember { mutableStateOf("") }
-    var alias by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Añadir servidor") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    label = { Text("URL del servidor") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = alias,
-                    onValueChange = { alias = it },
-                    label = { Text("Alias (nombre para identificarlo)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(url, alias) },
-                enabled = url.isNotBlank() && alias.isNotBlank(),
-            ) {
-                Text("Añadir")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        },
-    )
 }

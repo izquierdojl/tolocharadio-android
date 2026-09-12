@@ -26,16 +26,30 @@ class AddServerUseCaseTest {
     @Test
     fun `invoke returns error when alias is blank`() =
         runTest {
-            val result = useCase("https://radio.example.com", "")
+            val result = useCase("https://radio.example.com", "", "a@b.c", "secreta123")
+            assertTrue(result is ApiResult.Err)
+        }
+
+    @Test
+    fun `invoke returns error when email is invalid`() =
+        runTest {
+            val result = useCase("https://radio.example.com", "srv", "no-es-email", "secreta123")
+            assertTrue(result is ApiResult.Err)
+        }
+
+    @Test
+    fun `invoke returns error when password is empty`() =
+        runTest {
+            val result = useCase("https://radio.example.com", "srv", "a@b.c", "")
             assertTrue(result is ApiResult.Err)
         }
 
     @Test
     fun `invoke returns error when repository add fails`() =
         runTest {
-            coEvery { repository.add(any(), any(), any()) } returns
+            coEvery { repository.add(any(), any(), any(), any()) } returns
                 ApiResult.Err(DomainError.Unavailable("Connection failed"))
-            val result = useCase("https://radio.example.com", "My Server")
+            val result = useCase("https://radio.example.com", "My Server", "a@b.c", "secreta123")
             assertTrue(result is ApiResult.Err)
         }
 
@@ -50,18 +64,18 @@ class AddServerUseCaseTest {
                     appName = "TolochaRadio",
                     isDefault = false,
                 )
-            coEvery { repository.add(any(), any(), any()) } returns ApiResult.Ok(server)
-            val result = useCase("https://radio.example.com", "My Server")
+            coEvery { repository.add(any(), any(), any(), any()) } returns ApiResult.Ok(server)
+            val result = useCase("https://radio.example.com", "My Server", "a@b.c", "secreta123")
             assertTrue(result is ApiResult.Ok)
             assertEquals("My Server", (result as ApiResult.Ok).value.alias)
         }
 
     @Test
-    fun `invoke no marca por defecto salvo que se pida (FR-003)`() =
+    fun `invoke propaga credenciales al repositorio (FR-001)`() =
         runTest {
-            coEvery { repository.add(any(), any(), any()) } returns
+            coEvery { repository.add(any(), any(), any(), any()) } returns
                 ApiResult.Err(DomainError.Unavailable("x"))
-            useCase("https://radio.example.com", "srv")
-            coVerify { repository.add("https://radio.example.com", "srv", false) }
+            useCase("https://radio.example.com", "srv", "a@b.c", "secreta123")
+            coVerify { repository.add("https://radio.example.com", "srv", "a@b.c", "secreta123") }
         }
 }

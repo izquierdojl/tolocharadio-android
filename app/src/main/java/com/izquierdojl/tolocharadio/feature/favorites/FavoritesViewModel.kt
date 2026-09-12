@@ -3,6 +3,7 @@ package com.izquierdojl.tolocharadio.feature.favorites
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.izquierdojl.tolocharadio.core.network.ApiResult
+import com.izquierdojl.tolocharadio.core.network.DomainError
 import com.izquierdojl.tolocharadio.core.network.userMessage
 import com.izquierdojl.tolocharadio.data.remote.dto.FavoriteDto
 import com.izquierdojl.tolocharadio.data.repo.FavoritesRepo
@@ -40,7 +41,11 @@ sealed interface FavoritesUiState {
         val pendingUndo: PendingUndo? = null,
     ) : FavoritesUiState
 
-    data class Error(val message: String) : FavoritesUiState
+    /** Error con marca de credenciales: en ese caso se ofrece editar el servidor (FR-006). */
+    data class Error(
+        val message: String,
+        val isAuthError: Boolean = false,
+    ) : FavoritesUiState
 }
 
 /**
@@ -91,7 +96,11 @@ class FavoritesViewModel
                     }
                     is ApiResult.Err -> {
                         if (_ui.value !is FavoritesUiState.Content) {
-                            _ui.value = FavoritesUiState.Error(r.error.userMessage())
+                            _ui.value =
+                                FavoritesUiState.Error(
+                                    r.error.userMessage(),
+                                    isAuthError = r.error is DomainError.Unauthorized,
+                                )
                         } else {
                             _messages.tryEmit(r.error.userMessage())
                         }

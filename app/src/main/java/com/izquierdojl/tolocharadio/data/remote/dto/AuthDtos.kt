@@ -15,3 +15,14 @@ data class PlaybackStatusDto(
     val playable: Boolean,
     val reason: String? = null,
 )
+
+/**
+ * Respuesta de `POST /auth/login` y `POST /auth/refresh`.
+ * El campo `user` del backend se ignora (`ignoreUnknownKeys`); la app
+ * no modela perfil.
+ */
+@Serializable
+data class AuthResponseDto(
+    val accessToken: String,
+    val refreshToken: String,
+)
