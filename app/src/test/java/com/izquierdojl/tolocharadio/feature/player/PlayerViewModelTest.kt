@@ -5,7 +5,9 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.izquierdojl.tolocharadio.MainDispatcherRule
+import com.izquierdojl.tolocharadio.cast.CastConnectionState
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
+import com.izquierdojl.tolocharadio.cast.CastPlayerState
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.DomainError
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
@@ -23,6 +25,7 @@ import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -251,5 +254,35 @@ class PlayerViewModelTest {
         viewModel.openFullPlayer()
         viewModel.stop()
         assertTrue(!viewModel.fullPlayerVisible.value)
+    }
+
+    @Test
+    fun `toggle pausa el CastPlayer cuando el estado efectivo es Playing`() {
+        every { castPlayerManager.castState } returns
+            MutableStateFlow<CastPlayerState>(
+                CastPlayerState.Cast(PlayerState.Playing(station), "TV", CastConnectionState.CONNECTED),
+            )
+        every { castPlayerManager.isCastConnected } returns true
+        val castPlayer = mockk<Player>(relaxed = true)
+        every { castPlayerManager.activePlayer } returns castPlayer
+
+        vm().toggle()
+
+        verify { castPlayer.playWhenReady = false }
+    }
+
+    @Test
+    fun `toggle reanuda el CastPlayer cuando el estado efectivo es Paused`() {
+        every { castPlayerManager.castState } returns
+            MutableStateFlow<CastPlayerState>(
+                CastPlayerState.Cast(PlayerState.Paused(station), "TV", CastConnectionState.CONNECTED),
+            )
+        every { castPlayerManager.isCastConnected } returns true
+        val castPlayer = mockk<Player>(relaxed = true)
+        every { castPlayerManager.activePlayer } returns castPlayer
+
+        vm().toggle()
+
+        verify { castPlayer.playWhenReady = true }
     }
 }

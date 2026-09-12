@@ -252,24 +252,37 @@ class CastPlayerManager
 
         private fun updateCastState() {
             val current = activeStationHolder.station ?: return
-            val holderState = activeStationHolder.playerState
-            val playerState =
-                when (holderState) {
-                    PlayerStateType.PLAYING -> PlayerState.Playing(current)
-                    PlayerStateType.PAUSED -> PlayerState.Paused(current)
-                    PlayerStateType.BUFFERING -> PlayerState.Buffering(current)
-                    PlayerStateType.ERROR -> PlayerState.Error(current, "Se ha interrumpido la reproducción.")
-                    PlayerStateType.IDLE -> PlayerState.Idle
-                }
             _castState.value =
                 if (isCastConnected) {
-                    val deviceName =
-                        castContext?.sessionManager?.currentCastSession
-                            ?.castDevice?.friendlyName ?: "Chromecast"
-                    CastPlayerState.Cast(playerState, deviceName, _connectionState.value)
+                    CastPlayerState.Cast(castPlaybackState(current), currentDeviceName(), _connectionState.value)
                 } else {
-                    CastPlayerState.Local(playerState)
+                    CastPlayerState.Local(localPlaybackState(current))
                 }
+        }
+
+        /** Estado real del reproductor remoto (`CastPlayer`), no del holder local. */
+        private fun castPlaybackState(station: StationDto): PlayerState =
+            when (castPlayer?.playbackState) {
+                Player.STATE_READY ->
+                    if (castPlayer?.isPlaying == true) PlayerState.Playing(station) else PlayerState.Paused(station)
+                Player.STATE_BUFFERING -> PlayerState.Buffering(station)
+                Player.STATE_ENDED, Player.STATE_IDLE -> PlayerState.Idle
+                else -> PlayerState.Buffering(station)
+            }
+
+        /** Estado del reproductor local (se refleja en el holder). */
+        private fun localPlaybackState(station: StationDto): PlayerState =
+            when (activeStationHolder.playerState) {
+                PlayerStateType.PLAYING -> PlayerState.Playing(station)
+                PlayerStateType.PAUSED -> PlayerState.Paused(station)
+                PlayerStateType.BUFFERING -> PlayerState.Buffering(station)
+                PlayerStateType.ERROR -> PlayerState.Error(station, "Se ha interrumpido la reproducción.")
+                PlayerStateType.IDLE -> PlayerState.Idle
+            }
+
+        private fun currentDeviceName(): String {
+            val name = castContext?.sessionManager?.currentCastSession?.castDevice?.friendlyName
+            return name ?: "Chromecast"
         }
 
         @OptIn(UnstableApi::class)
@@ -299,15 +312,6 @@ class CastPlayerManager
 
         fun updateLocalState(state: PlayerState) {
             _castState.value = CastPlayerState.Local(state)
-        }
-
-        fun updateCastPlayerState(state: PlayerState) {
-            if (isCastConnected) {
-                val deviceName =
-                    castContext?.sessionManager?.currentCastSession
-                        ?.castDevice?.friendlyName ?: "Chromecast"
-                _castState.value = CastPlayerState.Cast(state, deviceName, _connectionState.value)
-            }
         }
 
         fun release() {

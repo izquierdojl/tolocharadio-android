@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.izquierdojl.tolocharadio.cast.CastConnectionState
+import com.izquierdojl.tolocharadio.cast.CastPlayerState
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import kotlinx.coroutines.launch
@@ -78,11 +79,12 @@ fun MiniPlayer(
     val scope = rememberCoroutineScope()
     var showStationInfo by remember { mutableStateOf(false) }
     var wasConnecting by remember { mutableStateOf(false) }
-    val station = playerStation(state)
+    // Con Cast conectado el estado real lo gobierna el CastPlayer.
+    val effectiveState = (castState as? CastPlayerState.Cast)?.playerState ?: state
+    val station = playerStation(effectiveState)
     val isVisible = station != null
     val displayName = station?.name?.ifBlank { "Emisora" } ?: ""
-    val error = state as? PlayerState.Error
-
+    val error = effectiveState as? PlayerState.Error
     // FR-012: Mostrar Snackbar cuando la conexión a Chromecast falla
     LaunchedEffect(castConnectionState) {
         if (castConnectionState == CastConnectionState.CONNECTING) {
@@ -108,7 +110,7 @@ fun MiniPlayer(
             Row(
                 modifier =
                     Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                        .semantics { contentDescription = panelAnnouncement(state, displayName) },
+                        .semantics { contentDescription = panelAnnouncement(effectiveState, displayName) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 PanelIdentity(
@@ -120,7 +122,7 @@ fun MiniPlayer(
                     onOpen = { showStationInfo = true },
                 )
                 PanelMainAction(
-                    state = state,
+                    state = effectiveState,
                     onToggle = viewModel::toggle,
                     onCancelLoad = viewModel::cancelLoad,
                     onRetry = viewModel::retry,
@@ -299,7 +301,8 @@ fun FullPlayerSheet(
 ) {
     val state by viewModel.state.collectAsState()
     val castState by viewModel.castState.collectAsState()
-    val isCastConnected = castState is com.izquierdojl.tolocharadio.cast.CastPlayerState.Cast
+    val isCastConnected = castState is CastPlayerState.Cast
+    val effectiveState = (castState as? CastPlayerState.Cast)?.playerState ?: state
     var showStationInfo by remember { mutableStateOf(false) }
     var volume by remember { mutableFloatStateOf(1f) }
 
@@ -330,11 +333,13 @@ fun FullPlayerSheet(
                     }
                 }
             }
-            if (state is PlayerState.Buffering) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp))
+            if (effectiveState is PlayerState.Buffering) {
+                LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp))
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = viewModel::toggle) {
                     Icon(
-                        if (state is PlayerState.Playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        if (effectiveState is PlayerState.Playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = "Play/pausa",
                     )
                 }
@@ -344,13 +349,13 @@ fun FullPlayerSheet(
                 }) {
                     Icon(Icons.Filled.Close, contentDescription = "Detener")
                 }
-                if (state is PlayerState.Error) {
+                if (effectiveState is PlayerState.Error) {
                     IconButton(onClick = viewModel::retry) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Reintentar")
                     }
                 }
             }
-            (state as? PlayerState.Error)?.let {
+            (effectiveState as? PlayerState.Error)?.let {
                 Text(it.message, color = MaterialTheme.colorScheme.error)
             }
 
@@ -371,7 +376,7 @@ fun FullPlayerSheet(
                         value = volume,
                         onValueChange = { newVolume ->
                             volume = newVolume
-                            viewModel.castPlayerManager.exoPlayer.volume = newVolume
+                            viewModel.castPlayerManager.activePlayer.volume = newVolume
                         },
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                     )
