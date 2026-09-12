@@ -11,7 +11,8 @@ import java.util.UUID
  * Se permiten múltiples entradas con la misma URL (alias diferentes).
  *
  * `isActive`: servidor en uso en la sesión actual.
- * `isDefault`: servidor al que se conecta al arrancar la app (FR-005).
+ * `isDefault`: servidor al que se conecta al arrancar la app (FR-006).
+ * No almacena credenciales de usuario (FR-009).
  */
 @Entity(
     tableName = "saved_servers",
@@ -22,7 +23,6 @@ data class SavedServerEntity(
     val url: String,
     val alias: String,
     val appName: String? = null,
-    val userEmail: String? = null,
     val isActive: Boolean = false,
     val isDefault: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),

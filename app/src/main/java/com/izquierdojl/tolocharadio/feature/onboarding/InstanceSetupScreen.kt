@@ -18,7 +18,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
-/** Primera pantalla: pide la URL de la instancia self-hosted (US-1). */
+/**
+ * Pantalla de bienvenida: sin servidores configurados, indica que hay
+ * que configurar uno para acceder y permite añadirlo (URL + alias).
+ * No pide usuario ni contraseña (FR-002).
+ */
 @Composable
 fun InstanceSetupScreen(
     onConnected: () -> Unit,
@@ -31,37 +35,73 @@ fun InstanceSetupScreen(
             is SetupUiState.Error -> s.url
             SetupUiState.Connecting -> ""
         }
+    val alias =
+        when (val s = ui) {
+            is SetupUiState.Idle -> s.alias
+            is SetupUiState.Error -> s.alias
+            SetupUiState.Connecting -> ""
+        }
+    WelcomeContent(
+        url = url,
+        alias = alias,
+        state = ui,
+        onUrlChange = viewModel::onUrlChange,
+        onAliasChange = viewModel::onAliasChange,
+        onConnect = { viewModel.connect(url, alias, onConnected) },
+    )
+}
+
+/** Contenido sin estado de la bienvenida (testable en androidTest). */
+@Composable
+internal fun WelcomeContent(
+    url: String,
+    alias: String,
+    state: SetupUiState,
+    onUrlChange: (String) -> Unit,
+    onAliasChange: (String) -> Unit,
+    onConnect: () -> Unit,
+) {
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         Text("TolochaRadio", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(8.dp))
         Text(
-            "Introduce la dirección de tu instancia para empezar.",
+            "Configura un servidor para acceder a tu contenido.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = url,
-            onValueChange = viewModel::onUrlChange,
-            label = { Text("URL de la instancia") },
+            onValueChange = onUrlChange,
+            label = { Text("URL del servidor") },
             placeholder = { Text("https://radio.mi-dominio.com") },
             singleLine = true,
-            isError = ui is SetupUiState.Error,
+            isError = state is SetupUiState.Error,
             supportingText = {
-                if (ui is SetupUiState.Error) Text((ui as SetupUiState.Error).message)
+                if (state is SetupUiState.Error) Text(state.message)
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = ui != SetupUiState.Connecting,
+            enabled = state != SetupUiState.Connecting,
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = alias,
+            onValueChange = onAliasChange,
+            label = { Text("Alias (opcional)") },
+            placeholder = { Text("Mi servidor") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = state != SetupUiState.Connecting,
         )
         Spacer(Modifier.height(16.dp))
         Button(
-            onClick = { viewModel.connect(url, onConnected) },
-            enabled = ui != SetupUiState.Connecting,
+            onClick = onConnect,
+            enabled = url.isNotBlank() && state != SetupUiState.Connecting,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            if (ui == SetupUiState.Connecting) {
+            if (state == SetupUiState.Connecting) {
                 CircularProgressIndicator(Modifier.height(20.dp))
             } else {
-                Text("Conectar")
+                Text("Añadir servidor")
             }
         }
     }

@@ -6,6 +6,8 @@
 
 **Status**: Draft
 
+> **Nota de gobernanza (2026-09-12)**: el modelo de autenticación de usuario (login/registro/sesión/JWT/Bearer) definido en esta spec queda **retirado** por la spec `0022-jlizquierdo-20260912-server-only-access` y la constitución 2.0.0; la app opera solo con servidores y sin credenciales de usuario. El resto de la spec se conserva como histórico.
+
 **Input**: User description: "Comencemos con esta especificación para la feature de auth + explorar contra tu instancia y el desarrollo inicial de la aplicación."
 
 ## User Scenarios & Testing *(mandatory)*

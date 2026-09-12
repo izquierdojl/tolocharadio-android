@@ -9,8 +9,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
-import com.izquierdojl.tolocharadio.core.session.SessionManager
-import com.izquierdojl.tolocharadio.core.session.SessionRestorer
 import com.izquierdojl.tolocharadio.core.shortcuts.PendingShortcutHolder
 import com.izquierdojl.tolocharadio.core.shortcuts.ShortcutIntents
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
@@ -31,13 +29,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
     @Inject
-    lateinit var sessionManager: SessionManager
-
-    @Inject
     lateinit var instancePrefs: InstancePrefs
-
-    @Inject
-    lateinit var sessionRestorer: SessionRestorer
 
     @Inject
     lateinit var migrationHelper: MigrationHelper
@@ -54,11 +46,8 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
 
         lifecycleScope.launch {
-            // Migrar baseUrl existente a SavedServer si es necesario
+            // Migra baseUrl existente a SavedServer y limpia el almacén legacy.
             migrationHelper.migrateIfNeeded()
-            // Restaurar sesión antes de setContent para que la UI
-            // muestre el estado correcto desde el primer frame.
-            sessionRestorer.restore()
         }
 
         // Handle notification tap intent
@@ -68,7 +57,6 @@ class MainActivity : FragmentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            val hasInstance by instancePrefs.hasInstance.collectAsState(initial = false)
             val mode by instancePrefs.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
             val startScreen by instancePrefs.startScreen.collectAsState(initial = StartScreen.EXPLORE)
             val hasServers by serverRepository.servers
@@ -76,8 +64,6 @@ class MainActivity : FragmentActivity() {
                 .collectAsState(initial = false)
             TolochaTheme(darkTheme = resolveDarkTheme(mode, isSystemInDarkTheme())) {
                 TolochaNavGraph(
-                    sessionManager = sessionManager,
-                    hasInstance = hasInstance,
                     hasServers = hasServers,
                     startScreen = startScreen,
                 )

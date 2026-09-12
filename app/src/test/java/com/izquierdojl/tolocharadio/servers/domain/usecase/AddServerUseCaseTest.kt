@@ -1,10 +1,12 @@
 package com.izquierdojl.tolocharadio.servers.domain.usecase
 
 import com.izquierdojl.tolocharadio.core.network.ApiResult
+import com.izquierdojl.tolocharadio.core.network.DomainError
 import com.izquierdojl.tolocharadio.data.local.servers.SavedServerEntity
 import com.izquierdojl.tolocharadio.data.repo.servers.ServerRepository
 import com.izquierdojl.tolocharadio.domain.servers.AddServerUseCase
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -31,10 +33,8 @@ class AddServerUseCaseTest {
     @Test
     fun `invoke returns error when repository add fails`() =
         runTest {
-            coEvery { repository.add(any(), any(), any(), any(), any()) } returns
-                ApiResult.Err(
-                    com.izquierdojl.tolocharadio.core.network.DomainError.Unavailable("Connection failed"),
-                )
+            coEvery { repository.add(any(), any(), any()) } returns
+                ApiResult.Err(DomainError.Unavailable("Connection failed"))
             val result = useCase("https://radio.example.com", "My Server")
             assertTrue(result is ApiResult.Err)
         }
@@ -50,22 +50,18 @@ class AddServerUseCaseTest {
                     appName = "TolochaRadio",
                     isDefault = false,
                 )
-            coEvery { repository.add(any(), any(), any(), any(), any()) } returns ApiResult.Ok(server)
+            coEvery { repository.add(any(), any(), any()) } returns ApiResult.Ok(server)
             val result = useCase("https://radio.example.com", "My Server")
             assertTrue(result is ApiResult.Ok)
             assertEquals("My Server", (result as ApiResult.Ok).value.alias)
         }
 
     @Test
-    fun `invoke propaga email y password al repositorio (FR-005)`() =
+    fun `invoke no marca por defecto salvo que se pida (FR-003)`() =
         runTest {
-            coEvery { repository.add(any(), any(), any(), any(), any()) } returns
-                ApiResult.Err(
-                    com.izquierdojl.tolocharadio.core.network.DomainError.Unavailable("x"),
-                )
-            useCase("https://radio.example.com", "srv", "a@b.c", "secreta123")
-            io.mockk.coVerify {
-                repository.add("https://radio.example.com", "srv", "a@b.c", "secreta123", false)
-            }
+            coEvery { repository.add(any(), any(), any()) } returns
+                ApiResult.Err(DomainError.Unavailable("x"))
+            useCase("https://radio.example.com", "srv")
+            coVerify { repository.add("https://radio.example.com", "srv", false) }
         }
 }

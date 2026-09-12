@@ -21,17 +21,6 @@ class DtoSerializationTest {
     }
 
     @Test
-    fun `AuthResponse con usuario y tokens`() {
-        val dto =
-            TolochaJson.decodeFromString<AuthResponseDto>(
-                """{"user":{"id":1,"email":"a@b.c","name":"Ana","theme":"dark",
-               "createdAt":1700000000000},"accessToken":"a","refreshToken":"r"}""",
-            )
-        assertEquals(ThemeDto.DARK, dto.user.theme)
-        assertEquals("r", dto.refreshToken)
-    }
-
-    @Test
     fun `StationPage con paginacion hasMore`() {
         val dto =
             TolochaJson.decodeFromString<StationPageDto>(

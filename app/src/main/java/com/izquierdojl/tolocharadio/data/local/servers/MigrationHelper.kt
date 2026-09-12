@@ -1,17 +1,18 @@
 package com.izquierdojl.tolocharadio.data.local.servers
 
+import android.content.Context
 import android.util.Log
-import com.izquierdojl.tolocharadio.core.session.TokenStore
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Migra la configuración actual de baseUrl (DataStore) al
- * nuevo sistema de servidores guardados.
+ * Migra la configuración de `baseUrl` (DataStore) al sistema de
+ * servidores guardados y elimina el almacén legacy de credenciales.
  *
- * Se ejecuta una sola vez al detectar que no hay servidores
- * guardados pero sí una baseUrl en DataStore.
+ * Se ejecuta una sola vez al arrancar. Idempotente.
  */
 @Singleton
 class MigrationHelper
@@ -19,41 +20,41 @@ class MigrationHelper
     constructor(
         private val dao: ServerDao,
         private val instancePrefs: InstancePrefs,
-        private val tokenStore: TokenStore,
+        @ApplicationContext private val context: Context,
     ) {
         /**
-         * Migra la baseUrl existente a un SavedServer.
-         * Idempotente — solo migra si no hay servidores guardados.
+         * Elimina el almacén legacy `tolocha_tokens` (sin
+         * `security-crypto`) y, si ya había una instancia configurada
+         * y no hay servidores, la migra a un `SavedServerEntity`
+         * activo y por defecto.
          */
         suspend fun migrateIfNeeded() {
-            val serverCount = dao.count()
-            if (serverCount > 0) return
+            // Sin autenticación de usuario no debe quedar ningún token en disco.
+            context.deleteSharedPreferences(LEGACY_TOKEN_STORE)
 
-            // Obtener baseUrl actual
-            var baseUrl = ""
-            instancePrefs.baseUrl.collect { url ->
-                baseUrl = url
-            }
+            if (dao.count() > 0) return
 
+            val setupDone = instancePrefs.hasInstance.first()
+            if (!setupDone) return
+
+            val baseUrl = instancePrefs.baseUrl.first()
             if (baseUrl.isBlank()) return
 
-            // Crear servidor con la URL existente: activo y por defecto
-            // (FR-005 — es el único servidor migrado)
             val server =
                 SavedServerEntity(
                     url = baseUrl,
                     alias = "Mi servidor",
-                    appName = "Mi servidor",
+                    appName = null,
                     isActive = true,
                     isDefault = true,
                 )
 
             dao.insert(server)
-            tokenStore.setActiveServerId(server.id)
             Log.d(TAG, "Migrated baseUrl to SavedServer: $baseUrl")
         }
 
         private companion object {
             private const val TAG = "MigrationHelper"
+            private const val LEGACY_TOKEN_STORE = "tolocha_tokens"
         }
     }

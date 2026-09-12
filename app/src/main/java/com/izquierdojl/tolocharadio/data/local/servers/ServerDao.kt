@@ -15,9 +15,6 @@ interface ServerDao {
     @Query("SELECT * FROM saved_servers WHERE id = :id")
     suspend fun getById(id: String): SavedServerEntity?
 
-    @Query("SELECT * FROM saved_servers WHERE isDefault = 1 LIMIT 1")
-    suspend fun getDefault(): SavedServerEntity?
-
     @Query("SELECT * FROM saved_servers WHERE isActive = 1 LIMIT 1")
     suspend fun getActive(): SavedServerEntity?
 

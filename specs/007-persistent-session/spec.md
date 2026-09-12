@@ -6,6 +6,8 @@
 
 **Status**: Done (2026-09-06; todo verificado manualmente en emulador por el usuario)
 
+> **Nota de gobernanza (2026-09-12)**: el modelo de credenciales por servidor (email/password/refresh, auto-login y re-login) definido en esta spec queda **retirado** por la spec `0022-jlizquierdo-20260912-server-only-access` y la constitución 2.0.0; los servidores se conservan (URL + alias + activo/por defecto) sin credenciales. El resto de la spec se conserva como histórico.
+
 **Input**: User description: "que se guarde la sesión en la app de forma persistente, ahora si cierro e inicio, me pide usuario y clave cuando selecciono cualquier posición, como historial o favoritos. Propongo hacer apartado de gestión de servidores y credenciales y que se guarden persistentes en teléfono para no tener que introducirlos cada vez"
 
 **Enmienda (2026-09-06)**: Rediseño conforme al modelo de usuario:

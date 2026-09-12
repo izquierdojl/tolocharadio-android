@@ -30,7 +30,7 @@ class ContentNotificationTest {
     }
 
     @Test
-    fun `content notification should create valid notification data`() {
+    fun `content_notification_should_create_valid_notification_data`() {
         val notificationData =
             NotificationData(
                 type = NotificationType.CONTENT,
@@ -46,13 +46,13 @@ class ContentNotificationTest {
     }
 
     @Test
-    fun `content notification should use correct channel`() {
+    fun `content_notification_should_use_correct_channel`() {
         val channelId = NotificationChannels.getChannelIdForType(NotificationType.CONTENT)
         assertEquals(NotificationChannels.CONTENT_CHANNEL_ID, channelId)
     }
 
     @Test
-    fun `content notification should navigate to content screen`() {
+    fun `content_notification_should_navigate_to_content_screen`() {
         val notificationData =
             NotificationData(
                 type = NotificationType.CONTENT,
@@ -69,7 +69,7 @@ class ContentNotificationTest {
     }
 
     @Test
-    fun `content notification without contentId should navigate to content list`() {
+    fun `content_notification_without_contentId_should_navigate_to_content_list`() {
         val notificationData =
             NotificationData(
                 type = NotificationType.CONTENT,
@@ -86,7 +86,7 @@ class ContentNotificationTest {
     }
 
     @Test
-    fun `content notification should work with app in background`() {
+    fun `content_notification_should_work_with_app_in_background`() {
         val notificationData =
             NotificationData(
                 type = NotificationType.CONTENT,

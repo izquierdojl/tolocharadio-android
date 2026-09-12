@@ -30,7 +30,7 @@ class SystemNotificationTest {
     }
 
     @Test
-    fun `system notification should create valid notification data`() {
+    fun `system_notification_should_create_valid_notification_data`() {
         val notificationData =
             NotificationData(
                 type = NotificationType.SYSTEM,
@@ -46,13 +46,13 @@ class SystemNotificationTest {
     }
 
     @Test
-    fun `system notification should use correct channel`() {
+    fun `system_notification_should_use_correct_channel`() {
         val channelId = NotificationChannels.getChannelIdForType(NotificationType.SYSTEM)
         assertEquals(NotificationChannels.SYSTEM_CHANNEL_ID, channelId)
     }
 
     @Test
-    fun `system notification should navigate to info screen`() {
+    fun `system_notification_should_navigate_to_info_screen`() {
         val notificationData =
             NotificationData(
                 type = NotificationType.SYSTEM,
@@ -69,7 +69,7 @@ class SystemNotificationTest {
     }
 
     @Test
-    fun `system notification with contentId should navigate to specific info`() {
+    fun `system_notification_with_contentId_should_navigate_to_specific_info`() {
         val notificationData =
             NotificationData(
                 type = NotificationType.SYSTEM,
@@ -86,7 +86,7 @@ class SystemNotificationTest {
     }
 
     @Test
-    fun `system notification should work with app in background`() {
+    fun `system_notification_should_work_with_app_in_background`() {
         val notificationData =
             NotificationData(
                 type = NotificationType.SYSTEM,

@@ -6,8 +6,8 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 
 /**
- * Reproducción por proxy autenticado. El stream se obtiene con header
- * Bearer (ver `AuthDataSourceFactory`); aquí solo el precheck.
+ * Reproducción por proxy del servidor, sin credenciales de usuario.
+ * Aquí solo el precheck de disponibilidad.
  */
 interface PlaybackApi {
     @GET("playback/{stationId}/status")
@@ -16,7 +16,7 @@ interface PlaybackApi {
     ): Response<PlaybackStatusDto>
 }
 
-/** URL del proxy de stream. El token viaja en header, jamás en la URL (FR-007). */
+/** URL del proxy de stream. No se envía ninguna credencial (FR-011). */
 fun streamUrl(
     baseUrl: String,
     stationId: String,

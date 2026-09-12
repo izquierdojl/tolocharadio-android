@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Los tokens (EncryptedSharedPreferences) NUNCA se respaldan. -->
+<!-- Sin autenticación de usuario no se almacena ninguna credencial que excluir. -->
 <data-extraction-rules>
-    <cloud-backup>
-        <exclude domain="sharedpref" path="tolocha_tokens.xml" />
-        <exclude domain="sharedpref" path="tolocha_tokens_preference.xml" />
-    </cloud-backup>
+    <cloud-backup />
 </data-extraction-rules>

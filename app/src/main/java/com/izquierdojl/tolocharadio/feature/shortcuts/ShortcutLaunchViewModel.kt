@@ -1,8 +1,6 @@
 package com.izquierdojl.tolocharadio.feature.shortcuts
 
 import androidx.lifecycle.ViewModel
-import com.izquierdojl.tolocharadio.core.session.AuthState
-import com.izquierdojl.tolocharadio.core.session.SessionManager
 import com.izquierdojl.tolocharadio.core.shortcuts.PendingShortcut
 import com.izquierdojl.tolocharadio.core.shortcuts.PendingShortcutHolder
 import com.izquierdojl.tolocharadio.domain.shortcuts.ResolveShortcutLaunchUseCase
@@ -13,7 +11,7 @@ import javax.inject.Inject
 
 /**
  * Expone el acceso directo pendiente y resuelve su lanzamiento. El grafo
- * de navegación consume el resultado para reproducir/navegar (FR-005/007).
+ * de navegación consume el resultado para reproducir o avisar (FR-005/007).
  */
 @HiltViewModel
 class ShortcutLaunchViewModel
@@ -21,15 +19,10 @@ class ShortcutLaunchViewModel
     constructor(
         private val pendingHolder: PendingShortcutHolder,
         private val resolveLaunch: ResolveShortcutLaunchUseCase,
-        private val sessionManager: SessionManager,
     ) : ViewModel() {
         val pending: StateFlow<PendingShortcut?> = pendingHolder.pending
 
-        val authState: StateFlow<AuthState> = sessionManager.authState
-
-        suspend fun resolve(stationId: String): ShortcutLaunchResolution {
-            return resolveLaunch(stationId, sessionManager.authState.value)
-        }
+        suspend fun resolve(stationId: String): ShortcutLaunchResolution = resolveLaunch(stationId)
 
         fun consume() = pendingHolder.clear()
     }

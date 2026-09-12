@@ -6,7 +6,7 @@ import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Path
 
-/** Historial de reproducción (Bearer). */
+/** Historial de reproducción, compartido por la instancia. */
 interface HistoryApi {
     @GET("history")
     suspend fun list(): Response<HistoryListDto>

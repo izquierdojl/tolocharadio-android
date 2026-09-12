@@ -168,7 +168,6 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
     implementation(libs.datastore.preferences)
-    implementation(libs.security.crypto)
     implementation(libs.coil.compose)
     implementation(libs.process.phoenix)
 

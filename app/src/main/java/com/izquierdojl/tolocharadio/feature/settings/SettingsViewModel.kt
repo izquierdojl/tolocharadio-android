@@ -5,9 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
-import com.izquierdojl.tolocharadio.data.remote.dto.ThemeDto
-import com.izquierdojl.tolocharadio.data.repo.UserRepo
-import com.izquierdojl.tolocharadio.domain.auth.LogoutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,14 +35,12 @@ sealed interface AppInfoUiState {
     data class Showing(val info: AppInfo = AppInfo()) : AppInfoUiState
 }
 
-/** Configuración: tema claro/oscuro, pantalla de arranque y logout. */
+/** Configuración: tema claro/oscuro y pantalla de arranque (todo local, sin sesión). */
 @HiltViewModel
 class SettingsViewModel
     @Inject
     constructor(
         private val prefs: InstancePrefs,
-        private val users: UserRepo,
-        private val logoutUseCase: LogoutUseCase,
     ) : ViewModel() {
         private val _ui = MutableStateFlow(SettingsUi())
         val ui: StateFlow<SettingsUi> = _ui.asStateFlow()
@@ -69,26 +64,13 @@ class SettingsViewModel
         /** Selector Sistema/Claro/Oscuro (spec 002, FR-010). SYSTEM es solo local. */
         fun onThemeModeChange(mode: ThemeMode) {
             _ui.value = _ui.value.copy(themeMode = mode)
-            viewModelScope.launch {
-                prefs.setThemeMode(mode)
-                if (mode != ThemeMode.SYSTEM) {
-                    users.patchMe(null, if (mode == ThemeMode.DARK) ThemeDto.DARK else ThemeDto.LIGHT)
-                }
-            }
+            viewModelScope.launch { prefs.setThemeMode(mode) }
         }
 
-        /** Pantalla de arranque con sesión restaurada (FR-011b). */
+        /** Pantalla de arranque con servidor configurado (FR-005). */
         fun onStartScreenChange(screen: StartScreen) {
             _ui.value = _ui.value.copy(startScreen = screen)
             viewModelScope.launch { prefs.setStartScreen(screen) }
-        }
-
-        /** Cierra sesión via [LogoutUseCase]. */
-        fun logout(onDone: () -> Unit) {
-            viewModelScope.launch {
-                logoutUseCase()
-                onDone()
-            }
         }
 
         /** Muestra el diálogo de información de la aplicación. */

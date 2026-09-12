@@ -11,7 +11,7 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 
 /**
- * Emisoras personalizadas del usuario (Bearer). Paridad con
+ * Emisoras personalizadas. Paridad con
  * `CustomStations.tsx` web (`GET/POST /custom-stations`,
  * `DELETE /custom-stations/:id`).
  */
