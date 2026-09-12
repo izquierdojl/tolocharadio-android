@@ -6,6 +6,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import androidx.annotation.OptIn
 import androidx.media3.cast.CastPlayer
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -50,6 +51,9 @@ class CastPlayerManager
         private var castContext: CastContext? = null
         private var sessionManagerListener: SessionManagerListener<CastSession>? = null
         private var mediaSession: androidx.media3.session.MediaSession? = null
+
+        /** Error de reproducción remoto pendiente de mostrar (se limpia al recargar). */
+        private var castError: PlayerState.Error? = null
 
         // FR-009: Audio focus management
         private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -173,6 +177,7 @@ class CastPlayerManager
 
         @OptIn(UnstableApi::class)
         private fun createCastPlayer() {
+            castError = null
             castPlayer?.release()
             castContext?.let { ctx ->
                 castPlayer =
@@ -193,6 +198,7 @@ class CastPlayerManager
             castPlayer?.removeListener(castPlayerListener)
             castPlayer?.release()
             castPlayer = null
+            castError = null
             // FR-009: Abandon audio focus when disconnecting from Cast
             abandonAudioFocus()
             // Restore MediaSession to ExoPlayer
@@ -248,13 +254,24 @@ class CastPlayerManager
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     updateCastState()
                 }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    val station = activeStationHolder.station ?: return
+                    android.util.Log.w("CastPlayerManager", "Error de reproducción Cast code=${error.errorCode}", error)
+                    castError = PlayerState.Error(station, "No se pudo reproducir en el dispositivo.")
+                    updateCastState()
+                }
             }
 
         private fun updateCastState() {
             val current = activeStationHolder.station ?: return
             _castState.value =
                 if (isCastConnected) {
-                    CastPlayerState.Cast(castPlaybackState(current), currentDeviceName(), _connectionState.value)
+                    CastPlayerState.Cast(
+                        castError ?: castPlaybackState(current),
+                        currentDeviceName(),
+                        _connectionState.value,
+                    )
                 } else {
                     CastPlayerState.Local(localPlaybackState(current))
                 }
@@ -293,6 +310,7 @@ class CastPlayerManager
             if (!isCastConnected) return
             val player = castPlayer ?: return
 
+            castError = null
             val baseUrl = runBlocking { prefs.baseUrl.first() }
             val item = mediaItemFactory.createForCast(station, source, baseUrl)
             player.setMediaItem(item)

@@ -285,4 +285,22 @@ class PlayerViewModelTest {
 
         verify { castPlayer.playWhenReady = true }
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `retry reintenta la emisora del error de Cast`() =
+        runTest {
+            every { castPlayerManager.castState } returns
+                MutableStateFlow<CastPlayerState>(
+                    CastPlayerState.Cast(PlayerState.Error(station, "boom"), "TV", CastConnectionState.CONNECTED),
+                )
+            every { castPlayerManager.isCastConnected } returns true
+            coEvery { playback.status("u1") } returns ApiResult.Ok(PlaybackStatusDto("u1", true, null))
+
+            val viewModel = vm()
+            viewModel.retry()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { playback.status("u1") }
+        }
 }
