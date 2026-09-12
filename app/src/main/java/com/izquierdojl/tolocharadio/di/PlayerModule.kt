@@ -5,11 +5,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
 import com.izquierdojl.tolocharadio.core.session.SessionManager
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
-import com.izquierdojl.tolocharadio.data.remote.playlist.OkHttpPlaylistFetcher
-import com.izquierdojl.tolocharadio.domain.playback.PlaylistFetcher
 import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
 import com.izquierdojl.tolocharadio.feature.player.AuthDataSourceFactory
-import com.izquierdojl.tolocharadio.feature.player.DirectDataSourceFactory
 import com.izquierdojl.tolocharadio.feature.player.PlayerAudioConfig
 import com.izquierdojl.tolocharadio.feature.player.StationMediaItemFactory
 import dagger.Module
@@ -20,7 +17,7 @@ import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import javax.inject.Singleton
 
-/** ExoPlayer compartido + datasources (proxy con Bearer y directo sin auth). */
+/** ExoPlayer compartido + datasource del proxy autenticado (Bearer). */
 @Module
 @InstallIn(SingletonComponent::class)
 object PlayerModule {
@@ -33,14 +30,6 @@ object PlayerModule {
     @Provides
     @Singleton
     fun authDataSource(session: SessionManager): AuthDataSourceFactory = AuthDataSourceFactory(session, OkHttpClient())
-
-    @Provides
-    @Singleton
-    fun directDataSource(): DirectDataSourceFactory = DirectDataSourceFactory()
-
-    @Provides
-    @Singleton
-    fun playlistFetcher(fetcher: OkHttpPlaylistFetcher): PlaylistFetcher = fetcher
 
     @Provides
     @Singleton

@@ -20,7 +20,7 @@ import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.data.repo.PlaybackRepo
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
-import com.izquierdojl.tolocharadio.domain.playback.ResolutionResult
+import com.izquierdojl.tolocharadio.domain.playback.PlaybackStatusReason
 import com.izquierdojl.tolocharadio.domain.playback.ResolvePlaybackSourceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -56,9 +56,9 @@ sealed interface PlayerState {
 }
 
 /**
- * Mini-player persistente: precheck `status`, proxy con Bearer o fuentes
- * directas resueltas (HLS/listas, spec 0019), reintento acotado de candidatos
- * y supervivencia a navegación/rotación (US-5).
+ * Mini-player persistente: preestado de disponibilidad (precheck) bloqueante y
+ * reproducción siempre por el proxy autenticado (spec 0021: las listas y el HLS
+ * los resuelve el servicio), con supervivencia a navegación/rotación (US-5).
  *
  * `TooManyFunctions`/`LongParameterList` suprimidos: el player es un estado
  * central (spec 004/0018/0019) que agrupa reproducción, silencio, Cast y full
@@ -102,10 +102,6 @@ class PlayerViewModel
         private var loadJob: Job? = null
         private var controller: MediaController? = null
 
-        /** Cola de candidatos activa (solo emisoras de lista) y saltos consumidos. */
-        private var playlistQueue: PlaylistPlaybackQueue? = null
-        private var playlistAttempts = 0
-
         private val listener =
             object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -128,13 +124,6 @@ class PlayerViewModel
 
                 override fun onPlayerError(error: PlaybackException) {
                     val current = activeStation() ?: return
-                    val queue = playlistQueue
-                    if (queue != null && playlistAttempts < MAX_PLAYLIST_ATTEMPTS && !queue.exhausted) {
-                        queue.advance()
-                        playlistAttempts++
-                        loadJob = viewModelScope.launch { startSource(current, queue.current) }
-                        return
-                    }
                     setError(current, "Se ha interrumpido la reproducción.")
                 }
 
@@ -189,8 +178,9 @@ class PlayerViewModel
         }
 
         /**
-         * Reproduce [station]: resuelve la fuente (proxy, HLS o lista) y arranca
-         * la reproducción. Resetea silencio y estado de fallback.
+         * Reproduce [station]: consulta el preestado de disponibilidad
+         * (bloqueante para todo tipo de emisora) y arranca la reproducción por
+         * el proxy autenticado si está disponible.
          */
         fun play(station: StationDto) {
             loadJob?.cancel()
@@ -200,31 +190,17 @@ class PlayerViewModel
             syncCastState()
             loadJob =
                 viewModelScope.launch {
-                    when (val result = resolveSource(station)) {
-                        is ResolutionResult.Proxied -> playProxied(station)
-                        is ResolutionResult.Single -> startSource(station, result.source)
-                        is ResolutionResult.Candidates -> {
-                            playlistQueue = PlaylistPlaybackQueue(result.sources)
-                            playlistAttempts = 1
-                            startSource(station, result.sources.first())
+                    when (val r = playback.status(station.id)) {
+                        is ApiResult.Ok -> {
+                            if (!r.value.playable) {
+                                setError(station, PlaybackStatusReason.reasonToMessage(r.value.reason))
+                            } else {
+                                startSource(station, resolveSource(station))
+                            }
                         }
-                        is ResolutionResult.Unavailable -> setError(station, result.error.userMessage())
+                        is ApiResult.Err -> setError(station, r.error.userMessage())
                     }
                 }
-        }
-
-        /** Emisora directa: mantiene el precheck `playable` bloqueante (FR-007). */
-        private suspend fun playProxied(station: StationDto) {
-            when (val r = playback.status(station.id)) {
-                is ApiResult.Ok -> {
-                    if (!r.value.playable) {
-                        setError(station, r.value.reason?.ifBlank { null } ?: "Emisora no disponible.")
-                    } else {
-                        startSource(station, PlaybackSource.Proxied(station.id))
-                    }
-                }
-                is ApiResult.Err -> setError(station, r.error.userMessage())
-            }
         }
 
         @OptIn(UnstableApi::class)
@@ -233,7 +209,6 @@ class PlayerViewModel
             source: PlaybackSource,
         ) {
             val base = prefs.baseUrl.first()
-            activeStationHolder.updateResolvedSource(source)
             if (castPlayerManager.isCastConnected) {
                 castPlayerManager.connectToStation(station, source)
             } else {
@@ -281,8 +256,6 @@ class PlayerViewModel
         private fun resetPlaybackSession() {
             _isMuted.value = false
             castPlayerManager.exoPlayer.volume = 1f
-            playlistQueue = null
-            playlistAttempts = 0
         }
 
         /**
@@ -315,8 +288,6 @@ class PlayerViewModel
                 castPlayerManager.exoPlayer.clearMediaItems()
                 _state.value = PlayerState.Idle
                 activeStationHolder.clear()
-                playlistQueue = null
-                playlistAttempts = 0
                 syncCastState()
             }
         }
@@ -343,8 +314,6 @@ class PlayerViewModel
             castPlayerManager.activePlayer.clearMediaItems()
             _state.value = PlayerState.Idle
             activeStationHolder.clear()
-            playlistQueue = null
-            playlistAttempts = 0
             syncCastState()
         }
 
@@ -360,9 +329,5 @@ class PlayerViewModel
             castPlayerManager.release()
             controller?.release()
             super.onCleared()
-        }
-
-        private companion object {
-            const val MAX_PLAYLIST_ATTEMPTS = 3
         }
     }
