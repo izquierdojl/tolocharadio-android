@@ -1,13 +1,9 @@
 package com.izquierdojl.tolocharadio.feature.settings
 
 import com.izquierdojl.tolocharadio.MainDispatcherRule
-import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
-import com.izquierdojl.tolocharadio.data.repo.UserRepo
-import com.izquierdojl.tolocharadio.domain.auth.LogoutUseCase
-import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -22,18 +18,15 @@ class SettingsViewModelTest {
     val main = MainDispatcherRule()
 
     private val prefs: InstancePrefs = mockk(relaxed = true)
-    private val users: UserRepo = mockk(relaxed = true)
-    private val logoutUseCase: LogoutUseCase = mockk(relaxed = true)
 
     private fun vm(): SettingsViewModel {
         every { prefs.themeMode } returns flowOf(ThemeMode.DARK)
         every { prefs.startScreen } returns flowOf(StartScreen.FAVORITES)
-        coEvery { users.patchMe(any(), any()) } returns ApiResult.Ok(mockk(relaxed = true))
-        return SettingsViewModel(prefs, users, logoutUseCase)
+        return SettingsViewModel(prefs)
     }
 
     @Test
-    fun `ui refleja tema y pantalla de arranque persistidos (FR-011)`() =
+    fun `ui refleja tema y pantalla de arranque persistidos (FR-005)`() =
         runTest {
             val v = vm()
             assertEquals(ThemeMode.DARK, v.ui.value.themeMode)
@@ -41,7 +34,7 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun `cambio de pantalla de arranque persiste (FR-011b)`() =
+    fun `cambio de pantalla de arranque persiste`() =
         runTest {
             val v = vm()
             v.onStartScreenChange(StartScreen.HISTORY)
@@ -50,21 +43,11 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun `cambio de tema persiste (FR-011)`() =
+    fun `cambio de tema persiste localmente`() =
         runTest {
             val v = vm()
             v.onThemeModeChange(ThemeMode.LIGHT)
             coVerify { prefs.setThemeMode(ThemeMode.LIGHT) }
-        }
-
-    @Test
-    fun `logout delega en LogoutUseCase`() =
-        runTest {
-            val v = vm()
-            var done = false
-            v.logout { done = true }
-            coVerify { logoutUseCase() }
-            assertEquals(true, done)
         }
 
     @Test

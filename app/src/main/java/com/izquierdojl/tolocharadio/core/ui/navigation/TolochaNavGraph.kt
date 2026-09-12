@@ -18,7 +18,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -46,14 +45,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.cast.framework.CastButtonFactory
-import com.izquierdojl.tolocharadio.core.session.AuthState
-import com.izquierdojl.tolocharadio.core.session.SessionManager
 import com.izquierdojl.tolocharadio.core.ui.components.TolochaLogo
 import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
 import com.izquierdojl.tolocharadio.domain.shortcuts.ShortcutLaunchResolution
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
-import com.izquierdojl.tolocharadio.feature.auth.LoginScreen
-import com.izquierdojl.tolocharadio.feature.auth.RegisterScreen
 import com.izquierdojl.tolocharadio.feature.customstations.CustomStationsScreen
 import com.izquierdojl.tolocharadio.feature.explore.ExploreScreen
 import com.izquierdojl.tolocharadio.feature.explore.StationDetailScreen
@@ -74,7 +69,7 @@ private data class BottomDest(val route: String, val label: String, val icon: Im
 /** Secciones con listas de emisoras: el alternador de vista es visible (spec 008, FR-001/FR-009). */
 private val VIEW_MODE_ROUTES = setOf(Routes.EXPLORE, Routes.FAVORITES, Routes.HISTORY, Routes.CUSTOM_STATIONS)
 
-/** Explorar, Favoritos, Historial, Mis emisoras + Configuración (FR-011). */
+/** Explorar, Favoritos, Historial, Mis emisoras + Configuración (FR-005). */
 private val BOTTOM_DESTS =
     listOf(
         BottomDest(Routes.EXPLORE, "Explorar", Icons.Filled.Search),
@@ -87,30 +82,26 @@ private val BOTTOM_DESTS =
 /**
  * Shell con bottom bar estilo Pocket Casts + mini-player persistente.
  * Servidores es una sección propia de primer nivel, accesible desde
- * la barra superior (FR-004).
+ * la barra superior (FR-006).
  *
- * Sin sesión válida al arrancar, la app muestra la lista de
- * servidores guardados para seleccionar a cuál conectarse (FR-014);
- * si no hay servidores guardados, va a Login.
+ * La app no usa autenticación de usuario: sin servidores configurados
+ * se muestra la bienvenida/onboarding ([Routes.SETUP]); con al menos
+ * uno se abre directamente la pantalla de arranque (FR-002/FR-005).
  *
- * @param hasInstance false en primer arranque (va a [Routes.SETUP]).
- * @param hasServers true si hay servidores guardados (FR-014).
- * @param startScreen pantalla de arranque con sesión restaurada (FR-011b).
+ * @param hasServers true si hay servidores guardados.
+ * @param startScreen pantalla de arranque (Favoritos/Historial/Explorar).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TolochaNavGraph(
-    sessionManager: SessionManager,
-    hasInstance: Boolean,
     modifier: Modifier = Modifier,
     hasServers: Boolean = false,
     startScreen: StartScreen = StartScreen.EXPLORE,
 ) {
     val navController = rememberNavController()
-    val authState by sessionManager.authState.collectAsState()
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
-    val chromeVisible = currentRoute != null && currentRoute !in setOf(Routes.SETUP, Routes.LOGIN, Routes.REGISTER)
+    val chromeVisible = currentRoute != null && currentRoute != Routes.SETUP
     // Un único PlayerViewModel a ámbito de Activity (spec 004, R3): el panel
     // global y todas las pantallas comparten emisora y estado al navegar.
     val playerVm: PlayerViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
@@ -127,10 +118,10 @@ fun TolochaNavGraph(
     val snackbar = remember { SnackbarHostState() }
 
     // Accesos directos del icono (spec 0018): resuelve el pendiente y
-    // reproduce / navega a Login / avisa si no está disponible.
+    // reproduce o avisa si no está disponible.
     val shortcutVm: ShortcutLaunchViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
     val pendingShortcut by shortcutVm.pending.collectAsState()
-    LaunchedEffect(pendingShortcut, authState) {
+    LaunchedEffect(pendingShortcut) {
         val request = pendingShortcut ?: return@LaunchedEffect
         when (val resolution = shortcutVm.resolve(request.stationId)) {
             is ShortcutLaunchResolution.Play -> {
@@ -138,16 +129,10 @@ fun TolochaNavGraph(
                 playerVm.openFullPlayer()
                 shortcutVm.consume()
             }
-            is ShortcutLaunchResolution.GoLogin -> {
-                shortcutVm.consume()
-                navController.navigate(Routes.LOGIN) { launchSingleTop = true }
-                snackbar.showSnackbar("Tu sesión ha caducado. Inicia sesión de nuevo.")
-            }
             is ShortcutLaunchResolution.Unavailable -> {
                 shortcutVm.consume()
                 snackbar.showSnackbar(resolution.message)
             }
-            ShortcutLaunchResolution.Wait -> Unit
         }
     }
 
@@ -173,34 +158,19 @@ fun TolochaNavGraph(
         }
     }
 
-    // FR-011b: con sesión restaurada, abrir directamente en la pantalla
-    // de arranque configurada. FR-014: sin sesión válida, mostrar la
-    // lista de servidores para seleccionar a cuál conectarse (o Login
-    // si no hay ninguno guardado). Solo actúa en HOME, es decir, en el
-    // arranque de la app.
-    LaunchedEffect(authState, startScreen, hasServers) {
-        if (!hasInstance || currentRoute != Routes.HOME) return@LaunchedEffect
-        when (authState) {
-            is AuthState.Authenticated -> {
-                val target =
-                    when (startScreen) {
-                        StartScreen.FAVORITES -> Routes.FAVORITES
-                        StartScreen.HISTORY -> Routes.HISTORY
-                        StartScreen.EXPLORE -> Routes.EXPLORE
-                    }
-                navController.navigate(target) {
-                    popUpTo(Routes.HOME) { inclusive = true }
-                    launchSingleTop = true
-                }
+    // FR-005: con servidor configurado, abrir directamente en la pantalla
+    // de arranque configurada. Solo actúa en HOME, es decir, al arrancar.
+    LaunchedEffect(startScreen, hasServers) {
+        if (currentRoute != Routes.HOME) return@LaunchedEffect
+        val target =
+            when (startScreen) {
+                StartScreen.FAVORITES -> Routes.FAVORITES
+                StartScreen.HISTORY -> Routes.HISTORY
+                StartScreen.EXPLORE -> Routes.EXPLORE
             }
-            is AuthState.Unauthenticated -> {
-                val target = if (hasServers) Routes.SERVERS else Routes.LOGIN
-                navController.navigate(target) {
-                    popUpTo(Routes.HOME) { inclusive = true }
-                    launchSingleTop = true
-                }
-            }
-            else -> Unit
+        navController.navigate(target) {
+            popUpTo(Routes.HOME) { inclusive = true }
+            launchSingleTop = true
         }
     }
 
@@ -232,8 +202,7 @@ fun TolochaNavGraph(
                             onStart = sleepTimerVm::start,
                             onCancel = sleepTimerVm::cancel,
                         )
-                        // Servidores: sección propia de primer nivel (FR-004);
-                        // sin sesión es la pantalla de selección de conexión (FR-014)
+                        // Servidores: sección propia de primer nivel (FR-006).
                         IconButton(
                             onClick = {
                                 navController.navigate(Routes.SERVERS) {
@@ -265,14 +234,10 @@ fun TolochaNavGraph(
                                     currentRoute == dest.route ||
                                         (dest.route == Routes.EXPLORE && currentRoute == Routes.STATION_DETAIL),
                                 onClick = {
-                                    if (dest.route in AUTH_REQUIRED && authState !is AuthState.Authenticated) {
-                                        navController.navigate(Routes.LOGIN)
-                                    } else {
-                                        navController.navigate(dest.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
+                                    navController.navigate(dest.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
                                 },
                                 icon = { Icon(dest.icon, contentDescription = dest.label) },
@@ -285,40 +250,19 @@ fun TolochaNavGraph(
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = if (hasInstance) Routes.HOME else Routes.SETUP,
+            startDestination = if (hasServers) Routes.HOME else Routes.SETUP,
             modifier = Modifier.padding(padding),
         ) {
             composable(Routes.SETUP) {
                 InstanceSetupScreen(onConnected = {
                     // La base cambió: renacer el proceso recrea el grafo
-                    // Hilt (Retrofit) contra la instancia nueva.
+                    // Hilt (Retrofit) contra el servidor nuevo.
                     com.jakewharton.processphoenix.ProcessPhoenix.triggerRebirth(navController.context)
                 })
             }
             composable(Routes.HOME) { HomeScreen(onExplore = { navController.navigate(Routes.EXPLORE) }) }
-            composable(Routes.LOGIN) {
-                LoginScreen(
-                    onLoggedIn = {
-                        navController.navigate(Routes.EXPLORE) {
-                            popUpTo(Routes.LOGIN) { inclusive = true }
-                        }
-                    },
-                    onRegister = { navController.navigate(Routes.REGISTER) },
-                )
-            }
-            composable(Routes.REGISTER) {
-                RegisterScreen(onRegistered = {
-                    navController.navigate(Routes.EXPLORE) {
-                        popUpTo(Routes.REGISTER) { inclusive = true }
-                    }
-                })
-            }
             composable(Routes.EXPLORE) {
-                if (authState is AuthState.Authenticated) {
-                    ExploreScreen(onStation = { navController.navigate(Routes.stationDetail(it)) })
-                } else {
-                    LoginScreen(onLoggedIn = {}, onRegister = { navController.navigate(Routes.REGISTER) })
-                }
+                ExploreScreen(onStation = { navController.navigate(Routes.stationDetail(it)) })
             }
             composable(Routes.STATION_DETAIL) {
                 StationDetailScreen(
@@ -328,72 +272,40 @@ fun TolochaNavGraph(
                 )
             }
             composable(Routes.FAVORITES) {
-                if (authState is AuthState.Authenticated) {
-                    FavoritesScreen(
-                        onStation = { navController.navigate(Routes.stationDetail(it)) },
-                        onExplore = { navController.navigate(Routes.EXPLORE) },
-                        player = playerVm,
-                    )
-                } else {
-                    LoginScreen(onLoggedIn = {}, onRegister = { navController.navigate(Routes.REGISTER) })
-                }
+                FavoritesScreen(
+                    onStation = { navController.navigate(Routes.stationDetail(it)) },
+                    onExplore = { navController.navigate(Routes.EXPLORE) },
+                    player = playerVm,
+                )
             }
             composable(Routes.HISTORY) {
-                if (authState is AuthState.Authenticated) {
-                    HistoryScreen(
-                        onStation = { navController.navigate(Routes.stationDetail(it)) },
-                        onExplore = { navController.navigate(Routes.EXPLORE) },
-                        player = playerVm,
-                    )
-                } else {
-                    LoginScreen(onLoggedIn = {}, onRegister = { navController.navigate(Routes.REGISTER) })
-                }
+                HistoryScreen(
+                    onStation = { navController.navigate(Routes.stationDetail(it)) },
+                    onExplore = { navController.navigate(Routes.EXPLORE) },
+                    player = playerVm,
+                )
             }
             composable(Routes.CUSTOM_STATIONS) {
-                CustomStationsDestination(
-                    authState = authState,
+                CustomStationsScreen(
                     onExplore = { navController.navigate(Routes.EXPLORE) },
-                    onRegister = { navController.navigate(Routes.REGISTER) },
                     player = playerVm,
                 )
             }
             composable(Routes.SETTINGS) {
-                if (authState is AuthState.Authenticated) {
-                    SettingsScreen(onLoggedOut = {
-                        navController.navigate(Routes.LOGIN) {
-                            popUpTo(Routes.SETTINGS) { inclusive = true }
-                        }
-                    })
-                } else {
-                    LoginScreen(onLoggedIn = {}, onRegister = { navController.navigate(Routes.REGISTER) })
-                }
+                SettingsScreen()
             }
             composable(Routes.SERVERS) {
-                // Accesible sin sesión: es el selector de conexión (FR-014).
                 ServerListScreen(
                     onBack = { navController.popBackStack() },
-                    onLogin = { navController.navigate(Routes.LOGIN) },
+                    onNoServers = {
+                        navController.navigate(Routes.SETUP) {
+                            popUpTo(navController.graph.id) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
                 )
             }
         }
-    }
-}
-
-/**
- * Destino Mis emisoras con guardia de sesión (patrón HISTORY/FAVORITES).
- * Extraído para no aumentar la complejidad ciclomática de [TolochaNavGraph].
- */
-@Composable
-private fun CustomStationsDestination(
-    authState: AuthState,
-    onExplore: () -> Unit,
-    onRegister: () -> Unit,
-    player: PlayerViewModel,
-) {
-    if (authState is AuthState.Authenticated) {
-        CustomStationsScreen(onExplore = onExplore, player = player)
-    } else {
-        LoginScreen(onLoggedIn = {}, onRegister = onRegister)
     }
 }
 

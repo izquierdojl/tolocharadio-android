@@ -2,7 +2,7 @@ package com.izquierdojl.tolocharadio.core.network
 
 /** Error de dominio tipado desde `{error:{code,message,status,details}}` (FR-011). */
 sealed interface DomainError {
-    /** 401: sesión expirada o credenciales inválidas. */
+    /** 401/403: la instancia exige autenticación (no soportada). */
     data class Unauthorized(val code: String) : DomainError
 
     /** 404: emisora o recurso inexistente. */
@@ -38,7 +38,7 @@ fun DomainError.fieldMessage(field: String): String? =
  */
 fun DomainError.userMessage(): String =
     when (this) {
-        is DomainError.Unauthorized -> "Tu sesión ha expirado. Vuelve a iniciar sesión."
+        is DomainError.Unauthorized -> "Esta instancia requiere autenticación. Actualiza el servidor."
         is DomainError.NotFound -> "No se ha encontrado lo que buscabas."
         is DomainError.Conflict -> message.ifBlank { "Esa acción entra en conflicto con tus datos." }
         is DomainError.Validation -> details.firstOrNull()?.message ?: "Revisa los datos introducidos."

@@ -1,8 +1,6 @@
 package com.izquierdojl.tolocharadio.core.shortcuts
 
 import com.izquierdojl.tolocharadio.core.network.ApiResult
-import com.izquierdojl.tolocharadio.core.session.AuthState
-import com.izquierdojl.tolocharadio.core.session.SessionManager
 import com.izquierdojl.tolocharadio.data.remote.dto.HistoryEntryDto
 import com.izquierdojl.tolocharadio.data.repo.HistoryRepo
 import com.izquierdojl.tolocharadio.di.ApplicationScope
@@ -20,12 +18,12 @@ import javax.inject.Singleton
  * Mantiene el menú del icono sincronizado con el historial (FR-009).
  *
  * Triggers (research.md R5):
- * - cambios en `HistoryRepo.items` con sesión activa → republicar;
- * - login/restauración (`Authenticated`) → refrescar historial y republicar;
+ * - cambios en `HistoryRepo.items` → republicar;
  * - app a primer plano ([onForeground]) → refrescar historial (red→caché);
- * - logout (`Unauthenticated`) o [clearNow] → limpiar (FR-010).
+ * - cambio de servidor o [clearNow] → limpiar.
  *
- * Las operaciones de publicación/limpieza están serializadas con un [Mutex].
+ * No depende de ninguna sesión de usuario. Las operaciones de
+ * publicación/limpieza están serializadas con un [Mutex].
  */
 @Singleton
 class ShortcutSyncCoordinator
@@ -33,7 +31,6 @@ class ShortcutSyncCoordinator
     constructor(
         private val publisher: ShortcutPublisher,
         private val historyRepo: HistoryRepo,
-        private val sessionManager: SessionManager,
         private val buildStations: BuildShortcutStationsUseCase,
         @ApplicationScope private val scope: CoroutineScope,
     ) : ShortcutClearer {
@@ -42,43 +39,27 @@ class ShortcutSyncCoordinator
         @Volatile
         private var started = false
 
-        /** Arranca la observación de historial y sesión (idempotente). */
+        /** Arranca la observación de historial (idempotente). */
         fun start() {
             if (started) return
             started = true
             scope.launch { observeHistory() }
-            scope.launch { observeSession() }
         }
 
         /** Se invoca cuando la app pasa a primer plano (FR-009, US3.4). */
         fun onForeground() {
-            if (sessionManager.authState.value !is AuthState.Authenticated) return
             scope.launch { refreshAndPublish() }
         }
 
         override suspend fun clear() = clearNow()
 
-        /** Elimina de inmediato los accesos (logout o cambio de instancia). */
+        /** Elimina de inmediato los accesos (cambio de servidor). */
         suspend fun clearNow() {
             mutex.withLock { publisher.clear() }
         }
 
         private suspend fun observeHistory() {
-            historyRepo.items.collect { entries ->
-                if (sessionManager.authState.value is AuthState.Authenticated) {
-                    publish(entries)
-                }
-            }
-        }
-
-        private suspend fun observeSession() {
-            sessionManager.authState.collect { state ->
-                when (state) {
-                    is AuthState.Authenticated -> refreshAndPublish()
-                    is AuthState.Unauthenticated -> clearNow()
-                    AuthState.Loading -> Unit
-                }
-            }
+            historyRepo.items.collect { entries -> publish(entries) }
         }
 
         /** Refresca el historial (red; el repo cae a caché) y republica. */

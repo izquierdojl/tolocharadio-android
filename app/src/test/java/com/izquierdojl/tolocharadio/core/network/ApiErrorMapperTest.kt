@@ -40,8 +40,13 @@ class ApiErrorMapperTest {
     }
 
     @Test
+    fun `403 mapea a Unauthorized`() {
+        assertTrue(mapHttpError(403, null) is DomainError.Unauthorized)
+    }
+
+    @Test
     fun `mensajes de usuario en espanol sin texto tecnico`() {
-        assertTrue(DomainError.Unauthorized("X").userMessage().contains("sesión"))
+        assertTrue(DomainError.Unauthorized("X").userMessage().contains("instancia"))
         assertTrue(DomainError.Unavailable("x").userMessage().contains("conexión"))
     }
 }

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -27,15 +26,12 @@ import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 
 /**
- * Configuración (sustituye a Perfil, FR-011): tema claro/oscuro,
- * pantalla de arranque (FR-011b) y cerrar sesión. Los servidores
- * son una sección propia de primer nivel (FR-004).
+ * Configuración (sustituye a Perfil, FR-005): tema claro/oscuro y
+ * pantalla de arranque. Los servidores son una sección propia de
+ * primer nivel (FR-006); no hay cierre de sesión (FR-008).
  */
 @Composable
-fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel(),
-    onLoggedOut: () -> Unit = {},
-) {
+fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val ui by viewModel.ui.collectAsState()
     val appInfoUiState by viewModel.appInfoUiState.collectAsState()
 
@@ -94,7 +90,7 @@ fun SettingsScreen(
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                "Se abrirá automáticamente al arrancar la app con la sesión activa.",
+                "Se abrirá automáticamente al arrancar la app con un servidor configurado.",
                 style = MaterialTheme.typography.bodySmall,
             )
 
@@ -104,11 +100,6 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-            OutlinedButton(onClick = { viewModel.logout(onLoggedOut) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Cerrar sesión")
-            }
-
-            Spacer(Modifier.height(16.dp))
             Text(
                 text = "Acerca de",
                 style = MaterialTheme.typography.bodyLarge,

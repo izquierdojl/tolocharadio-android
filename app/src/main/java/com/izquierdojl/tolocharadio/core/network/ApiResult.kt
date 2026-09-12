@@ -29,6 +29,7 @@ private data class ErrorDetail(val field: String = "", val message: String = "")
 private val envelopeJson = Json { ignoreUnknownKeys = true }
 
 private const val HTTP_UNAUTHORIZED = 401
+private const val HTTP_FORBIDDEN = 403
 private const val HTTP_NOT_FOUND = 404
 private const val HTTP_CONFLICT = 409
 private const val HTTP_UNPROCESSABLE = 422
@@ -39,7 +40,7 @@ fun mapHttpError(
     code: Int,
     rawBody: String?,
 ): DomainError {
-    if (code == HTTP_UNAUTHORIZED) return DomainError.Unauthorized(extractCode(rawBody))
+    if (code == HTTP_UNAUTHORIZED || code == HTTP_FORBIDDEN) return DomainError.Unauthorized(extractCode(rawBody))
     val body = rawBody?.let { runCatching { envelopeJson.decodeFromString<ErrorEnvelope>(it).error }.getOrNull() }
     return when (code) {
         HTTP_NOT_FOUND -> DomainError.NotFound(body?.code ?: "NOT_FOUND")

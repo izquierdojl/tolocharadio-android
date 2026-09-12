@@ -29,7 +29,6 @@ class SwitchServerUseCase
                             url = result.value.url,
                             alias = result.value.alias,
                             appName = result.value.appName,
-                            userEmail = result.value.userEmail,
                             isActive = result.value.isActive,
                             isDefault = result.value.isDefault,
                             createdAt = result.value.createdAt,

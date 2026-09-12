@@ -16,38 +16,36 @@ val TolochaJson =
     }
 
 /**
- * Construye Retrofit contra `{baseUrl}/api/v1`. La base cambia al
- * cambiar de instancia: el cliente se recrea (ver `NetworkModule`).
+ * Construye Retrofit contra `{baseUrl}/api/v1`. La app no usa
+ * autenticación de usuario: no se añade ninguna credencial. La base
+ * cambia al cambiar de servidor: el cliente se recrea (ver `NetworkModule`).
  */
 object RetrofitFactory {
     fun create(
         baseUrl: String,
-        session: com.izquierdojl.tolocharadio.core.session.SessionManager,
-        tokens: com.izquierdojl.tolocharadio.core.session.TokenStore,
-        authApi: dagger.Lazy<com.izquierdojl.tolocharadio.data.remote.api.AuthApi>,
         debug: Boolean,
     ): Retrofit {
-        val logging =
-            HttpLoggingInterceptor().apply {
-                level =
-                    if (debug) {
-                        // HEADERS nunca BODY: los tokens van en cabecera (FR-007).
-                        HttpLoggingInterceptor.Level.HEADERS
-                    } else {
-                        HttpLoggingInterceptor.Level.NONE
-                    }
-                redactHeader("Authorization")
-            }
-        val client =
-            OkHttpClient.Builder()
-                .addInterceptor(AuthInterceptor(session))
-                .authenticator(TokenAuthenticator(session, tokens, authApi))
-                .addInterceptor(logging)
-                .build()
+        val client = createHttpClient(debug)
         return Retrofit.Builder()
             .baseUrl(baseUrl.trimEnd('/') + "/api/v1/")
             .client(client)
             .addConverterFactory(TolochaJson.asConverterFactory("application/json".toMediaType()))
+            .build()
+    }
+
+    /** Cliente OkHttp sin autenticación de usuario: no añade `Authorization` (FR-011). */
+    internal fun createHttpClient(debug: Boolean): OkHttpClient {
+        val logging =
+            HttpLoggingInterceptor().apply {
+                level =
+                    if (debug) {
+                        HttpLoggingInterceptor.Level.HEADERS
+                    } else {
+                        HttpLoggingInterceptor.Level.NONE
+                    }
+            }
+        return OkHttpClient.Builder()
+            .addInterceptor(logging)
             .build()
     }
 }

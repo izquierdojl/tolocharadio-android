@@ -34,7 +34,7 @@ class PlaybackNotificationTest {
     }
 
     @Test
-    fun `playback notification should create valid notification data`() {
+    fun `playback_notification_should_create_valid_notification_data`() {
         val notificationData =
             NotificationData(
                 type = NotificationType.PLAYBACK,
@@ -50,13 +50,13 @@ class PlaybackNotificationTest {
     }
 
     @Test
-    fun `playback notification should use correct channel`() {
+    fun `playback_notification_should_use_correct_channel`() {
         val channelId = NotificationChannels.getChannelIdForType(NotificationType.PLAYBACK)
         assertEquals(NotificationChannels.PLAYBACK_CHANNEL_ID, channelId)
     }
 
     @Test
-    fun `playback notification should navigate to player screen`() {
+    fun `playback_notification_should_navigate_to_player_screen`() {
         val notificationData =
             NotificationData(
                 type = NotificationType.PLAYBACK,
@@ -73,7 +73,7 @@ class PlaybackNotificationTest {
     }
 
     @Test
-    fun `playback notification should work with app in background`() {
+    fun `playback_notification_should_work_with_app_in_background`() {
         appStateTracker.updateState(AppState.BACKGROUND)
 
         val notificationData =
@@ -90,7 +90,7 @@ class PlaybackNotificationTest {
     }
 
     @Test
-    fun `playback notification should work with app not running`() {
+    fun `playback_notification_should_work_with_app_not_running`() {
         appStateTracker.updateState(AppState.NOT_RUNNING)
 
         val notificationData =

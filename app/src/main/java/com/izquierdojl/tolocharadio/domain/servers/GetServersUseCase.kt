@@ -23,7 +23,6 @@ class GetServersUseCase
                 url = url,
                 alias = alias,
                 appName = appName,
-                userEmail = userEmail,
                 isActive = isActive,
                 isDefault = isDefault,
                 createdAt = createdAt,

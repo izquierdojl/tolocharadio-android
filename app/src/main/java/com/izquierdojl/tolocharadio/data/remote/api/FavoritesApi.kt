@@ -22,7 +22,7 @@ data class AddFavoriteBody(val stationId: String)
 @Serializable
 data class ReorderBody(val stationIds: List<String>)
 
-/** Favoritos (Bearer). */
+/** Favoritos, compartidos por la instancia. */
 interface FavoritesApi {
     @GET("favorites")
     suspend fun list(): Response<FavoriteListDto>

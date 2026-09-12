@@ -19,19 +19,18 @@ import javax.inject.Singleton
  * Único punto de construcción de `MediaItem`/`MediaSource` para reproducción
  * local, Cast y reanudación post-Cast (spec 0019, research R7).
  *
- * Desde spec 0021 la URI es **siempre** la del proxy autenticado: HLS se
- * reproduce con `HlsMediaSource` sobre el manifiesto que el servicio reescribe
- * (subrecursos con Bearer) y el resto con `ProgressiveMediaSource`. Todos usan
- * el datasource con `Authorization: Bearer`.
+ * Desde la spec 0022 la URI es **siempre** la del proxy del servidor, sin
+ * credenciales: HLS se reproduce con `HlsMediaSource` sobre el manifiesto
+ * reescrito y el resto con `ProgressiveMediaSource`.
  */
 @OptIn(UnstableApi::class)
 @Singleton
 class StationMediaItemFactory
     @Inject
     constructor(
-        private val authDataSource: AuthDataSourceFactory,
+        private val playerDataSource: PlayerDataSourceFactory,
     ) {
-        /** URL efectiva de la fuente: siempre el proxy autenticado. */
+        /** URL efectiva de la fuente: siempre el proxy del servidor. */
         fun uriFor(
             source: PlaybackSource,
             baseUrl: String,
@@ -67,8 +66,8 @@ class StationMediaItemFactory
             source: PlaybackSource,
         ): MediaSource =
             if (source.hls) {
-                HlsMediaSource.Factory(authDataSource).createMediaSource(item)
+                HlsMediaSource.Factory(playerDataSource).createMediaSource(item)
             } else {
-                ProgressiveMediaSource.Factory(authDataSource).createMediaSource(item)
+                ProgressiveMediaSource.Factory(playerDataSource).createMediaSource(item)
             }
     }

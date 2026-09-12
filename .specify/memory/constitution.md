@@ -1,30 +1,44 @@
 <!---
 ## Sync Impact Report
 
-- Version change: 1.0.0 → 1.1.0
-- Razón del bump (MAJOR/MINOR/PATCH): MINOR — se añade guía
-  material nueva (contrato backend OpenAPI, paridad de secciones
-  con la app web y dirección UX estilo Pocket Casts) sin eliminar
-  ni redefinir principios existentes.
+- Version change: 1.1.0 → 2.0.0
+- Razón del bump (MAJOR/MINOR/PATCH): MAJOR — se elimina el
+  modelo de autenticación de usuario (JWT + refresh + header
+  Bearer) de la app y se redefinen los Principios II y IV. Cambio
+  incompatible: cualquier PR que asuma cuentas de usuario viola
+  esta constitución.
 - Principios modificados:
-  - II. Stack Kotlin-First, Compose M3 y Media3 → ampliado con
-    contrato API /api/v1, auth JWT + refresh rotatorio y playback
-    por proxy con header Bearer (sin token en URL).
-  - IV. Streaming Robusto y Manejo de Errores → ampliado con
-    mapeo del formato `{error:{code,message,status,details}}`,
-    precheck `playback/:id/status` y registro de historial.
+  - II. Stack Kotlin-First, Compose M3 y Media3 → retirados
+    JWT/refresh/`Authenticator`/Bearer; el servidor (instancia)
+    pasa a ser la unidad de acceso, sin credenciales de usuario.
+  - IV. Streaming Robusto y Manejo de Errores → el 401/403 deja
+    de mapearse a "sesión expirada → login" y pasa a "instancia
+    no compatible/actualizar servidor".
+  - I. MVVM + Clean por capas → lista de features sin `auth/` ni
+    `profile/`; se añaden `servers/`, `onboarding/` y `settings/`.
+  - III. Calidad Test-First → flujos críticos de UI sin
+    login/registro; se añaden bienvenida/configuración de servidor.
+  - V. Simplicidad (YAGNI) → el backend ya no aporta "cuentas" al
+    cliente.
 - Secciones modificadas:
-  - Technology Stack, Constraints & Security → añadido contrato
-    backend completo (endpoints, Station/User/Favorite/History,
-    paginación limit 24/max 100, filtros, custom-stations,
-    suggestions, config/health) y baseURL configurable
-    (self-hosted).
-  - Development Workflow & Quality Gates → añadida paridad de
-    navegación con la web y dirección UX Pocket Casts (bottom
-    nav, mini-player persistente, full-player sheet, tema
-    oscuro Tolocha por defecto).
+  - Technology Stack, Constraints & Security → retirados los
+    endpoints `/auth/*` y `/users/me` del contrato de la app, las
+    etiquetas `(auth)` de favoritos/historial/custom-stations/
+    sugerencias/playback y los requisitos de Bearer,
+    almacenamiento cifrado de credenciales y revocación por
+    password; self-hosted pasa a lista de servidores.
+  - Development Workflow & Quality Gates → paridad de navegación
+    sin Login/Registro/Perfil (acceso por servidor configurado);
+    destinos de contenido + Configuración/Servidores; ADRs sin
+    auth/refresh.
 - Secciones añadidas: ninguna (estructura de 5 principios intacta).
 - Secciones eliminadas: ninguna.
+- Impacto de migración: la app deja de consumir `/auth/*` y
+  `/users/me`; los servidores guardados conservan URL/alias y
+  pierden credenciales (spec 0022); se asume una instancia
+  actualizada que no exige autenticación (las antiguas no se
+  soportan). Las referencias de gobernanza de las specs 001 y 007
+  quedan marcadas como superseded por la spec 0022.
 - TODOs diferidos: ninguno.
 --->
 
@@ -43,7 +57,7 @@ dentro del módulo (UI → domain → data).
 - `domain`: casos de uso (`UseCase`) puros en Kotlin, sin
   dependencias Android. Reglas de negocio (p. ej. favoritos,
   reintentos, selección de emisora, orden personalizado de
-  favoritos) MUST vivir aquí.
+  favoritos, gestión de servidores) MUST vivir aquí.
 - `data`: repositorios + fuentes (`RemoteDataSource` con Retrofit
   contra `/api/v1`, `LocalDataSource` con Room/DataStore).
   Repositorios MUST exponer `Flow` y ocultar detalles de red/BD
@@ -52,10 +66,10 @@ dentro del módulo (UI → domain → data).
   repositorios y clientes de red/player.
 - Modularización pragmática: se empieza con un solo módulo `app`
   organizado por feature espejo de la web (`home/`, `explore/`,
-  `favorites/`, `history/`, `customStations/`, `profile/`,
-  `auth/`, `player/`); se extrae un módulo Gradle nuevo solo
-  cuando un feature tiene API estable, tests propios y ciclo de
-  cambio independiente.
+  `favorites/`, `history/`, `customStations/`, `servers/`,
+  `onboarding/`, `settings/`, `player/`); se extrae un módulo
+  Gradle nuevo solo cuando un feature tiene API estable, tests
+  propios y ciclo de cambio independiente.
 
 Rationale: un streaming necesita testabilidad del player y evolución
 sin acoplar UI a red/BD. Clean-lite evita la sobreingeniería de
@@ -77,26 +91,27 @@ interoperabilidad de librerías.
 - Red: Retrofit + OkHttp + `kotlinx.serialization` contra el
   backend propio `GET/POST /api/v1/**` (spec OpenAPI 3.1 en
   `GET /api/v1/openapi.json`, Swagger en `GET /api/v1/docs`).
-  Auth JWT: access token corto (15 min) en memoria + refresh
-  token rotatorio; OkHttp `Authenticator` MUST renovar y reintentar
-  401 una sola vez. Playback MUST ir por proxy autenticado
-  `GET /playback/{stationId}` inyectando `Authorization: Bearer`
-  vía `DataSource.Factory` de Media3; está prohibido poner el
-  token en query de la URL. La cookie httpOnly `tolocha-access`
-  es mecanismo web (`<audio>`); en Android se usa header Bearer.
-- Persistencia local: Room para snapshot de favoritas/historial/
-  custom-stations (caché offline de lectura), DataStore para
-  ajustes, tema y `baseUrl` del servidor self-hosted. Imágenes:
-  Coil para `favicon`.
+  La app opera **sin autenticación de usuario**: el servidor
+  (instancia) es la unidad de configuración y acceso. PROHIBIDO
+  enviar credenciales, tokens o `Authorization` en cabeceras o
+  query. Playback MUST ir por el proxy del servidor
+  `GET /playback/{stationId}` vía `DataSource.Factory` de Media3.
+  La app NO consume `/auth/*` ni `/users/me`.
+- Persistencia local: Room para la lista de servidores
+  (`saved_servers`, sin credenciales), snapshot de favoritas/
+  historial/custom-stations (caché offline de lectura), DataStore
+  para ajustes, tema, pantalla de arranque y `baseUrl` del
+  servidor activo. PROHIBIDO persistir tokens o contraseñas.
+  Imágenes: Coil para `favicon`.
 - Concurrencia MUST usar corrutinas + `Flow`; `LiveData`, callbacks
   anidados y `GlobalScope` están prohibidos en código nuevo.
 - `minSdk = 26`, `targetSdk` = última estable. Todo código nuevo
   MUST ser null-safe y respetar `compileSdk` declarado en Gradle.
 
 Rationale: Compose M3 acelera UI consistente; Media3 es el estándar
-soportado para radio en segundo plano; el proxy autenticado evita
-exponer tokens y el header Bearer es el equivalente nativo al
-mecanismo de cookies de la web.
+soportado para radio en segundo plano; al no haber cuentas, el
+servidor autohospedado define el acceso y el cliente no custodia
+credenciales.
 
 ### III. Calidad Test-First (NON-NEGOTIABLE)
 
@@ -111,9 +126,10 @@ lógica de `domain`, `data` o `ViewModel` puede mergearse sin tests.
 - Regla Red-Green: el test que reproduce el bug o la regla nueva
   MUST existir y fallar antes del fix/implementación.
 - Tests de UI Compose (`composeTestRule`) REQUIRED solo para
-  flujos críticos: login/registro, explorar con filtros,
-  play/stop, favoritas, historial, custom-station, estado de
-  error con reintento y mini-player persistente.
+  flujos críticos: bienvenida/configuración de servidor, explorar
+  con filtros, play/stop, favoritas, historial, custom-station,
+  cambio de servidor, estado de error con reintento y mini-player
+  persistente.
 - Calidad estática REQUIRED en CI: Android Lint + ktlint + Detekt
   sin errores. Warnings nuevos MUST justificarse en la PR.
 - Flaky tests MUST ponerse en cuarentena con issue enlazado y
@@ -134,11 +150,12 @@ silencioso.
   accionable y botón de reintento.
 - Formato de error del backend `{error:{code,message,status,
   details?[{field,message}]}}` MUST mapearse a errores de dominio
-  tipados (401 sesión expirada → renovar o pedir login, 404
-  emisora no encontrada, 409 conflicto, 422 validación con
-  `details` por campo, 503 RadioBrowser caído con caché si hay).
-  Mensajes al usuario en español, sin filtrar PII ni volcar
-  `message` crudo del servidor si es técnico.
+  tipados (401/403 instancia no compatible o que exige
+  autenticación → mensaje accionable "actualiza el servidor", sin
+  ofrecer login; 404 emisora no encontrada, 409 conflicto, 422
+  validación con `details` por campo, 503 RadioBrowser caído con
+  caché si hay). Mensajes al usuario en español, sin filtrar PII
+  ni volcar `message` crudo del servidor si es técnico.
 - Antes de reproducir una emisora dudosa SHOULD consultarse
   `GET /playback/{stationId}/status` (`{id,playable,reason}`) para
   mostrar "no disponible" sin arrancar el player en vano.
@@ -158,7 +175,8 @@ silencioso.
 
 Rationale: la propuesta de valor de una radio es continuidad y
 feedback claro. Respetar el contrato de errores y el precheck de
-playability evita reproductores colgados y logins rotos.
+playability evita reproductores colgados y pantallas de error
+confusas.
 
 ### V. Simplicidad Modular (YAGNI)
 
@@ -167,8 +185,8 @@ Ninguna abstracción sin dos consumidores reales.
 
 - Prohibido introducir multi-módulo Gradle, BaaS, caché offline
   de audio o DRM hasta que una spec aprobada lo exija. El
-  servidor ya resuelve catálogo (RadioBrowser + caché), cuentas
-  y proxy; el cliente no duplica esa lógica.
+  servidor ya resuelve catálogo (RadioBrowser + caché) y proxy;
+  el cliente no duplica esa lógica.
 - Cada clase/función pública MUST tener un propósito claro y
   KDoc si forma parte de `domain`/`data`. Código muerto MUST
   eliminarse, no comentarse.
@@ -190,19 +208,17 @@ Stack canónico (verificado contra `izquierdojl/tolocharadio`):
   silueta de sierra como emblema). AppCompat/XML solo como legado
   a migrar.
 - Player: **Media3 ExoPlayer + MediaSessionService** con
-  `DataSource.Factory` autenticada (Bearer), precheck de
-  `playback/:id/status`.
+  `DataSource.Factory` hacia el proxy del servidor (sin
+  credenciales), precheck de `playback/:id/status`.
 - Red/BD: **Retrofit + OkHttp + kotlinx.serialization, Coil,
   Room + DataStore, Hilt, Coroutines + Flow**.
 - Contrato backend (`/api/v1`, fuente de verdad: `openapi.json`):
-  - Sistema: `GET /health`, `GET /config` (`{appName,
-    registrationEnabled}` — si registro deshabilitado la UI MUST
-    ocultar el registro).
-  - Auth: `POST /auth/register|login|refresh|logout|
-    forgot-password|reset-password`; `GET/PATCH /users/me`,
-    `PATCH /users/me/password`. Passwords 8–72 chars, email
-    válido; `forgot` devuelve `resetToken` null si el email no
-    existe (no revelar cuentas — la UI no debe distinguir).
+  - Sistema: `GET /health`, `GET /config` (`{appName}`) para
+    validar una instancia antes de guardarla como servidor.
+  - Auth de usuario: la app NO consume `/auth/*` ni `/users/me`;
+    el acceso es por servidor (instancia) sin credenciales de
+    usuario. Las instancias que exijan autenticación no se
+    soportan.
   - Catálogo público: `GET /stations?name&country&language&tag&
     limit&offset&unique` (limit 1–100, default 24, `hasMore`),
     `GET /stations/:id`, `GET /stations/countries|languages|
@@ -210,29 +226,32 @@ Stack canónico (verificado contra `izquierdojl/tolocharadio`):
   - Modelo `Station`: `{id,name,url,homepage,favicon,country,
     countryCode,language,tags[],codec,bitrate,isSsl,lastCheckOk,
     votes,clickCount,isCustom}`. `url` solo se usa vía proxy.
-  - Favoritos (auth): `GET/POST /favorites`, `DELETE
+  - Favoritos: `GET/POST /favorites`, `DELETE
     /favorites/:stationId`, `PUT /favorites/order` (permutación
-    exacta de ids para orden personalizado).
-  - Historial (auth): `GET /history`, `DELETE /history`,
-    `DELETE /history/:stationId`.
-  - Emisoras personalizadas (auth): `GET/POST /custom-stations`
+    exacta de ids para orden personalizado); compartidos por
+    instancia, sin cuenta de usuario.
+  - Historial: `GET /history`, `DELETE /history`,
+    `DELETE /history/:stationId`; compartido por instancia, sin
+    cuenta de usuario.
+  - Emisoras personalizadas: `GET/POST /custom-stations`
     (`{name(1–256),url HTTP(S)}`), `DELETE /custom-stations/:id`.
-  - Sugerencias de género (auth): `GET/POST /suggestions`
+  - Sugerencias de género: `GET/POST /suggestions`
     (`{genre}`), `DELETE /suggestions/:id`.
-  - Reproducción (auth): `GET /playback/:stationId` (stream),
+  - Reproducción: `GET /playback/:stationId` (stream),
     `GET /playback/:stationId/status` (`{id,playable,reason}`).
   - Errores siempre `{error:{code,message,status,details?}}`.
-- Self-hosted: `baseUrl` configurable (BuildConfig por defecto +
-  editable en ajustes); la app MUST funcionar contra cualquier
-  instancia compatible con el OpenAPI 3.1.
-- Seguridad: HTTPS-only (`cleartextTrafficPermitted=false`),
-  Bearer en memoria (nunca en log/URL), refresh en almacenamiento
-  cifrado (`EncryptedSharedPreferences`/DataStore cifrado),
-  validación de URL de custom-station (solo http/https),
-  revocación al cambiar password (forzar re-login). Sin DRM.
+- Self-hosted: lista de **servidores** (URL + alias) como unidad
+  de configuración; `baseUrl` configurable (BuildConfig por
+  defecto, editable al añadir un servidor); la app MUST funcionar
+  contra cualquier instancia compatible con el OpenAPI 3.1 que no
+  exija autenticación de usuario.
+- Seguridad: HTTPS-only (`cleartextTrafficPermitted=false`);
+  PROHIBIDO almacenar o transmitir credenciales, tokens o
+  contraseñas; validación de URL de servidor y de custom-station
+  (solo http/https). Sin DRM.
 - Rendimiento: arranque en frío < 2s en gama media, paginación
   con `hasMore` (no cargar 100 de golpe salvo caso justificado),
-  StrictMode en debug, liberar player al destruir sesión.
+  StrictMode en debug, liberar player al detener la reproducción.
 - Calidad: **JUnit + Turbine + MockK, Compose Test, Detekt +
   ktlint + Android Lint, GitHub Actions CI** (obligatorio).
 
@@ -245,20 +264,23 @@ Stack canónico (verificado contra `izquierdojl/tolocharadio`):
   1 aprobación. CI (GitHub Actions) MUST ejecutar estos 4 gates.
 - Paridad de secciones con la app web (fuente: `apps/web/src/
   App.tsx` + `pages/`): la navegación Android MUST ofrecer las
-  mismas secciones con la misma semántica de acceso:
-  `Home` (pública) → `Explorar`, `Favoritos`, `Historial`,
-  `Mis emisoras`, `Perfil` (requieren auth, redirigen a login),
-  más `Login`/`Registro`. Nombres de ruta y orden del menú
-  SHOULD espejar la web (`/, /explorar, /favoritos, /historial,
-  /mis-emisoras, /perfil`).
+  mismas secciones de contenido (`Explorar`, `Favoritos`,
+  `Historial`, `Mis emisoras`) más `Configuración` y
+  `Servidores`. Sin autenticación de usuario no existen
+  `Login`/`Registro`/`Perfil`; el acceso al contenido requiere
+  tener al menos un servidor configurado y, sin ninguno, se
+  muestra la bienvenida/onboarding. Nombres de ruta y orden del
+  menú SHOULD espejar la web en las secciones de contenido
+  (`/explorar, /favoritos, /historial, /mis-emisoras`).
 - Dirección UX estilo Pocket Casts con M3: `NavigationBar`
-  inferior con los 5 destinos autenticados, `StationCard`/
-  `StationListItem` con favicon (Coil) + país/idioma/tags,
-  toggle vista lista/grid, `EmptyState` dedicados, `FavoriteButton`
-  omnipresente, y reproductor flotante persistente (mini-player
-  sobre la bottom bar + full-player en bottom sheet) que no se
-  interrumpe al navegar — equivalente al `PlayerBar`+Zustand de
-  la web llevado a `MediaSessionService`.
+  inferior con los destinos de contenido (Explorar, Favoritos,
+  Historial, Mis emisoras, Configuración/Servidores),
+  `StationCard`/`StationListItem` con favicon (Coil) +
+  país/idioma/tags, toggle vista lista/grid, `EmptyState`
+  dedicados, `FavoriteButton` omnipresente, y reproductor flotante
+  persistente (mini-player sobre la bottom bar + full-player en
+  bottom sheet) que no se interrumpe al navegar — equivalente al
+  `PlayerBar`+Zustand de la web llevado a `MediaSessionService`.
 - Versionado: SemVer para releases (`versionName`), `versionCode`
   incremental. Migraciones Room probadas. Versionado del
   contrato: si el OpenAPI sube minor breaking, la app MUST
@@ -267,8 +289,8 @@ Stack canónico (verificado contra `izquierdojl/tolocharadio`):
   (play/error/buffer) REQUIRED antes de release pública; sin
   telemetría invasiva (principio web: sin seguimiento).
 - Documentación: README con cómo compilar/probar y cómo apuntar
-  a una instancia (`baseUrl`), KDoc en APIs públicas de
-  `domain`/`data`, y ADRs breves (player, auth/refresh, BD).
+  a una instancia (`baseUrl`/servidores), KDoc en APIs públicas de
+  `domain`/`data`, y ADRs breves (player, servidores/arranque, BD).
 
 ## Governance
 
@@ -289,4 +311,4 @@ los 5 principios y de los Quality Gates.
   contrato OpenAPI del backend (`/api/v1/openapi.json`) es la
   fuente de verdad para DTOs y códigos de error.
 
-**Version**: 1.1.0 | **Ratified**: 2026-09-04 | **Last Amended**: 2026-09-04
+**Version**: 2.0.0 | **Ratified**: 2026-09-04 | **Last Amended**: 2026-09-12

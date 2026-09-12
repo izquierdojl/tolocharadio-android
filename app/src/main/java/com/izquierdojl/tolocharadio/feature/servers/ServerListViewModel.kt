@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.userMessage
-import com.izquierdojl.tolocharadio.core.session.TokenStore
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.domain.servers.AddServerUseCase
 import com.izquierdojl.tolocharadio.domain.servers.DeleteServerUseCase
@@ -19,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -41,7 +41,6 @@ class ServerListViewModel
         private val switchServerUseCase: SwitchServerUseCase,
         private val deleteServerUseCase: DeleteServerUseCase,
         private val instancePrefs: InstancePrefs,
-        private val tokenStore: TokenStore,
         @ApplicationContext private val context: Context,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ServerListUiState())
@@ -54,12 +53,10 @@ class ServerListViewModel
         fun addServer(
             url: String,
             alias: String,
-            email: String = "",
-            password: String = "",
         ) {
             viewModelScope.launch {
                 _uiState.value = _uiState.value.copy(isAdding = true, error = null)
-                val result = addServerUseCase(url, alias, email, password)
+                val result = addServerUseCase(url, alias)
                 if (result is ApiResult.Err) {
                     _uiState.value =
                         _uiState.value.copy(
@@ -77,21 +74,14 @@ class ServerListViewModel
         }
 
         /**
-         * Cambia al servidor activo (sin tocar el por defecto, FR-006) y
-         * re-apunta la red a su URL:
-         * - Con credenciales guardadas (refresh o email+password): renace
-         *   el proceso y la sesión se restaura automáticamente (FR-006/006b).
-         * - Sin credenciales: navega a Login ([onNeedLogin]) para pedirlas
-         *   para ese servidor (ya activo).
+         * Cambia al servidor activo (sin tocar el por defecto, FR-006),
+         * re-apunta la red a su URL y renace el proceso para recrear
+         * Retrofit (sin credenciales que restaurar).
          */
-        fun switchServer(
-            serverId: String,
-            onNeedLogin: () -> Unit = {},
-        ) {
+        fun switchServer(serverId: String) {
             viewModelScope.launch {
                 _uiState.value = _uiState.value.copy(isSwitching = true, error = null)
-                val result = switchServerUseCase(serverId)
-                when (result) {
+                when (val result = switchServerUseCase(serverId)) {
                     is ApiResult.Err ->
                         _uiState.value =
                             _uiState.value.copy(
@@ -99,25 +89,28 @@ class ServerListViewModel
                                 error = result.error.userMessage(),
                             )
                     is ApiResult.Ok -> {
-                        val creds = tokenStore.getServerCredentials(serverId)
-                        val hasCredentials =
-                            creds?.refresh != null || (creds?.email != null && creds?.password != null)
                         instancePrefs.setBaseUrl(result.value.url)
-                        if (hasCredentials) {
-                            ProcessPhoenix.triggerRebirth(context)
-                        } else {
-                            _uiState.value = _uiState.value.copy(isSwitching = false)
-                            onNeedLogin()
-                        }
+                        ProcessPhoenix.triggerRebirth(context)
                     }
                 }
             }
         }
 
-        fun deleteServer(serverId: String) {
+        /**
+         * Elimina un servidor. Si era el último, avisa para volver a la
+         * bienvenida (FR-013).
+         */
+        fun deleteServer(
+            serverId: String,
+            onNoServers: () -> Unit = {},
+        ) {
             viewModelScope.launch {
                 deleteServerUseCase(serverId)
-                _uiState.value = _uiState.value.copy(successMessage = "Servidor eliminado")
+                if (getServers().first().isEmpty()) {
+                    onNoServers()
+                } else {
+                    _uiState.value = _uiState.value.copy(successMessage = "Servidor eliminado")
+                }
             }
         }
 

@@ -2,11 +2,8 @@ package com.izquierdojl.tolocharadio.core.shortcuts
 
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.DomainError
-import com.izquierdojl.tolocharadio.core.session.AuthState
-import com.izquierdojl.tolocharadio.core.session.SessionManager
 import com.izquierdojl.tolocharadio.data.remote.dto.HistoryEntryDto
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
-import com.izquierdojl.tolocharadio.data.remote.dto.UserDto
 import com.izquierdojl.tolocharadio.data.repo.HistoryRepo
 import com.izquierdojl.tolocharadio.data.repo.HistoryResult
 import com.izquierdojl.tolocharadio.domain.shortcuts.BuildShortcutStationsUseCase
@@ -30,15 +27,11 @@ class ShortcutSyncCoordinatorTest {
     private val publisher = mockk<ShortcutPublisher>(relaxed = true)
     private val items = MutableStateFlow<List<HistoryEntryDto>>(emptyList())
     private val historyRepo = mockk<HistoryRepo>(relaxed = true)
-    private val authState = MutableStateFlow<AuthState>(AuthState.Loading)
-    private val session = mockk<SessionManager>(relaxed = true)
     private val build = BuildShortcutStationsUseCase()
-    private val user = mockk<UserDto>(relaxed = true)
 
     @Before
     fun setup() {
         every { historyRepo.items } returns items
-        every { session.authState } returns authState
         every { publisher.maxSlots() } returns 5
     }
 
@@ -46,7 +39,6 @@ class ShortcutSyncCoordinatorTest {
         ShortcutSyncCoordinator(
             publisher = publisher,
             historyRepo = historyRepo,
-            sessionManager = session,
             buildStations = build,
             scope =
                 CoroutineScope(
@@ -60,20 +52,9 @@ class ShortcutSyncCoordinatorTest {
     ) = HistoryEntryDto(StationDto(id = id, name = "Emisora $id"), playedAt)
 
     @Test
-    fun `no publica mientras la sesion esta cargando`() =
-        runTest {
-            val coordinator = newCoordinator()
-            coordinator.start()
-            items.value = listOf(entry("s1", 1000))
-            advanceUntilIdle()
-            coVerify(exactly = 0) { publisher.publish(any()) }
-        }
-
-    @Test
-    fun `publica al cambiar el historial con sesion activa`() =
+    fun `publica al cambiar el historial`() =
         runTest {
             coEvery { historyRepo.list() } returns ApiResult.Ok(HistoryResult(emptyList(), false))
-            authState.value = AuthState.Authenticated(user)
             val coordinator = newCoordinator()
             coordinator.start()
             advanceUntilIdle()
@@ -85,35 +66,9 @@ class ShortcutSyncCoordinatorTest {
         }
 
     @Test
-    fun `no publica sin sesion y limpia`() =
-        runTest {
-            authState.value = AuthState.Unauthenticated(null)
-            val coordinator = newCoordinator()
-            coordinator.start()
-            items.value = listOf(entry("s1", 1000))
-            advanceUntilIdle()
-            coVerify(exactly = 0) { publisher.publish(any()) }
-            coVerify { publisher.clear() }
-        }
-
-    @Test
-    fun `limpia al cerrar sesion`() =
+    fun `onForeground refresca el historial`() =
         runTest {
             coEvery { historyRepo.list() } returns ApiResult.Ok(HistoryResult(emptyList(), false))
-            authState.value = AuthState.Authenticated(user)
-            val coordinator = newCoordinator()
-            coordinator.start()
-            advanceUntilIdle()
-            authState.value = AuthState.Unauthenticated("expired")
-            advanceUntilIdle()
-            coVerify { publisher.clear() }
-        }
-
-    @Test
-    fun `onForeground con sesion refresca`() =
-        runTest {
-            coEvery { historyRepo.list() } returns ApiResult.Ok(HistoryResult(emptyList(), false))
-            authState.value = AuthState.Authenticated(user)
             val coordinator = newCoordinator()
             coordinator.onForeground()
             advanceUntilIdle()
@@ -121,21 +76,10 @@ class ShortcutSyncCoordinatorTest {
         }
 
     @Test
-    fun `onForeground sin sesion no refresca`() =
-        runTest {
-            authState.value = AuthState.Unauthenticated(null)
-            val coordinator = newCoordinator()
-            coordinator.onForeground()
-            advanceUntilIdle()
-            coVerify(exactly = 0) { historyRepo.list() }
-        }
-
-    @Test
     fun `offline usa la cache cuando el refresco falla`() =
         runTest {
             coEvery { historyRepo.list() } returns ApiResult.Err(DomainError.Unavailable("down"))
             coEvery { historyRepo.snapshot() } returns listOf(entry("s9", 5000))
-            authState.value = AuthState.Authenticated(user)
             val coordinator = newCoordinator()
             coordinator.onForeground()
             advanceUntilIdle()

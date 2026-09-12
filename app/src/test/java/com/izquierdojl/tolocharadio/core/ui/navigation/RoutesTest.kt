@@ -10,21 +10,12 @@ class RoutesTest {
     }
 
     @Test
-    fun `destinos protegidos exigen auth`() {
-        assertEquals(true, Routes.EXPLORE in AUTH_REQUIRED)
-        assertEquals(false, Routes.HOME in AUTH_REQUIRED)
-        assertEquals(false, Routes.LOGIN in AUTH_REQUIRED)
-    }
-
-    @Test
-    fun `favoritos exige auth con paridad web`() {
-        assertEquals(true, Routes.FAVORITES in AUTH_REQUIRED)
+    fun `rutas de contenido`() {
+        assertEquals("explore", Routes.EXPLORE)
         assertEquals("favorites", Routes.FAVORITES)
-    }
-
-    @Test
-    fun `mis emisoras exige auth con paridad web`() {
-        assertEquals(true, Routes.CUSTOM_STATIONS in AUTH_REQUIRED)
+        assertEquals("history", Routes.HISTORY)
         assertEquals("custom-stations", Routes.CUSTOM_STATIONS)
+        assertEquals("settings", Routes.SETTINGS)
+        assertEquals("servers", Routes.SERVERS)
     }
 }

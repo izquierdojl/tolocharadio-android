@@ -40,13 +40,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.izquierdojl.tolocharadio.domain.servers.SavedServer
 
-/** Sección Servidores (primer nivel, FR-004): activo ≠ por defecto (FR-005). Sin sesión es el selector de conexión (FR-014). */
+/** Sección Servidores (primer nivel, FR-006): activo ≠ por defecto. Sin credenciales (FR-009). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerListScreen(
     viewModel: ServerListViewModel = hiltViewModel(),
     onBack: () -> Unit = {},
-    onLogin: () -> Unit = {},
+    onNoServers: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val servers by viewModel.servers.collectAsState()
@@ -77,7 +77,7 @@ fun ServerListScreen(
         ) {
             if (servers.isEmpty()) {
                 Text(
-                    "No hay servidores guardados",
+                    "No hay servidores guardados. Añade uno para acceder al contenido.",
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = 32.dp),
                 )
@@ -86,8 +86,8 @@ fun ServerListScreen(
                     items(servers, key = { it.id }) { server ->
                         ServerCard(
                             server = server,
-                            onSwitch = { viewModel.switchServer(server.id, onLogin) },
-                            onDelete = { viewModel.deleteServer(server.id) },
+                            onSwitch = { viewModel.switchServer(server.id) },
+                            onDelete = { viewModel.deleteServer(server.id, onNoServers) },
                         )
                     }
                 }
@@ -110,8 +110,8 @@ fun ServerListScreen(
     if (showAddDialog) {
         AddServerDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { url, alias, email, password ->
-                viewModel.addServer(url, alias, email, password)
+            onConfirm = { url, alias ->
+                viewModel.addServer(url, alias)
                 showAddDialog = false
             },
         )
@@ -119,7 +119,7 @@ fun ServerListScreen(
 }
 
 @Composable
-private fun ServerCard(
+internal fun ServerCard(
     server: SavedServer,
     onSwitch: () -> Unit,
     onDelete: () -> Unit,
@@ -149,9 +149,6 @@ private fun ServerCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(server.alias, style = MaterialTheme.typography.titleMedium)
                 Text(server.url, style = MaterialTheme.typography.bodySmall)
-                server.userEmail?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall)
-                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (server.isActive) {
                         Text("Activo", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
@@ -187,12 +184,10 @@ private fun ServerCard(
 @Composable
 private fun AddServerDialog(
     onDismiss: () -> Unit,
-    onConfirm: (url: String, alias: String, email: String, password: String) -> Unit,
+    onConfirm: (url: String, alias: String) -> Unit,
 ) {
     var url by remember { mutableStateOf("") }
     var alias by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -202,7 +197,7 @@ private fun AddServerDialog(
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("URL de la instancia") },
+                    label = { Text("URL del servidor") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -214,28 +209,11 @@ private fun AddServerDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email de conexión (opcional)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Contraseña (opcional, cifrada)") },
-                    singleLine = true,
-                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(url, alias, email, password) },
+                onClick = { onConfirm(url, alias) },
                 enabled = url.isNotBlank() && alias.isNotBlank(),
             ) {
                 Text("Añadir")

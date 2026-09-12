@@ -1,7 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Los tokens (EncryptedSharedPreferences) NUNCA se respaldan.
-     theme_mode/base_url (DataStore tolocha_prefs) SÍ se respaldan: son preferencias locales. -->
-<full-backup-content>
-    <exclude domain="sharedpref" path="tolocha_tokens.xml" />
-    <exclude domain="sharedpref" path="tolocha_tokens_preference.xml" />
-</full-backup-content>
+<!-- Sin autenticación de usuario no se almacena ninguna credencial.
+     theme_mode/base_url/servidores (DataStore tolocha_prefs) se respaldan: son preferencias locales. -->
+<full-backup-content />
