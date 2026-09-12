@@ -11,6 +11,10 @@ Design 3 y reproductor persistente (Media3).
 - Una instancia TolochaRadio, p. ej. `https://radio.mi-dominio.com`
   (la app la pide al arrancar; override local con
   `tolocha.baseUrl` en `local.properties`).
+- **Instancia actualizada** (con resolución de listas en el proxy): desde la
+  spec 0021 las emisoras `.m3u`/`.m3u8`/`.pls` se reproducen por el proxy
+  autenticado. Contra una instancia antigua, esas emisoras fallarán con un
+  error accionable.
 
 ## Compilar y probar
 

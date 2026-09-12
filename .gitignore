@@ -16,6 +16,7 @@ local.properties
 
 # Speckit implement: Kotlin/Android essentials
 out/
+.kotlin/
 *.class
 *.jar
 *.log

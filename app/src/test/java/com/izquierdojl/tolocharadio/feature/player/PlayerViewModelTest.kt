@@ -12,8 +12,7 @@ import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.PlaybackStatusDto
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.data.repo.PlaybackRepo
-import com.izquierdojl.tolocharadio.domain.playback.PlaylistContent
-import com.izquierdojl.tolocharadio.domain.playback.PlaylistFetcher
+import com.izquierdojl.tolocharadio.domain.playback.PlaybackStatusReason
 import com.izquierdojl.tolocharadio.domain.playback.ResolvePlaybackSourceUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -57,12 +56,11 @@ class PlayerViewModelTest {
             every { exoPlayer } returns castExoPlayer
             every { castState } returns mockk(relaxed = true)
         }
-    private val fetcher: PlaylistFetcher = PlaylistFetcher { PlaylistContent("", it) }
-    private val resolveSource = ResolvePlaybackSourceUseCase(fetcher)
+    private val resolveSource = ResolvePlaybackSourceUseCase()
     private val mediaItemFactory: StationMediaItemFactory = mockk(relaxed = true)
     private val station = StationDto(id = "u1", name = "Tolocha")
 
-    private fun vm(resolver: ResolvePlaybackSourceUseCase = resolveSource) =
+    private fun vm() =
         PlayerViewModel(
             context,
             playback,
@@ -70,7 +68,7 @@ class PlayerViewModelTest {
             activeStationHolder,
             exoPlayer,
             castPlayerManager,
-            resolver,
+            resolveSource,
             mediaItemFactory,
         )
 
@@ -86,17 +84,17 @@ class PlayerViewModelTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `play con status no playable lleva a Error con motivo`() =
+    fun `play con status no playable mapea el motivo a mensaje`() =
         runTest {
             coEvery { playback.status("u1") } returns
-                ApiResult.Ok(PlaybackStatusDto("u1", false, "offline"))
+                ApiResult.Ok(PlaybackStatusDto("u1", false, PlaybackStatusReason.PLAYLIST_EMPTY))
             val viewModel = vm()
             viewModel.play(station)
             advanceUntilIdle()
             val state = viewModel.state.value
             assertTrue(state is PlayerState.Error)
             assertEquals(station, (state as PlayerState.Error).station)
-            assertEquals("offline", state.message)
+            assertEquals(PlaybackStatusReason.reasonToMessage(PlaybackStatusReason.PLAYLIST_EMPTY), state.message)
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -111,6 +109,33 @@ class PlayerViewModelTest {
             val state = viewModel.state.value
             assertTrue(state is PlayerState.Error)
             assertEquals(station, (state as PlayerState.Error).station)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `play con emisora playable arranca la reproduccion`() =
+        runTest {
+            coEvery { playback.status("u1") } returns
+                ApiResult.Ok(PlaybackStatusDto("u1", true, null))
+            val viewModel = vm()
+            viewModel.play(station)
+            advanceUntilIdle()
+            coVerify(exactly = 1) { playback.status("u1") }
+            assertTrue(viewModel.state.value is PlayerState.Buffering)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `emisora hls tambien pasa por el precheck`() =
+        runTest {
+            val hls = StationDto(id = "h1", name = "HLS", url = "https://host/live.m3u8")
+            coEvery { playback.status("h1") } returns
+                ApiResult.Ok(PlaybackStatusDto("h1", true, null))
+            val viewModel = vm()
+            viewModel.play(hls)
+            advanceUntilIdle()
+            coVerify(exactly = 1) { playback.status("h1") }
+            assertTrue(viewModel.state.value is PlayerState.Buffering)
         }
 
     @Test
@@ -129,7 +154,7 @@ class PlayerViewModelTest {
     fun `mute se resetea al reproducir otra emisora`() =
         runTest {
             coEvery { playback.status("u1") } returns
-                ApiResult.Ok(PlaybackStatusDto("u1", false, "offline"))
+                ApiResult.Ok(PlaybackStatusDto("u1", false, PlaybackStatusReason.STREAM_UNAVAILABLE))
             val viewModel = vm()
             viewModel.toggleMute()
             viewModel.play(station)
@@ -227,38 +252,4 @@ class PlayerViewModelTest {
         viewModel.stop()
         assertTrue(!viewModel.fullPlayerVisible.value)
     }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    @Test
-    fun `play con m3u8 no bloquea con el precheck`() =
-        runTest {
-            val hls = StationDto(id = "h1", name = "HLS", url = "https://host/live.m3u8")
-            val viewModel = vm()
-            viewModel.play(hls)
-            advanceUntilIdle()
-            coVerify(exactly = 0) { playback.status(any()) }
-            assertTrue(viewModel.state.value is PlayerState.Buffering)
-        }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    @Test
-    fun `fallback avanza al siguiente candidato y luego falla`() =
-        runTest {
-            val resolver =
-                ResolvePlaybackSourceUseCase(
-                    PlaylistFetcher { PlaylistContent("https://a/1.mp3\nhttps://b/2.mp3\n", "https://host/list.m3u") },
-                )
-            val viewModel = vm(resolver)
-            val listStation = StationDto(id = "l1", name = "Lista", url = "https://host/list.m3u")
-            viewModel.play(listStation)
-            advanceUntilIdle()
-            assertTrue(viewModel.state.value is PlayerState.Buffering)
-            val listener = captureListener()
-            listener.onPlayerError(mockk<PlaybackException>(relaxed = true))
-            advanceUntilIdle()
-            assertTrue(viewModel.state.value is PlayerState.Buffering)
-            listener.onPlayerError(mockk<PlaybackException>(relaxed = true))
-            advanceUntilIdle()
-            assertTrue(viewModel.state.value is PlayerState.Error)
-        }
 }

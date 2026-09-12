@@ -14,6 +14,7 @@ import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
+import com.izquierdojl.tolocharadio.domain.playback.HlsStation
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
 import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
 import com.izquierdojl.tolocharadio.feature.player.PlayerState
@@ -223,7 +224,7 @@ class CastPlayerManager
             val holderState = activeStationHolder.playerState
             if (holderState == PlayerStateType.PLAYING || holderState == PlayerStateType.BUFFERING) {
                 val baseUrl = runBlocking { prefs.baseUrl.first() }
-                val source = activeStationHolder.resolvedSource ?: PlaybackSource.Proxied(station.id)
+                val source = PlaybackSource(station.id, HlsStation.isHls(station.url))
                 val item = mediaItemFactory.create(station, source, baseUrl)
                 exoPlayer.setMediaSource(mediaItemFactory.createMediaSource(item, source))
                 exoPlayer.prepare()

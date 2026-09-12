@@ -17,8 +17,12 @@ import javax.inject.Singleton
 
 /**
  * Único punto de construcción de `MediaItem`/`MediaSource` para reproducción
- * local, Cast y reanudación post-Cast (spec 0019, research R7). Evita que las
- * tres rutas diverjan al añadir HLS y mime types.
+ * local, Cast y reanudación post-Cast (spec 0019, research R7).
+ *
+ * Desde spec 0021 la URI es **siempre** la del proxy autenticado: HLS se
+ * reproduce con `HlsMediaSource` sobre el manifiesto que el servicio reescribe
+ * (subrecursos con Bearer) y el resto con `ProgressiveMediaSource`. Todos usan
+ * el datasource con `Authorization: Bearer`.
  */
 @OptIn(UnstableApi::class)
 @Singleton
@@ -26,23 +30,15 @@ class StationMediaItemFactory
     @Inject
     constructor(
         private val authDataSource: AuthDataSourceFactory,
-        private val directDataSource: DirectDataSourceFactory,
     ) {
-        /** URL efectiva de la fuente: proxy para [PlaybackSource.Proxied], directa si no. */
+        /** URL efectiva de la fuente: siempre el proxy autenticado. */
         fun uriFor(
             source: PlaybackSource,
             baseUrl: String,
-        ): String =
-            when (source) {
-                is PlaybackSource.Proxied -> streamUrl(baseUrl, source.stationId)
-                is PlaybackSource.DirectProgressive -> source.url
-                is PlaybackSource.DirectHls -> source.url
-            }
+        ): String = streamUrl(baseUrl, source.stationId)
 
-        /** `mimeType` del `MediaItem`; HLS para [PlaybackSource.DirectHls], ninguno en el resto. */
-        fun mimeTypeFor(source: PlaybackSource): String? {
-            return if (source is PlaybackSource.DirectHls) MimeTypes.APPLICATION_M3U8 else null
-        }
+        /** `mimeType` del `MediaItem`; HLS para emisoras `.m3u8`, ninguno en el resto. */
+        fun mimeTypeFor(source: PlaybackSource): String? = if (source.hls) MimeTypes.APPLICATION_M3U8 else null
 
         /** Construye el `MediaItem` con metadata y `mimeType` HLS cuando aplica. */
         fun create(
@@ -65,17 +61,14 @@ class StationMediaItemFactory
             return builder.build()
         }
 
-        /** Crea la `MediaSource` adecuada al tipo de fuente. */
+        /** Crea la `MediaSource` adecuada: HLS o progresiva, siempre por proxy. */
         fun createMediaSource(
             item: MediaItem,
             source: PlaybackSource,
         ): MediaSource =
-            when (source) {
-                is PlaybackSource.DirectHls ->
-                    HlsMediaSource.Factory(directDataSource).createMediaSource(item)
-                is PlaybackSource.Proxied ->
-                    ProgressiveMediaSource.Factory(authDataSource).createMediaSource(item)
-                is PlaybackSource.DirectProgressive ->
-                    ProgressiveMediaSource.Factory(directDataSource).createMediaSource(item)
+            if (source.hls) {
+                HlsMediaSource.Factory(authDataSource).createMediaSource(item)
+            } else {
+                ProgressiveMediaSource.Factory(authDataSource).createMediaSource(item)
             }
     }
