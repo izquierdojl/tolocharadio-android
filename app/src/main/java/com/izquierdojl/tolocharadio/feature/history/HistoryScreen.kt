@@ -79,6 +79,7 @@ data class HistoryCallbacks(
     val onRemove: (String) -> Unit,
     val onRetry: () -> Unit,
     val onClearAll: () -> Unit,
+    val onEditServer: () -> Unit = {},
 )
 
 /**
@@ -92,6 +93,7 @@ data class HistoryCallbacks(
 fun HistoryScreen(
     onStation: (String) -> Unit,
     onExplore: () -> Unit,
+    onEditServer: () -> Unit = {},
     viewModel: HistoryViewModel = hiltViewModel(),
     player: PlayerViewModel = hiltViewModel(),
     viewModeVm: ViewModeViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
@@ -144,6 +146,7 @@ fun HistoryScreen(
                         onRemove = viewModel::onRemove,
                         onRetry = viewModel::retry,
                         onClearAll = { showClearDialog = true },
+                        onEditServer = onEditServer,
                     ),
             )
         }
@@ -172,7 +175,12 @@ fun HistoryScreenContent(
                 actionLabel = "Explorar",
                 onAction = callbacks.onExplore,
             )
-        is HistoryUiState.Error -> ErrorBanner(state.message, onRetry = callbacks.onRetry)
+        is HistoryUiState.Error ->
+            ErrorBanner(
+                message = state.message,
+                onRetry = if (state.isAuthError) callbacks.onEditServer else callbacks.onRetry,
+                retryLabel = if (state.isAuthError) "Editar servidor" else "Reintentar",
+            )
         is HistoryUiState.Content ->
             HistoryList(
                 state = state,

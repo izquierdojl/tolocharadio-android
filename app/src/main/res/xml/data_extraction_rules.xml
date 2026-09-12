@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Sin autenticación de usuario no se almacena ninguna credencial que excluir. -->
+<!-- Las credenciales por servidor y el refresh token NUNCA se respaldan. -->
 <data-extraction-rules>
-    <cloud-backup />
+    <cloud-backup>
+        <exclude domain="sharedpref" path="tolocha_tokens.xml" />
+        <exclude domain="sharedpref" path="tolocha_tokens_preference.xml" />
+    </cloud-backup>
 </data-extraction-rules>

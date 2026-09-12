@@ -7,29 +7,20 @@ import com.izquierdojl.tolocharadio.data.local.servers.SavedServerEntity
 import com.izquierdojl.tolocharadio.data.repo.servers.ServerRepository
 import javax.inject.Inject
 
-/** Añade un servidor tras validar la URL (FR-004). */
+/** Añade un servidor validando URL y credenciales (FR-001/FR-003). */
 class AddServerUseCase
     @Inject
     constructor(
         private val repository: ServerRepository,
     ) {
-        /**
-         * @param url URL de la instancia (se normaliza automáticamente)
-         * @param alias Nombre asignado por el usuario
-         * @param setAsDefault Si true, se marca como por defecto (arranque)
-         * @return ApiResult con el servidor creado o error
-         */
         suspend operator fun invoke(
             url: String,
             alias: String,
-            setAsDefault: Boolean = false,
+            email: String,
+            password: String,
         ): ApiResult<SavedServer> {
-            if (alias.isBlank()) {
-                return ApiResult.Err(
-                    DomainError.Validation(listOf(FieldError("alias", "El alias no puede estar vacío"))),
-                )
-            }
-            return when (val result = repository.add(url, alias, setAsDefault)) {
+            ServerFormValidation.validate(alias, email, password)?.let { return it }
+            return when (val result = repository.add(url, alias, email, password)) {
                 is ApiResult.Ok -> ApiResult.Ok(result.value.toDomain())
                 is ApiResult.Err -> result
             }
@@ -46,3 +37,30 @@ class AddServerUseCase
                 createdAt = createdAt,
             )
     }
+
+/** Validación compartida del formulario de servidor (alta y edición). */
+internal object ServerFormValidation {
+    fun validate(
+        alias: String,
+        email: String,
+        password: String,
+    ): ApiResult.Err? {
+        if (alias.isBlank()) {
+            return ApiResult.Err(
+                DomainError.Validation(listOf(FieldError("alias", "El alias no puede estar vacío"))),
+            )
+        }
+        val trimmedEmail = email.trim()
+        if (trimmedEmail.isEmpty() || !trimmedEmail.contains('@') || !trimmedEmail.substringAfter('@').contains('.')) {
+            return ApiResult.Err(
+                DomainError.Validation(listOf(FieldError("email", "Escribe un email válido"))),
+            )
+        }
+        if (password.isEmpty()) {
+            return ApiResult.Err(
+                DomainError.Validation(listOf(FieldError("password", "La contraseña no puede estar vacía"))),
+            )
+        }
+        return null
+    }
+}

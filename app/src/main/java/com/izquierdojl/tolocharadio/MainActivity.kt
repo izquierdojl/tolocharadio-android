@@ -5,10 +5,13 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
+import com.izquierdojl.tolocharadio.core.session.TokenStore
 import com.izquierdojl.tolocharadio.core.shortcuts.PendingShortcutHolder
 import com.izquierdojl.tolocharadio.core.shortcuts.ShortcutIntents
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
@@ -19,9 +22,10 @@ import com.izquierdojl.tolocharadio.core.ui.theme.resolveDarkTheme
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.local.servers.MigrationHelper
 import com.izquierdojl.tolocharadio.data.repo.servers.ServerRepository
+import com.izquierdojl.tolocharadio.domain.auth.AuthenticateServerUseCase
+import com.izquierdojl.tolocharadio.domain.servers.StartupGate
 import com.tolocharadio.ui.notification.NotificationNavigation
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -38,6 +42,12 @@ class MainActivity : FragmentActivity() {
     lateinit var serverRepository: ServerRepository
 
     @Inject
+    lateinit var tokenStore: TokenStore
+
+    @Inject
+    lateinit var authenticateServer: AuthenticateServerUseCase
+
+    @Inject
     lateinit var pendingShortcutHolder: PendingShortcutHolder
 
     private val notificationNavigation = NotificationNavigation()
@@ -46,7 +56,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
 
         lifecycleScope.launch {
-            // Migra baseUrl existente a SavedServer y limpia el almacén legacy.
+            // Migra baseUrl existente a SavedServer (sin credenciales).
             migrationHelper.migrateIfNeeded()
         }
 
@@ -59,12 +69,30 @@ class MainActivity : FragmentActivity() {
         setContent {
             val mode by instancePrefs.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
             val startScreen by instancePrefs.startScreen.collectAsState(initial = StartScreen.EXPLORE)
-            val hasServers by serverRepository.servers
-                .map { it.isNotEmpty() }
-                .collectAsState(initial = false)
+            val servers by serverRepository.servers.collectAsState(initial = emptyList())
+            val startupServer =
+                servers.firstOrNull { it.isActive }
+                    ?: servers.firstOrNull { it.isDefault }
+                    ?: servers.firstOrNull()
+            val startupHasCredentials = startupServer?.let { tokenStore.hasCredentials(it.id) } == true
+            val gate =
+                remember(servers, startupHasCredentials) {
+                    when {
+                        servers.isEmpty() -> StartupGate.NoServers
+                        !startupHasCredentials -> StartupGate.NeedsCredentials
+                        else -> StartupGate.Ready
+                    }
+                }
+
+            // Auto-login silencioso con el servidor de arranque (FR-004).
+            LaunchedEffect(gate) {
+                if (gate == StartupGate.Ready) authenticateServer()
+            }
+
             TolochaTheme(darkTheme = resolveDarkTheme(mode, isSystemInDarkTheme())) {
                 TolochaNavGraph(
-                    hasServers = hasServers,
+                    startupGate = gate,
+                    startupServerId = startupServer?.id,
                     startScreen = startScreen,
                 )
             }

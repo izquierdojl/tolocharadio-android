@@ -95,12 +95,13 @@ fun EmptyState(
     }
 }
 
-/** Aviso de error con reintento. El texto ya viene localizado. */
+/** Aviso de error con acción primaria (reintentar o editar servidor). El texto ya viene localizado. */
 @Composable
 fun ErrorBanner(
     message: String,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    retryLabel: String = "Reintentar",
 ) {
     Row(
         modifier =
@@ -116,7 +117,7 @@ fun ErrorBanner(
             color = MaterialTheme.colorScheme.error,
         )
         Spacer(Modifier.width(8.dp))
-        OutlinedButton(onClick = onRetry) { Text("Reintentar") }
+        OutlinedButton(onClick = onRetry) { Text(retryLabel) }
     }
 }
 

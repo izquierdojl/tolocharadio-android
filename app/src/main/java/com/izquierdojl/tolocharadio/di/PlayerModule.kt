@@ -3,6 +3,7 @@ package com.izquierdojl.tolocharadio.di
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
+import com.izquierdojl.tolocharadio.core.session.SessionManager
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
 import com.izquierdojl.tolocharadio.feature.player.PlayerAudioConfig
@@ -28,7 +29,9 @@ object PlayerModule {
 
     @Provides
     @Singleton
-    fun playerDataSource(): PlayerDataSourceFactory = PlayerDataSourceFactory(OkHttpClient())
+    fun playerDataSource(session: SessionManager): PlayerDataSourceFactory {
+        return PlayerDataSourceFactory(session, OkHttpClient())
+    }
 
     @Provides
     @Singleton

@@ -1,5 +1,8 @@
 package com.izquierdojl.tolocharadio.core.ui.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,19 +36,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.mediarouter.app.MediaRouteButton
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.google.android.gms.cast.framework.CastButtonFactory
 import com.izquierdojl.tolocharadio.core.ui.components.TolochaLogo
 import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
-import com.izquierdojl.tolocharadio.core.util.CastPermissions
+import com.izquierdojl.tolocharadio.domain.servers.StartupGate
 import com.izquierdojl.tolocharadio.domain.shortcuts.ShortcutLaunchResolution
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 import com.izquierdojl.tolocharadio.feature.customstations.CustomStationsScreen
@@ -54,11 +58,11 @@ import com.izquierdojl.tolocharadio.feature.explore.StationDetailScreen
 import com.izquierdojl.tolocharadio.feature.favorites.FavoritesScreen
 import com.izquierdojl.tolocharadio.feature.history.HistoryScreen
 import com.izquierdojl.tolocharadio.feature.home.HomeScreen
-import com.izquierdojl.tolocharadio.feature.onboarding.InstanceSetupScreen
 import com.izquierdojl.tolocharadio.feature.player.MiniPlayer
 import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
 import com.izquierdojl.tolocharadio.feature.player.SleepTimerButton
 import com.izquierdojl.tolocharadio.feature.player.SleepTimerViewModel
+import com.izquierdojl.tolocharadio.feature.servers.ServerFormScreen
 import com.izquierdojl.tolocharadio.feature.servers.ServerListScreen
 import com.izquierdojl.tolocharadio.feature.settings.SettingsScreen
 import com.izquierdojl.tolocharadio.feature.shortcuts.ShortcutLaunchViewModel
@@ -80,45 +84,40 @@ private val BOTTOM_DESTS =
 
 /**
  * Shell con bottom bar estilo Pocket Casts + mini-player persistente.
- * Servidores es una sección propia de primer nivel, accesible desde
- * la barra superior (FR-006).
  *
- * La app no usa autenticación de usuario: sin servidores configurados
- * se muestra la bienvenida/onboarding ([Routes.SETUP]); con al menos
- * uno se abre directamente la pantalla de arranque (FR-002/FR-005).
- *
- * @param hasServers true si hay servidores guardados.
- * @param startScreen pantalla de arranque (Favoritos/Historial/Explorar).
+ * Autenticación por servidor sin pantallas de login (FR-010/FR-011):
+ * - sin servidores → formulario unificado (alta) bloqueante;
+ * - servidor de arranque sin credenciales → formulario (edición) bloqueante;
+ * - con credenciales → sesión automática y pantalla de arranque.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TolochaNavGraph(
     modifier: Modifier = Modifier,
-    hasServers: Boolean = false,
+    startupGate: StartupGate = StartupGate.NoServers,
+    startupServerId: String? = null,
     startScreen: StartScreen = StartScreen.EXPLORE,
 ) {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
-    val chromeVisible = currentRoute != null && currentRoute != Routes.SETUP
-    // Un único PlayerViewModel a ámbito de Activity (spec 004, R3): el panel
-    // global y todas las pantallas comparten emisora y estado al navegar.
-    val playerVm: PlayerViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
-    // Un único ViewModeViewModel a ámbito de Activity (spec 008): la TopAppBar
-    // compartida y las 4 secciones observan el mismo modo de vista (FR-004).
-    val viewModeVm: ViewModeViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
+    val chromeVisible = currentRoute != null && currentRoute != Routes.SERVER_FORM
+    val context = LocalContext.current
+    // Un único PlayerViewModel a ámbito de Activity (spec 004, R3).
+    val playerVm: PlayerViewModel = hiltViewModel(context as ComponentActivity)
+    // Un único ViewModeViewModel a ámbito de Activity (spec 008).
+    val viewModeVm: ViewModeViewModel = hiltViewModel(context)
     val viewMode by viewModeVm.mode.collectAsState()
-    // SleepTimerViewModel a ámbito de Activity para persistir al navegar (spec 014).
-    val sleepTimerVm: SleepTimerViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
+    // SleepTimerViewModel a ámbito de Activity (spec 014).
+    val sleepTimerVm: SleepTimerViewModel = hiltViewModel(context)
     val sleepTimerUiState by sleepTimerVm.uiState.collectAsState()
     LaunchedEffect(Unit) {
         sleepTimerVm.setStopPlayerCallback { playerVm.stop() }
     }
     val snackbar = remember { SnackbarHostState() }
 
-    // Accesos directos del icono (spec 0018): resuelve el pendiente y
-    // reproduce o avisa si no está disponible.
-    val shortcutVm: ShortcutLaunchViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
+    // Accesos directos del icono (spec 0018).
+    val shortcutVm: ShortcutLaunchViewModel = hiltViewModel(context)
     val pendingShortcut by shortcutVm.pending.collectAsState()
     LaunchedEffect(pendingShortcut) {
         val request = pendingShortcut ?: return@LaunchedEffect
@@ -135,37 +134,27 @@ fun TolochaNavGraph(
         }
     }
 
-    // Cast: descubrir dispositivos es una operación de red local (mDNS).
-    // Android 12 usa ACCESS_FINE_LOCATION, Android 13+ NEARBY_WIFI_DEVICES y
-    // Android 17 (API 37) exige ACCESS_LOCAL_NETWORK o el selector queda vacío.
-    val context = LocalContext.current
+    // Permisos de Cast (Android 12+ mDNS / Android 13+ nearby).
     var castPermissionsGranted by remember {
-        mutableStateOf(CastPermissions.areGranted(context))
+        mutableStateOf(areCastPermissionsGranted(context))
     }
     val castPermissionLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions(),
-        ) {
-            // Reevaluar contra el sistema: en API 37 el grupo NEARBY_DEVICES
-            // puede conceder ACCESS_LOCAL_NETWORK de forma implícita.
-            castPermissionsGranted = CastPermissions.areGranted(context)
+        ) { results ->
+            castPermissionsGranted = results.values.all { it }
         }
-    // Al volver de Ajustes refrescar el estado por si el usuario concedió a mano.
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        castPermissionsGranted = CastPermissions.areGranted(context)
-    }
-    LaunchedEffect(chromeVisible, castPermissionsGranted) {
+    LaunchedEffect(chromeVisible) {
         if (chromeVisible && !castPermissionsGranted) {
-            val permissions = CastPermissions.required()
-            if (permissions.isNotEmpty()) {
-                castPermissionLauncher.launch(permissions.toTypedArray())
+            val perms = requiredCastPermissions()
+            if (perms.isNotEmpty()) {
+                castPermissionLauncher.launch(perms.toTypedArray())
             }
         }
     }
 
-    // FR-005: con servidor configurado, abrir directamente en la pantalla
-    // de arranque configurada. Solo actúa en HOME, es decir, al arrancar.
-    LaunchedEffect(startScreen, hasServers) {
+    // FR-005: con servidor, abrir directamente en la pantalla de arranque.
+    LaunchedEffect(startScreen, startupGate) {
         if (currentRoute != Routes.HOME) return@LaunchedEffect
         val target =
             when (startScreen) {
@@ -175,6 +164,12 @@ fun TolochaNavGraph(
             }
         navController.navigate(target) {
             popUpTo(Routes.HOME) { inclusive = true }
+            launchSingleTop = true
+        }
+    }
+
+    val editActiveServer = {
+        navController.navigate(Routes.serverForm(startupServerId)) {
             launchSingleTop = true
         }
     }
@@ -196,18 +191,14 @@ fun TolochaNavGraph(
                             },
                             modifier = Modifier,
                         )
-                        // Alternador lista/tarjetas solo en secciones con
-                        // listas de emisoras (spec 008, FR-001/FR-009).
                         if (currentRoute in VIEW_MODE_ROUTES) {
                             ViewModeToggle(mode = viewMode, onToggle = viewModeVm::toggle)
                         }
-                        // Temporizador de apagado (spec 014, FR-001-FR-008).
                         SleepTimerButton(
                             uiState = sleepTimerUiState,
                             onStart = sleepTimerVm::start,
                             onCancel = sleepTimerVm::cancel,
                         )
-                        // Servidores: sección propia de primer nivel (FR-006).
                         IconButton(
                             onClick = {
                                 navController.navigate(Routes.SERVERS) {
@@ -229,7 +220,6 @@ fun TolochaNavGraph(
         },
         bottomBar = {
             if (chromeVisible) {
-                // Panel justo encima de los botones (spec 004, FR-001).
                 Column {
                     MiniPlayer(viewModel = playerVm, snackbar = snackbar)
                     NavigationBar {
@@ -253,17 +243,44 @@ fun TolochaNavGraph(
             }
         },
     ) { padding ->
+        val startDestination =
+            when (startupGate) {
+                StartupGate.NoServers -> Routes.serverForm(null)
+                StartupGate.NeedsCredentials -> Routes.serverForm(startupServerId)
+                StartupGate.Ready -> Routes.HOME
+            }
         NavHost(
             navController = navController,
-            startDestination = if (hasServers) Routes.HOME else Routes.SETUP,
+            startDestination = startDestination,
             modifier = Modifier.padding(padding),
         ) {
-            composable(Routes.SETUP) {
-                InstanceSetupScreen(onConnected = {
-                    // La base cambió: renacer el proceso recrea el grafo
-                    // Hilt (Retrofit) contra el servidor nuevo.
-                    com.jakewharton.processphoenix.ProcessPhoenix.triggerRebirth(navController.context)
-                })
+            composable(
+                route = Routes.SERVER_FORM,
+                arguments =
+                    listOf(
+                        navArgument("serverId") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        },
+                    ),
+            ) { entry ->
+                val serverId = entry.arguments?.getString("serverId")?.takeIf { it.isNotBlank() }
+                ServerFormScreen(
+                    serverId = serverId,
+                    showCancel = startupGate == StartupGate.Ready,
+                    onDone = {
+                        if (startupGate == StartupGate.Ready) {
+                            navController.popBackStack()
+                        } else {
+                            // Recrea el grafo Hilt/Retrofit contra el servidor nuevo.
+                            com.jakewharton.processphoenix.ProcessPhoenix.triggerRebirth(context)
+                        }
+                    },
+                    onCancel = {
+                        if (startupGate == StartupGate.Ready) navController.popBackStack()
+                    },
+                )
             }
             composable(Routes.HOME) { HomeScreen(onExplore = { navController.navigate(Routes.EXPLORE) }) }
             composable(Routes.EXPLORE) {
@@ -280,6 +297,7 @@ fun TolochaNavGraph(
                 FavoritesScreen(
                     onStation = { navController.navigate(Routes.stationDetail(it)) },
                     onExplore = { navController.navigate(Routes.EXPLORE) },
+                    onEditServer = editActiveServer,
                     player = playerVm,
                 )
             }
@@ -287,6 +305,7 @@ fun TolochaNavGraph(
                 HistoryScreen(
                     onStation = { navController.navigate(Routes.stationDetail(it)) },
                     onExplore = { navController.navigate(Routes.EXPLORE) },
+                    onEditServer = editActiveServer,
                     player = playerVm,
                 )
             }
@@ -302,8 +321,10 @@ fun TolochaNavGraph(
             composable(Routes.SERVERS) {
                 ServerListScreen(
                     onBack = { navController.popBackStack() },
+                    onAdd = { navController.navigate(Routes.serverForm(null)) },
+                    onEdit = { id -> navController.navigate(Routes.serverForm(id)) },
                     onNoServers = {
-                        navController.navigate(Routes.SETUP) {
+                        navController.navigate(Routes.serverForm(null)) {
                             popUpTo(navController.graph.id) { inclusive = true }
                             launchSingleTop = true
                         }
@@ -313,3 +334,24 @@ fun TolochaNavGraph(
         }
     }
 }
+
+/**
+ * Returns the Cast-related permissions required for the current API level.
+ * - API 33+ (Android 13): NEARBY_WIFI_DEVICES
+ * - API 31-32 (Android 12-12L): ACCESS_FINE_LOCATION
+ * - API <31: no runtime permission needed for mDNS discovery
+ */
+private fun requiredCastPermissions(): List<String> =
+    when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+            listOf(Manifest.permission.NEARBY_WIFI_DEVICES)
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+            listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        else -> emptyList()
+    }
+
+/** Checks whether all Cast discovery permissions are already granted. */
+private fun areCastPermissionsGranted(context: android.content.Context): Boolean =
+    requiredCastPermissions().all { perm ->
+        ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
+    }

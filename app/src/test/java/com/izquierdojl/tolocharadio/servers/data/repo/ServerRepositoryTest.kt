@@ -1,10 +1,13 @@
 package com.izquierdojl.tolocharadio.servers.data.repo
 
 import com.izquierdojl.tolocharadio.core.network.ApiResult
+import com.izquierdojl.tolocharadio.core.network.DomainError
+import com.izquierdojl.tolocharadio.core.session.TokenStore
 import com.izquierdojl.tolocharadio.data.local.CacheManager
 import com.izquierdojl.tolocharadio.data.local.servers.SavedServerEntity
 import com.izquierdojl.tolocharadio.data.local.servers.ServerDao
 import com.izquierdojl.tolocharadio.data.remote.api.SystemApi
+import com.izquierdojl.tolocharadio.data.repo.AuthRepo
 import com.izquierdojl.tolocharadio.data.repo.servers.ServerRepository
 import com.izquierdojl.tolocharadio.domain.shortcuts.ShortcutClearer
 import com.izquierdojl.tolocharadio.feature.onboarding.InstanceValidator
@@ -24,6 +27,8 @@ class ServerRepositoryTest {
     private val systemApi = mockk<SystemApi>(relaxed = true)
     private val cacheManager = mockk<CacheManager>(relaxed = true)
     private val shortcutClearer = mockk<ShortcutClearer>(relaxed = true)
+    private val tokens = mockk<TokenStore>(relaxed = true)
+    private val authRepo = mockk<AuthRepo>(relaxed = true)
 
     private fun server(
         id: String,
@@ -39,95 +44,95 @@ class ServerRepositoryTest {
 
     @Before
     fun setup() {
-        repo = ServerRepository(dao, validator, systemApi, cacheManager, shortcutClearer)
+        repo = ServerRepository(dao, validator, systemApi, cacheManager, shortcutClearer, tokens, authRepo)
     }
 
     @Test
-    fun `switchTo marca activo sin tocar isDefault (FR-006) y limpia cache (FR-007)`() =
+    fun `add con credenciales validas hace login y guarda activo+defecto (FR-001)`() =
         runTest {
-            val target = server("b")
-            coEvery { dao.getById("b") } returns target
+            coEvery { dao.count() } returns 0
+            coEvery { validator.validate(any()) } returns true
+            coEvery { authRepo.login(any(), any(), any(), any()) } returns ApiResult.Ok(Unit)
+
+            val result = repo.add("https://nuevo.example.com", "srv", "a@b.c", "secreta123")
+
+            assertTrue(result is ApiResult.Ok)
+            coVerify { dao.insert(match { it.isActive && it.isDefault }) }
+            coVerify { tokens.setActiveServerId(any()) }
+        }
+
+    @Test
+    fun `add con login fallido no persiste nada (FR-003)`() =
+        runTest {
+            coEvery { dao.count() } returns 0
+            coEvery { validator.validate(any()) } returns true
+            coEvery { authRepo.login(any(), any(), any(), any()) } returns
+                ApiResult.Err(DomainError.Unauthorized("bad_credentials"))
+
+            val result = repo.add("https://nuevo.example.com", "srv", "a@b.c", "mala")
+
+            assertTrue(result is ApiResult.Err)
+            coVerify(exactly = 0) { dao.insert(any()) }
+        }
+
+    @Test
+    fun `URL inaccesible no guarda servidor (FR-003)`() =
+        runTest {
+            coEvery { validator.validate(any()) } returns false
+            val result = repo.add("https://roto.example.com", "srv", "a@b.c", "secreta123")
+            assertTrue(result is ApiResult.Err)
+            coVerify(exactly = 0) { dao.insert(any()) }
+        }
+
+    @Test
+    fun `update revalida credenciales y actualiza alias (FR-007)`() =
+        runTest {
+            coEvery { dao.getById("a") } returns server("a", isActive = true)
+            coEvery { authRepo.login("a", any(), "a@b.c", "nueva123") } returns ApiResult.Ok(Unit)
+
+            val result = repo.update("a", "Nuevo alias", "a@b.c", "nueva123")
+
+            assertTrue(result is ApiResult.Ok)
+            coVerify { dao.insert(match { it.alias == "Nuevo alias" }) }
+        }
+
+    @Test
+    fun `switchTo asegura sesion y limpia cache (FR-008)`() =
+        runTest {
+            coEvery { dao.getById("b") } returns server("b")
+            coEvery { authRepo.ensureSession("b", any()) } returns ApiResult.Ok(Unit)
 
             val result = repo.switchTo("b")
 
             assertTrue(result is ApiResult.Ok)
-            coVerify(exactly = 0) { dao.clearDefault() }
             coVerify { dao.clearActive() }
             coVerify { dao.setActive("b") }
+            coVerify { tokens.setActiveServerId("b") }
             coVerify { cacheManager.clearAll() }
             coVerify { shortcutClearer.clear() }
         }
 
     @Test
-    fun `primer servidor añadido es activo y por defecto (FR-003)`() =
+    fun `switchTo con credenciales invalidas no cambia el activo`() =
         runTest {
-            coEvery { dao.count() } returns 0
-            coEvery { validator.validate(any()) } returns true
+            coEvery { dao.getById("b") } returns server("b")
+            coEvery { authRepo.ensureSession("b", any()) } returns ApiResult.Err(DomainError.Unauthorized("bad"))
 
-            val result = repo.add("https://nuevo.example.com", "srv")
+            val result = repo.switchTo("b")
 
-            assertTrue(result is ApiResult.Ok)
-            coVerify { dao.clearActive() }
-            coVerify { dao.clearDefault() }
-            coVerify {
-                dao.insert(
-                    match { it.isActive && it.isDefault && it.url == "https://nuevo.example.com" },
-                )
-            }
-        }
-
-    @Test
-    fun `añadir segundo servidor no cambia activo ni por defecto`() =
-        runTest {
-            coEvery { dao.count() } returns 1
-            coEvery { validator.validate(any()) } returns true
-
-            val result = repo.add("https://nuevo.example.com", "srv2")
-
-            assertTrue(result is ApiResult.Ok)
-            coVerify(exactly = 0) { dao.clearActive() }
-            coVerify(exactly = 0) { dao.clearDefault() }
-            coVerify {
-                dao.insert(match { !it.isActive && !it.isDefault })
-            }
-        }
-
-    @Test
-    fun `delete del por defecto y activo promociona otro servidor (FR-013)`() =
-        runTest {
-            val def = server("a", isActive = true, isDefault = true)
-            val other = server("b")
-            coEvery { dao.getById("a") } returns def
-            coEvery { dao.getAll() } returnsMany
-                listOf(flowOf(listOf(other)), flowOf(listOf(other)))
-
-            repo.delete("a")
-
-            coVerify { dao.deleteById("a") }
-            coVerify { dao.setDefault("b") }
-            coVerify { dao.setActive("b") }
-        }
-
-    @Test
-    fun `delete del ultimo servidor no promociona ninguno`() =
-        runTest {
-            val only = server("a", isActive = true, isDefault = true)
-            coEvery { dao.getById("a") } returns only
-            coEvery { dao.getAll() } returns flowOf(emptyList())
-
-            repo.delete("a")
-
-            coVerify { dao.deleteById("a") }
-            coVerify(exactly = 0) { dao.setDefault(any()) }
+            assertTrue(result is ApiResult.Err)
             coVerify(exactly = 0) { dao.setActive(any()) }
         }
 
     @Test
-    fun `URL inaccesible no guarda servidor (FR-004)`() =
+    fun `delete borra credenciales cifradas`() =
         runTest {
-            coEvery { validator.validate(any()) } returns false
-            val result = repo.add("https://roto.example.com", "srv")
-            assertTrue(result is ApiResult.Err)
-            coVerify(exactly = 0) { dao.insert(any()) }
+            coEvery { dao.getById("a") } returns server("a", isActive = true, isDefault = true)
+            coEvery { dao.getAll() } returns flowOf(emptyList())
+
+            repo.delete("a")
+
+            coVerify { tokens.deleteCredentials("a") }
+            coVerify { dao.deleteById("a") }
         }
 }

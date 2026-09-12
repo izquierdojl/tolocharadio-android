@@ -37,7 +37,7 @@ class ServerSwitchUiTest {
         var switched = false
         compose.setContent {
             TolochaTheme {
-                ServerCard(server = server(false), onSwitch = { switched = true }, onDelete = {})
+                ServerCard(server = server(false), onSwitch = { switched = true }, onEdit = {}, onDelete = {})
             }
         }
 
@@ -49,7 +49,7 @@ class ServerSwitchUiTest {
     fun el_servidor_activo_muestra_su_etiqueta() {
         compose.setContent {
             TolochaTheme {
-                ServerCard(server = server(true), onSwitch = {}, onDelete = {})
+                ServerCard(server = server(true), onSwitch = {}, onEdit = {}, onDelete = {})
             }
         }
 

@@ -6,6 +6,8 @@
 
 **Status**: Done (2026-09-12; todo verificado manualmente en emulador por el usuario)
 
+> **Nota de gobernanza (2026-09-12)**: la spec `0024-jlizquierdo-20260912-per-server-credentials` **parcialmente supersede** esta spec: se reintroducen credenciales por servidor (email y contraseña cifrada) y sesión automática JWT/`Bearer`, sin pantallas de login. Se mantiene el modelo "solo servidores" y la pantalla unificada, pero se invalidan FR-001/FR-004/FR-005/FR-008/FR-009/FR-011/FR-016 en lo relativo a "sin credenciales". El resto se conserva como histórico.
+
 **Input**: User description: "Actualmente, cuando inicia la aplicación sin datos, solicita la URL del servicio, y luego pide usuario y contraseña cuando se quiere reproducir una emisora, o al acceder al historial. Es necesario simplificarlo para trabajar sólo con servidores: cuando accedamos por primera vez, si no hay servidores iniciados, el sistema debe indicar al usuario que debe configurar uno para poder acceder, y tenemos que desechar el sistema anterior de autentificación. Una vez configurado el servidor, ahora ya funciona bien y debe seguir igual."
 
 ## Clarifications
