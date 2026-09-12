@@ -4,18 +4,18 @@
 - **Tested**: 2026-09-12
 - **Assessment**: ./assessment.md
 - **Fix**: ./fix.md
-- **Result**: partial
+- **Result**: verified
 
 ## Summary
 
-Gates en verde y tests del toggle en Cast añadidos. Pendiente confirmar en dispositivo (pausa/play desde el móvil y ausencia de flash al arrancar).
+Verificado manualmente por el usuario en dispositivo físico (v1.7.4): los controles de pausa/reanudar de Cast funcionan desde el móvil y el formulario de servidor ya no aparece al arrancar con un servidor configurado. Gates en verde.
 
 ## Checks Performed
 
 | Check | Command / Action | Result | Notes |
 |-------|------------------|--------|-------|
-| Reproducción/controles (post-fix) | Castear y pulsar pausa/reanudar en v1.7.4 | not-run | Se validará tras publicar |
-| Arranque sin flash | Abrir app con servidor guardado | not-run | Se validará tras publicar |
+| Reproducción/controles (post-fix) | Castear y pulsar pausa/reanudar en v1.7.4 | pass | Confirmado por el usuario |
+| Arranque sin flash | Abrir app con servidor guardado | pass | Confirmado por el usuario |
 | New / updated tests | `gradlew.bat testDebugUnitTest` | pass | `PlayerViewModelTest` (toggle Cast) |
 | Regression suite | `gradlew.bat testDebugUnitTest assembleDebug` | pass | BUILD SUCCESSFUL |
 | Lint / type-check | `gradlew.bat detekt ktlintCheck lintDebug` | pass | BUILD SUCCESSFUL |
@@ -24,6 +24,8 @@ Gates en verde y tests del toggle en Cast añadidos. Pendiente confirmar en disp
 
 ```
 BUILD SUCCESSFUL
+Verificación manual (usuario, dispositivo físico, v1.7.4): pausa/reanudar en Cast y
+arranque sin flash del formulario -> correcto.
 ```
 
 ## Residual Risks
@@ -33,4 +35,4 @@ BUILD SUCCESSFUL
 
 ## Recommendation
 
-Publicar v1.7.4 y validar en dispositivo: pausa/reanudar desde el móvil con Cast y arranque limpio sin parpadeo del formulario.
+Cerrar el bug — verificado en dispositivo físico con v1.7.4.
