@@ -325,9 +325,9 @@ class PlayerViewModel
             syncCastState()
         }
 
-        /** Reintento manual desde el estado Error (reinicia la resolución). */
+        /** Reintento manual desde el estado Error (local o Cast). */
         fun retry() {
-            val station = (_state.value as? PlayerState.Error)?.station ?: return
+            val station = (effectiveState() as? PlayerState.Error)?.station ?: return
             play(station)
         }
 
