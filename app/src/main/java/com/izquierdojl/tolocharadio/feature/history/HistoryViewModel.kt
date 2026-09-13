@@ -61,30 +61,48 @@ class HistoryViewModel
             refresh()
         }
 
+        /** Carga en curso: evita duplicar peticiones al reanudar. */
+        private var loading = false
+
+        /**
+         * Recarga al volver a primer plano (la sesión o la red pueden
+         * haberse perdido durante el reposo). Se omite si ya hay una
+         * carga en curso.
+         */
+        fun onForeground() {
+            if (loading) return
+            refresh()
+        }
+
         /** Recarga la lista del servidor (o caché offline). */
         fun refresh() {
             viewModelScope.launch {
-                if (_ui.value !is HistoryUiState.Content) _ui.value = HistoryUiState.Loading
-                when (val r = observe()) {
-                    is ApiResult.Ok -> {
-                        _ui.value =
-                            if (r.value.items.isEmpty()) {
-                                HistoryUiState.Empty
-                            } else {
-                                HistoryUiState.Content(r.value.items, offline = r.value.offline)
-                            }
-                    }
-                    is ApiResult.Err -> {
-                        if (_ui.value !is HistoryUiState.Content) {
+                loading = true
+                try {
+                    if (_ui.value !is HistoryUiState.Content) _ui.value = HistoryUiState.Loading
+                    when (val r = observe()) {
+                        is ApiResult.Ok -> {
                             _ui.value =
-                                HistoryUiState.Error(
-                                    r.error.userMessage(),
-                                    isAuthError = r.error is DomainError.Unauthorized,
-                                )
-                        } else {
-                            _messages.tryEmit(r.error.userMessage())
+                                if (r.value.items.isEmpty()) {
+                                    HistoryUiState.Empty
+                                } else {
+                                    HistoryUiState.Content(r.value.items, offline = r.value.offline)
+                                }
+                        }
+                        is ApiResult.Err -> {
+                            if (_ui.value !is HistoryUiState.Content) {
+                                _ui.value =
+                                    HistoryUiState.Error(
+                                        r.error.userMessage(),
+                                        isAuthError = r.error is DomainError.Unauthorized,
+                                    )
+                            } else {
+                                _messages.tryEmit(r.error.userMessage())
+                            }
                         }
                     }
+                } finally {
+                    loading = false
                 }
             }
         }

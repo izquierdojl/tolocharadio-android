@@ -75,36 +75,54 @@ class FavoritesViewModel
         private var confirmed: List<FavoriteDto> = emptyList()
         private var undoJob: Job? = null
 
+        /** Carga en curso: evita duplicar peticiones al reanudar. */
+        private var loading = false
+
         init {
+            refresh()
+        }
+
+        /**
+         * Recarga al volver a primer plano (la sesión o la red pueden
+         * haberse perdido durante el reposo). Se omite si ya hay una
+         * carga en curso.
+         */
+        fun onForeground() {
+            if (loading) return
             refresh()
         }
 
         /** Recarga la lista del servidor (o caché offline). */
         fun refresh() {
             viewModelScope.launch {
-                if (_ui.value !is FavoritesUiState.Content) _ui.value = FavoritesUiState.Loading
-                when (val r = observe()) {
-                    is ApiResult.Ok -> {
-                        confirmed = r.value.items
-                        cancelUndo()
-                        _ui.value =
-                            if (r.value.items.isEmpty()) {
-                                FavoritesUiState.Empty
-                            } else {
-                                FavoritesUiState.Content(r.value.items, offline = r.value.offline)
-                            }
-                    }
-                    is ApiResult.Err -> {
-                        if (_ui.value !is FavoritesUiState.Content) {
+                loading = true
+                try {
+                    if (_ui.value !is FavoritesUiState.Content) _ui.value = FavoritesUiState.Loading
+                    when (val r = observe()) {
+                        is ApiResult.Ok -> {
+                            confirmed = r.value.items
+                            cancelUndo()
                             _ui.value =
-                                FavoritesUiState.Error(
-                                    r.error.userMessage(),
-                                    isAuthError = r.error is DomainError.Unauthorized,
-                                )
-                        } else {
-                            _messages.tryEmit(r.error.userMessage())
+                                if (r.value.items.isEmpty()) {
+                                    FavoritesUiState.Empty
+                                } else {
+                                    FavoritesUiState.Content(r.value.items, offline = r.value.offline)
+                                }
+                        }
+                        is ApiResult.Err -> {
+                            if (_ui.value !is FavoritesUiState.Content) {
+                                _ui.value =
+                                    FavoritesUiState.Error(
+                                        r.error.userMessage(),
+                                        isAuthError = r.error is DomainError.Unauthorized,
+                                    )
+                            } else {
+                                _messages.tryEmit(r.error.userMessage())
+                            }
                         }
                     }
+                } finally {
+                    loading = false
                 }
             }
         }

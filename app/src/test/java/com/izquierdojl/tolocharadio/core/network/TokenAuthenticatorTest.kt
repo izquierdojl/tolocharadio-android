@@ -89,4 +89,45 @@ class TokenAuthenticatorTest {
             assertNull(next)
             assertEquals(SessionState.Idle, session.state.value)
         }
+
+    @Test
+    fun `refresh 503 cae al re-login con credenciales`() =
+        runTest {
+            session.setAccess("access-viejo")
+            coEvery { api.refresh(any()) } returns
+                Response.error(503, "{}".toResponseBody("application/json".toMediaType()))
+            coEvery { api.login(LoginBody("a@b.c", "secreta123")) } returns
+                Response.success(AuthResponseDto("access-3", "refresh-3"))
+
+            val next = authenticator.authenticate(null, responseWith("Bearer access-viejo"))
+
+            assertEquals("Bearer access-3", next?.header("Authorization"))
+        }
+
+    @Test
+    fun `fallo de red en refresh y login no limpia la sesion (reintentable)`() =
+        runTest {
+            session.setAccess("access-viejo")
+            coEvery { api.refresh(any()) } throws java.io.IOException("sin red")
+            coEvery { api.login(any()) } throws java.io.IOException("sin red")
+
+            val next = authenticator.authenticate(null, responseWith("Bearer access-viejo"))
+
+            assertNull(next)
+            assertEquals(SessionState.Ready, session.state.value)
+        }
+
+    @Test
+    fun `refresh rechazado y login con fallo de red conserva la sesion`() =
+        runTest {
+            session.setAccess("access-viejo")
+            coEvery { api.refresh(any()) } returns
+                Response.error(401, "{}".toResponseBody("application/json".toMediaType()))
+            coEvery { api.login(any()) } throws java.io.IOException("sin red")
+
+            val next = authenticator.authenticate(null, responseWith("Bearer access-viejo"))
+
+            assertNull(next)
+            assertEquals(SessionState.Ready, session.state.value)
+        }
 }

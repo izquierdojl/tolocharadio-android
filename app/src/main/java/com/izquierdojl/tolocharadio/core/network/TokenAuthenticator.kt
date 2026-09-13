@@ -13,11 +13,19 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.Route
 
+/** Códigos HTTP que rechazan credenciales de forma definitiva. */
+private const val HTTP_UNAUTHORIZED = 401
+private const val HTTP_FORBIDDEN = 403
+
 /**
  * Ante un 401: renovación **single-flight** con el refresh guardado y
  * reintento único; si el refresh falla, re-login con email/contraseña
- * cifrados del servidor activo (FR-005). Si nada funciona, limpia la
- * sesión y deja que la UI ofrezca editar el servidor.
+ * cifrados del servidor activo (FR-005).
+ *
+ * Solo un rechazo definitivo (401/403) de refresh y login limpia la
+ * sesión y deja que la UI ofrezca editar el servidor. Los fallos
+ * transitorios (IOException, 5xx) conservan la sesión para reintentar
+ * cuando vuelva la red, sin obligar al usuario a re-autenticarse.
  */
 class TokenAuthenticator(
     private val session: SessionManager,
@@ -46,30 +54,39 @@ class TokenAuthenticator(
                     val creds = tokens.getCredentials(serverId)
 
                     // 1) Refresh.
+                    var refreshRejected = false
                     if (!creds?.refresh.isNullOrBlank()) {
-                        val result = runCatching { authApi.get().refresh(RefreshBody(creds?.refresh)) }.getOrNull()
-                        val body = if (result?.isSuccessful == true) result.body() else null
+                        val result = runCatching { authApi.get().refresh(RefreshBody(creds.refresh)) }.getOrNull()
+                        val body = result?.takeIf { it.isSuccessful }?.body()
                         if (body != null) {
                             session.setAccess(body.accessToken)
                             tokens.updateRefresh(serverId, body.refreshToken)
                             return@withLock body.accessToken
                         }
+                        refreshRejected = isDefinitiveRejection(result?.code())
                     }
 
                     // 2) Re-login con credenciales guardadas.
                     val email = creds?.email
                     val password = creds?.password
+                    var loginRejected = false
+                    var loginAttempted = false
                     if (!email.isNullOrBlank() && !password.isNullOrBlank()) {
+                        loginAttempted = true
                         val result = runCatching { authApi.get().login(LoginBody(email, password)) }.getOrNull()
-                        val body = if (result?.isSuccessful == true) result.body() else null
+                        val body = result?.takeIf { it.isSuccessful }?.body()
                         if (body != null) {
                             session.setAccess(body.accessToken)
                             tokens.setCredentials(serverId, email, password, body.refreshToken)
                             return@withLock body.accessToken
                         }
+                        loginRejected = isDefinitiveRejection(result?.code())
                     }
 
-                    session.clear()
+                    // Fallo transitorio con login pendiente: no se invalida la sesión.
+                    if (loginRejected || (!loginAttempted && refreshRejected)) {
+                        session.clear()
+                    }
                     null
                 }
             } ?: return null
@@ -77,6 +94,11 @@ class TokenAuthenticator(
         return response.request.newBuilder()
             .header("Authorization", "Bearer $newAccess")
             .build()
+    }
+
+    /** true solo si la respuesta rechaza credenciales (401/403); null es transitorio. */
+    private fun isDefinitiveRejection(httpCode: Int?): Boolean {
+        return httpCode == HTTP_UNAUTHORIZED || httpCode == HTTP_FORBIDDEN
     }
 
     private fun responseCount(response: Response): Int {

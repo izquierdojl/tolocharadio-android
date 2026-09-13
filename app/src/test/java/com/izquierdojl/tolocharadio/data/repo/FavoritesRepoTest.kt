@@ -69,6 +69,30 @@ class FavoritesRepoTest {
         }
 
     @Test
+    fun `list 401 con cache devuelve cache offline`() =
+        runTest {
+            coEvery { api.list() } returns
+                Response.error(401, """{"error":{"code":"UNAUTHORIZED","message":"x","status":401}}""".toResponseBody())
+            coEvery { dao.loadOrdered() } returns
+                listOf(CachedFavorite("u9", "Nueve", null, null, null, "", 5, 0, 0))
+            val r = repo.list()
+            assertTrue(r is ApiResult.Ok)
+            val ok = r as ApiResult.Ok
+            assertEquals(true, ok.value.offline)
+            assertEquals("u9", ok.value.items.single().station.id)
+        }
+
+    @Test
+    fun `list 401 sin cache devuelve Unauthorized`() =
+        runTest {
+            coEvery { api.list() } returns
+                Response.error(401, """{"error":{"code":"UNAUTHORIZED","message":"x","status":401}}""".toResponseBody())
+            coEvery { dao.loadOrdered() } returns emptyList()
+            val r = repo.list()
+            assertTrue((r as ApiResult.Err).error is DomainError.Unauthorized)
+        }
+
+    @Test
     fun `add OK suma el id al flujo`() =
         runTest {
             coEvery { api.add(any()) } returns Response.success(FavoriteResultDto(fav1))
