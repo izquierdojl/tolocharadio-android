@@ -11,6 +11,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.google.android.gms.cast.framework.CastContext
+import com.google.android.gms.cast.framework.CastReasonCodes
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
 import com.izquierdojl.tolocharadio.core.util.CastPermissions
@@ -22,13 +23,22 @@ import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
 import com.izquierdojl.tolocharadio.feature.player.PlayerState
 import com.izquierdojl.tolocharadio.feature.player.PlayerStateType
 import com.izquierdojl.tolocharadio.feature.player.StationMediaItemFactory
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** Avisos de sesión Cast que la UI debe reflejar (bug 0031). */
+sealed interface CastNotice {
+    /** La sesión se perdió con el receptor posiblemente aún reproduciendo. */
+    data class SessionLost(val deviceName: String) : CastNotice
+}
 
 @Singleton
 @OptIn(UnstableApi::class)
@@ -46,6 +56,15 @@ class CastPlayerManager
 
         private val _castState = MutableStateFlow<CastPlayerState>(CastPlayerState.Local(PlayerState.Idle))
         val castState: StateFlow<CastPlayerState> = _castState.asStateFlow()
+
+        private val _notices = MutableSharedFlow<CastNotice>(extraBufferCapacity = 1)
+        val notices: SharedFlow<CastNotice> = _notices.asSharedFlow()
+
+        /** La app pidió desconectar: implica receptor detenido de forma segura. */
+        private var userDisconnectRequested = false
+
+        /** Último nombre conocido del receptor (la sesión lo pierde al desconectar). */
+        private var lastDeviceName = "Chromecast"
 
         private var castPlayer: CastPlayer? = null
         private var castContext: CastContext? = null
@@ -116,6 +135,7 @@ class CastPlayerManager
                     session: CastSession,
                     sessionId: String,
                 ) {
+                    userDisconnectRequested = false
                     _connectionState.value = CastConnectionState.CONNECTED
                     createCastPlayer()
                 }
@@ -124,8 +144,10 @@ class CastPlayerManager
                     session: CastSession,
                     error: Int,
                 ) {
+                    userDisconnectRequested = false
+                    android.util.Log.w("CastPlayerManager", "Fallo al iniciar la sesión Cast code=$error")
                     _connectionState.value = CastConnectionState.DISCONNECTED
-                    castPlayer = null
+                    releaseCastPlayer()
                 }
 
                 override fun onSessionEnding(session: CastSession) {
@@ -136,10 +158,20 @@ class CastPlayerManager
                     session: CastSession,
                     error: Int,
                 ) {
-                    _connectionState.value = CastConnectionState.DISCONNECTED
-                    releaseCastPlayer()
-                    // FR-008: Auto-resume local playback on unexpected disconnect
-                    resumeLocalPlayback()
+                    val reasonCode = castContext?.getCastReasonCodeForCastStatusCode(error)
+                    val userInitiated =
+                        userDisconnectRequested || reasonCode == CastReasonCodes.CASTING_STOPPED
+                    val remoteWasPlaying = castPlayer?.isPlaying == true
+                    userDisconnectRequested = false
+                    android.util.Log.i(
+                        "CastPlayerManager",
+                        "Sesión Cast terminada: userInitiated=$userInitiated code=$error reason=$reasonCode",
+                    )
+                    handleSessionEnd(
+                        userInitiated = userInitiated,
+                        remoteWasPlaying = remoteWasPlaying,
+                        deviceName = session.castDevice?.friendlyName ?: lastDeviceName,
+                    )
                 }
 
                 override fun onSessionResuming(
@@ -161,10 +193,19 @@ class CastPlayerManager
                     session: CastSession,
                     error: Int,
                 ) {
-                    _connectionState.value = CastConnectionState.DISCONNECTED
-                    releaseCastPlayer()
-                    // FR-008: Auto-resume local playback on resume failure
-                    resumeLocalPlayback()
+                    val reasonCode = castContext?.getCastReasonCodeForCastStatusCode(error)
+                    val userInitiated =
+                        userDisconnectRequested || reasonCode == CastReasonCodes.CASTING_STOPPED
+                    userDisconnectRequested = false
+                    android.util.Log.w(
+                        "CastPlayerManager",
+                        "Fallo al reanudar la sesión Cast code=$error reason=$reasonCode",
+                    )
+                    handleSessionEnd(
+                        userInitiated = userInitiated,
+                        remoteWasPlaying = castPlayer?.isPlaying == true,
+                        deviceName = session.castDevice?.friendlyName ?: lastDeviceName,
+                    )
                 }
 
                 override fun onSessionSuspended(
@@ -175,23 +216,52 @@ class CastPlayerManager
                 }
             }
 
+        /**
+         * Crea el `CastPlayer` solo si no existe. En `onSessionResumed` NO se
+         * recrea: `CastPlayer.release()` termina la sesión (`endCurrentSession`)
+         * y mataría la sesión recién reanudada (bug 0031). Media3 soporta la
+         * suspensión/reanudación con el mismo player.
+         */
         @OptIn(UnstableApi::class)
         private fun createCastPlayer() {
             castError = null
-            castPlayer?.release()
-            castContext?.let { ctx ->
-                castPlayer =
-                    CastPlayer(ctx).apply {
-                        addListener(castPlayerListener)
-                    }
+            if (castPlayer == null) {
+                castContext?.let { ctx ->
+                    castPlayer =
+                        CastPlayer(ctx).apply {
+                            addListener(castPlayerListener)
+                        }
+                }
+                // Update MediaSession to use CastPlayer
+                castPlayer?.let { player ->
+                    mediaSession?.setPlayer(player)
+                }
             }
             // FR-009: Request audio focus when connecting to Cast
             requestAudioFocus()
-            // Update MediaSession to use CastPlayer
-            castPlayer?.let { player ->
-                mediaSession?.setPlayer(player)
-            }
+            lastDeviceName = currentDeviceName()
             updateCastState()
+        }
+
+        /**
+         * Resuelve el final de una sesión Cast sin duplicar audio (bug 0031) y
+         * recupera la escucha tras una parada manual (bug 0032): solo reanuda
+         * local si la app/usuario detuvieron el receptor; ante una pérdida no
+         * intencionada avisa, porque el receptor puede seguir sonando.
+         */
+        private fun handleSessionEnd(
+            userInitiated: Boolean,
+            remoteWasPlaying: Boolean,
+            deviceName: String,
+        ) {
+            _connectionState.value = CastConnectionState.DISCONNECTED
+            releaseCastPlayer()
+            when (CastFallbackPolicy.decide(userInitiated, remoteWasPlaying)) {
+                CastFallbackDecision.RESUME_LOCAL -> resumeLocalPlayback(play = true)
+                CastFallbackDecision.RESUME_LOCAL_PAUSED -> resumeLocalPlayback(play = false)
+                CastFallbackDecision.DO_NOT_RESUME_LOCAL ->
+                    _notices.tryEmit(CastNotice.SessionLost(deviceName))
+            }
         }
 
         private fun releaseCastPlayer() {
@@ -231,8 +301,8 @@ class CastPlayerManager
             audioFocusRequest = null
         }
 
-        // FR-008: Resume local playback after Cast disconnect
-        private fun resumeLocalPlayback() {
+        // FR-008/bug 0031: reanuda en local solo con el receptor ya detenido
+        private fun resumeLocalPlayback(play: Boolean = true) {
             val station = activeStationHolder.station ?: return
             val holderState = activeStationHolder.playerState
             if (holderState == PlayerStateType.PLAYING || holderState == PlayerStateType.BUFFERING) {
@@ -241,7 +311,7 @@ class CastPlayerManager
                 val item = mediaItemFactory.create(station, source, baseUrl)
                 exoPlayer.setMediaSource(mediaItemFactory.createMediaSource(item, source))
                 exoPlayer.prepare()
-                exoPlayer.playWhenReady = true
+                exoPlayer.playWhenReady = play
             }
         }
 
@@ -318,14 +388,14 @@ class CastPlayerManager
             player.playWhenReady = true
         }
 
+        /**
+         * Desconexión manual pedida por la app: cierra la sesión con
+         * `stopCasting=true` para detener el receptor. `onSessionEnded` resuelve
+         * la reanudación local de forma segura (bug 0031).
+         */
         fun disconnect() {
-            castPlayer?.stop()
-            castPlayer?.clearMediaItems()
-            releaseCastPlayer()
-            _connectionState.value = CastConnectionState.DISCONNECTED
-            _castState.value = CastPlayerState.Local(PlayerState.Idle)
-            // FR-008: Resume local playback on manual disconnect
-            resumeLocalPlayback()
+            userDisconnectRequested = true
+            castContext?.sessionManager?.endCurrentSession(true)
         }
 
         fun updateLocalState(state: PlayerState) {
