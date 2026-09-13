@@ -151,7 +151,7 @@ fun FavoritesScreen(
                         onRemove = viewModel::removeWithUndo,
                         onMove = viewModel::moveItem,
                         onCommit = viewModel::commitOrder,
-                        onRetry = viewModel::retry,
+                        onRetry = viewModel::refresh,
                         onEditServer = onEditServer,
                     ),
             )

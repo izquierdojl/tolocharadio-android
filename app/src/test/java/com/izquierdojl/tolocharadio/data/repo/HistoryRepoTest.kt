@@ -69,6 +69,33 @@ class HistoryRepoTest {
         }
 
     @Test
+    fun `recordLocalPlay deduplica y deja la escucha en primera posicion`() =
+        runTest {
+            coEvery { api.list() } returns Response.success(HistoryListDto(listOf(entry2, entry1Old)))
+            repo.list()
+            repo.recordLocalPlay(StationDto("s1", "Rock FM"), now = 4000)
+            assertEquals(listOf("s1", "s2"), repo.items.value.map { it.station.id })
+            assertEquals(listOf(4000L, 2000L), repo.items.value.map { it.playedAt })
+            coVerify { dao.upsertAll(match { it.single().id == "s1" && it.single().playedAt == 4000L }) }
+        }
+
+    @Test
+    fun `recordLocalPlay sin lista previa deja solo la escucha`() =
+        runTest {
+            repo.recordLocalPlay(StationDto("s3", "Tres"), now = 1000)
+            assertEquals("s3", repo.items.value.single().station.id)
+            coVerify { dao.upsertAll(match { it.single().id == "s3" }) }
+        }
+
+    @Test
+    fun `recordLocalPlay con id en blanco no hace nada`() =
+        runTest {
+            repo.recordLocalPlay(StationDto("", "Sin id"), now = 1000)
+            assertTrue(repo.items.value.isEmpty())
+            coVerify(exactly = 0) { dao.upsertAll(any()) }
+        }
+
+    @Test
     fun `list 401 con cache devuelve offline`() =
         runTest {
             coEvery { api.list() } returns
