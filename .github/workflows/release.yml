@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (con tags)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -33,13 +33,13 @@ jobs:
           echo "Versión: ${VERSION} | versionCode: ${GITHUB_RUN_NUMBER}"
 
       - name: Setup Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Restaurar keystore desde secrets
         env:
@@ -72,7 +72,7 @@ jobs:
           ls -l "${{ steps.version.outputs.apk }}"
 
       - name: Publicar GitHub Release con APK
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: Tolocha Radio ${{ github.ref_name }}
