@@ -32,3 +32,7 @@ BUILD SUCCESSFUL
 ## Recommendation
 
 Cerrar — mejora de robustez cubierta por tests; el mensaje aparecerá si algún día falla el receptor.
+
+## Cierre
+
+Cerrado por el usuario el 2026-09-12. La verificación queda en `partial`: no se forzó un fallo real en el receptor (difícil de inducir con el servidor funcionando), pero la ruta de error está cubierta por tests y la lógica revisada.
