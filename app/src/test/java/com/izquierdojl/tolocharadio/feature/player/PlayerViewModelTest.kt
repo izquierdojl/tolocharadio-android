@@ -6,6 +6,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.izquierdojl.tolocharadio.MainDispatcherRule
 import com.izquierdojl.tolocharadio.cast.CastConnectionState
+import com.izquierdojl.tolocharadio.cast.CastNotice
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
 import com.izquierdojl.tolocharadio.cast.CastPlayerState
 import com.izquierdojl.tolocharadio.core.network.ApiResult
@@ -26,6 +27,7 @@ import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -56,10 +58,14 @@ class PlayerViewModelTest {
     private val activeStationHolder: ActiveStationHolder = mockk(relaxed = true)
     private val exoPlayer: ExoPlayer = mockk(relaxed = true)
     private val castExoPlayer: ExoPlayer = mockk(relaxed = true)
+    private val castNotices = MutableSharedFlow<CastNotice>(extraBufferCapacity = 1)
+    private val castConnectionState = MutableStateFlow(CastConnectionState.DISCONNECTED)
     private val castPlayerManager: CastPlayerManager =
         mockk(relaxed = true) {
             every { exoPlayer } returns castExoPlayer
             every { castState } returns mockk(relaxed = true)
+            every { notices } returns castNotices
+            every { connectionState } returns castConnectionState
         }
     private val resolveSource = ResolvePlaybackSourceUseCase()
     private val mediaItemFactory: StationMediaItemFactory = mockk(relaxed = true)
@@ -342,5 +348,108 @@ class PlayerViewModelTest {
             advanceUntilIdle()
 
             coVerify(exactly = 1) { playback.status("u1") }
+        }
+
+    @Test
+    fun `sesion Cast perdida muestra aviso accionable sin arrancar el player local`() {
+        val viewModel = vm()
+        viewModel.play(station)
+        assertTrue(viewModel.state.value is PlayerState.Buffering)
+
+        castNotices.tryEmit(CastNotice.SessionLost("TV"))
+
+        val state = viewModel.state.value
+        assertTrue(state is PlayerState.Error)
+        assertEquals(station, (state as PlayerState.Error).station)
+        assertTrue(state.message.contains("TV"))
+        verify(exactly = 0) { castExoPlayer.setMediaSource(any()) }
+        verify(exactly = 0) { castPlayerManager.connectToStation(any(), any()) }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `retry tras perdida de sesion arranca la reproduccion local`() =
+        runTest {
+            coEvery { playback.status("u1") } returns ApiResult.Ok(PlaybackStatusDto("u1", true, null))
+            val viewModel = vm()
+            viewModel.play(station)
+            advanceUntilIdle()
+            castNotices.tryEmit(CastNotice.SessionLost("TV"))
+            assertTrue(viewModel.state.value is PlayerState.Error)
+
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value is PlayerState.Buffering)
+            coVerify(exactly = 2) { playback.status("u1") }
+            verify(exactly = 0) { castPlayerManager.connectToStation(any(), any()) }
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `sesion Cast perdida reenvia la emisora al reconectar`() =
+        runTest {
+            every { castPlayerManager.isCastConnected } returns true
+            coEvery { playback.status("u1") } returns ApiResult.Ok(PlaybackStatusDto("u1", true, null))
+            val viewModel = vm()
+            viewModel.play(station)
+            advanceUntilIdle()
+            castNotices.tryEmit(CastNotice.SessionLost("Dormitorio"))
+            advanceUntilIdle()
+            assertTrue(viewModel.state.value is PlayerState.Error)
+
+            castConnectionState.value = CastConnectionState.CONNECTED
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value is PlayerState.Buffering)
+            coVerify(exactly = 2) { playback.status("u1") }
+            verify(exactly = 2) { castPlayerManager.connectToStation(station, any()) }
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `retry con Cast conectado en idle reenvia la emisora`() =
+        runTest {
+            every { castPlayerManager.isCastConnected } returns true
+            every { castPlayerManager.castState } returns
+                MutableStateFlow<CastPlayerState>(
+                    CastPlayerState.Cast(PlayerState.Idle, "TV", CastConnectionState.CONNECTED),
+                )
+            coEvery { playback.status("u1") } returns ApiResult.Ok(PlaybackStatusDto("u1", true, null))
+            val viewModel = vm()
+            viewModel.play(station)
+            advanceUntilIdle()
+            castNotices.tryEmit(CastNotice.SessionLost("TV"))
+            advanceUntilIdle()
+
+            viewModel.retry()
+            advanceUntilIdle()
+
+            coVerify(exactly = 2) { playback.status("u1") }
+            verify(exactly = 2) { castPlayerManager.connectToStation(station, any()) }
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `sesion Cast perdida no reenvia a un dispositivo distinto`() =
+        runTest {
+            every { castPlayerManager.isCastConnected } returns true
+            every { castPlayerManager.castState } returns
+                MutableStateFlow<CastPlayerState>(
+                    CastPlayerState.Cast(PlayerState.Idle, "TV LG", CastConnectionState.CONNECTED),
+                )
+            coEvery { playback.status("u1") } returns ApiResult.Ok(PlaybackStatusDto("u1", true, null))
+            val viewModel = vm()
+            viewModel.play(station)
+            advanceUntilIdle()
+            castNotices.tryEmit(CastNotice.SessionLost("Dormitorio"))
+            advanceUntilIdle()
+
+            castConnectionState.value = CastConnectionState.CONNECTED
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value is PlayerState.Error)
+            coVerify(exactly = 1) { playback.status("u1") }
+            verify(exactly = 1) { castPlayerManager.connectToStation(station, any()) }
         }
 }

@@ -12,6 +12,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
+import com.izquierdojl.tolocharadio.cast.CastConnectionState
+import com.izquierdojl.tolocharadio.cast.CastNotice
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
 import com.izquierdojl.tolocharadio.cast.CastPlayerState
 import com.izquierdojl.tolocharadio.core.network.ApiResult
@@ -104,6 +106,10 @@ class PlayerViewModel
         private var loadJob: Job? = null
         private var controller: MediaController? = null
 
+        /** Emisora y dispositivo pendientes de reenviar al reconectar (bug 0032). */
+        private var lostStation: StationDto? = null
+        private var lostDeviceName: String? = null
+
         private val listener =
             object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -145,6 +151,60 @@ class PlayerViewModel
             exoPlayer.addListener(listener)
             connectController()
             syncFromHolder()
+            observeCastNotices()
+            observeCastReconnection()
+        }
+
+        /**
+         * Avisos de sesión Cast (bug 0031): si la sesión se pierde, la app no
+         * arranca audio local (el receptor puede seguir sonando) y muestra un
+         * aviso accionable; el usuario decide reanudar en local con `retry()`.
+         */
+        private fun observeCastNotices() {
+            viewModelScope.launch {
+                castPlayerManager.notices.collect { notice ->
+                    when (notice) {
+                        is CastNotice.SessionLost -> showCastSessionLost(notice.deviceName)
+                    }
+                }
+            }
+        }
+
+        /**
+         * Reenvío automático al reconectar (bug 0032): si la sesión se había
+         * perdido, en cuanto el **mismo** dispositivo vuelve a conectarse se
+         * reenvía la emisora sin pasos manuales. Nunca se envía a otro
+         * dispositivo distinto al que se perdió.
+         */
+        private fun observeCastReconnection() {
+            viewModelScope.launch {
+                castPlayerManager.connectionState.collect { state ->
+                    val station = lostStation ?: return@collect
+                    if (state != CastConnectionState.CONNECTED) return@collect
+                    val expectedDevice = lostDeviceName
+                    val connectedDevice =
+                        (castPlayerManager.castState.value as? CastPlayerState.Cast)?.deviceName
+                    lostStation = null
+                    lostDeviceName = null
+                    if (expectedDevice == null || connectedDevice == null || connectedDevice == expectedDevice) {
+                        play(station)
+                    }
+                }
+            }
+        }
+
+        private fun showCastSessionLost(deviceName: String) {
+            val station = _state.value.stationOrNull() ?: activeStationHolder.station ?: return
+            lostStation = station
+            lostDeviceName = deviceName
+            _state.value =
+                PlayerState.Error(
+                    station,
+                    "Se perdió la conexión con $deviceName. Puede seguir sonando allí; " +
+                        "reintenta para escuchar en el móvil.",
+                )
+            syncHolderToState()
+            syncCastState()
         }
 
         /**
@@ -190,6 +250,8 @@ class PlayerViewModel
          */
         fun play(station: StationDto) {
             loadJob?.cancel()
+            lostStation = null
+            lostDeviceName = null
             resetPlaybackSession()
             _state.value = PlayerState.Buffering(station)
             syncHolderToState()
@@ -322,6 +384,8 @@ class PlayerViewModel
         /** Detiene y vuelve a Idle. Resetea el silencio y el fallback. */
         fun stop() {
             loadJob?.cancel()
+            lostStation = null
+            lostDeviceName = null
             _isMuted.value = false
             _fullPlayerVisible.value = false
             castPlayerManager.exoPlayer.volume = 1f
@@ -334,7 +398,10 @@ class PlayerViewModel
 
         /** Reintento manual desde el estado Error (local o Cast). */
         fun retry() {
-            val station = (effectiveState() as? PlayerState.Error)?.station ?: return
+            val station =
+                (effectiveState() as? PlayerState.Error)?.station
+                    ?: (_state.value as? PlayerState.Error)?.station
+                    ?: return
             play(station)
         }
 
