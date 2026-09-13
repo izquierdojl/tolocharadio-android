@@ -51,6 +51,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.ErrorBanner
@@ -105,6 +107,10 @@ fun HistoryScreen(
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbar.showSnackbar(it) }
+    }
+    // Al volver del reposo, refresca con la sesión/red restauradas.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.onForeground()
     }
 
     if (showClearDialog) {

@@ -39,8 +39,9 @@ class FavoritesRepo
 
         /**
          * Lista completa en orden del servidor. Deduplica por id (VR-01)
-         * y refresca caché + flujo. Sin red y con caché devuelve la
-         * última conocida marcada `offline`.
+         * y refresca caché + flujo. Sin red o con sesión no renovable y
+         * con caché devuelve la última conocida marcada `offline`
+         * (la verdad sigue siendo el servidor, FR-010).
          */
         suspend fun list(): ApiResult<FavoritesResult> {
             return when (val r = safeCall { api.list() }) {
@@ -51,7 +52,11 @@ class FavoritesRepo
                     ApiResult.Ok(FavoritesResult(items, offline = false))
                 }
                 is ApiResult.Err -> {
-                    if (r.error is DomainError.Unavailable) fromCache() ?: r else r
+                    if (r.error is DomainError.Unavailable || r.error is DomainError.Unauthorized) {
+                        fromCache() ?: r
+                    } else {
+                        r
+                    }
                 }
             }
         }

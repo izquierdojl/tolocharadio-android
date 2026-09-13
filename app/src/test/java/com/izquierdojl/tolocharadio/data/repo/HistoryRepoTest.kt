@@ -69,6 +69,19 @@ class HistoryRepoTest {
         }
 
     @Test
+    fun `list 401 con cache devuelve offline`() =
+        runTest {
+            coEvery { api.list() } returns
+                Response.error(401, """{"error":{"code":"UNAUTHORIZED","message":"x","status":401}}""".toResponseBody())
+            coEvery { dao.loadOrdered() } returns
+                listOf(CachedHistoryEntry("s9", "Nueve", null, null, null, "", 5000, 0))
+            val r = repo.list()
+            assertTrue(r is ApiResult.Ok)
+            assertEquals(true, (r as ApiResult.Ok).value.offline)
+            assertEquals("s9", r.value.items.single().station.id)
+        }
+
+    @Test
     fun `remove OK elimina del state y cache`() =
         runTest {
             coEvery { api.list() } returns Response.success(HistoryListDto(listOf(entry1, entry2)))

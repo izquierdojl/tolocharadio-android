@@ -14,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
+import com.izquierdojl.tolocharadio.core.session.SessionManager
+import com.izquierdojl.tolocharadio.core.session.SessionState
 import com.izquierdojl.tolocharadio.core.session.TokenStore
 import com.izquierdojl.tolocharadio.core.shortcuts.PendingShortcutHolder
 import com.izquierdojl.tolocharadio.core.shortcuts.ShortcutIntents
@@ -46,6 +48,9 @@ class MainActivity : FragmentActivity() {
 
     @Inject
     lateinit var tokenStore: TokenStore
+
+    @Inject
+    lateinit var sessionManager: SessionManager
 
     @Inject
     lateinit var authenticateServer: AuthenticateServerUseCase
@@ -107,6 +112,15 @@ class MainActivity : FragmentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // El access token vive solo en memoria: al volver del reposo,
+        // re-autentica con las credenciales guardadas si no hay sesión.
+        if (sessionManager.state.value == SessionState.Idle) {
+            lifecycleScope.launch { authenticateServer() }
         }
     }
 

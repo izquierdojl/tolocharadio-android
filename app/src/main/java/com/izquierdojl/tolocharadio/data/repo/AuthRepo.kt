@@ -8,6 +8,8 @@ import com.izquierdojl.tolocharadio.core.session.TokenStore
 import com.izquierdojl.tolocharadio.data.remote.InstanceApiFactory
 import com.izquierdojl.tolocharadio.data.remote.api.LoginBody
 import com.izquierdojl.tolocharadio.data.remote.api.RefreshBody
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +26,9 @@ class AuthRepo
         private val tokens: TokenStore,
         private val apiFactory: InstanceApiFactory,
     ) {
+        /** Serializa [ensureSession] para no rotar el refresh en paralelo. */
+        private val mutex = Mutex()
+
         /** Login con las credenciales del servidor; en éxito guarda credenciales y sesión. */
         suspend fun login(
             serverId: String,
@@ -66,22 +71,24 @@ class AuthRepo
         /**
          * Asegura sesión para un servidor: intenta refresh y, si falla,
          * re-loguea con email/contraseña guardados. Sin credenciales →
-         * error de credenciales (la UI abre el formulario).
+         * error de credenciales (la UI abre el formulario). Serializado
+         * con [mutex] para no rotar el refresh token en paralelo.
          */
         suspend fun ensureSession(
             serverId: String,
             baseUrl: String,
-        ): ApiResult<Unit> {
-            val creds = tokens.getCredentials(serverId)
-            if (creds == null || creds.email.isNullOrBlank() || creds.password.isNullOrBlank()) {
-                return ApiResult.Err(DomainError.Unauthorized("missing_credentials"))
-            }
-            if (!creds.refresh.isNullOrBlank()) {
-                when (val r = refresh(serverId, baseUrl)) {
-                    is ApiResult.Ok -> return r
-                    is ApiResult.Err -> Unit // cae a login con credenciales
+        ): ApiResult<Unit> =
+            mutex.withLock {
+                val creds = tokens.getCredentials(serverId)
+                if (creds == null || creds.email.isNullOrBlank() || creds.password.isNullOrBlank()) {
+                    return@withLock ApiResult.Err(DomainError.Unauthorized("missing_credentials"))
                 }
+                if (!creds.refresh.isNullOrBlank()) {
+                    when (val r = refresh(serverId, baseUrl)) {
+                        is ApiResult.Ok -> return@withLock r
+                        is ApiResult.Err -> Unit // cae a login con credenciales
+                    }
+                }
+                login(serverId, baseUrl, creds.email, creds.password)
             }
-            return login(serverId, baseUrl, creds.email, creds.password)
-        }
     }

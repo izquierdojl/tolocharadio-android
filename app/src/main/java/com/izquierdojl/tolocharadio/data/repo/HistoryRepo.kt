@@ -36,8 +36,9 @@ class HistoryRepo
 
         /**
          * Lista completa del servidor. Deduplica por id (más reciente
-         * por emisora) y refresca caché. Sin red y con caché devuelve la
-         * última conocida marcada `offline`.
+         * por emisora) y refresca caché. Sin red o con sesión no
+         * renovable y con caché devuelve la última conocida marcada
+         * `offline`.
          */
         suspend fun list(): ApiResult<HistoryResult> {
             return when (val r = safeCall { api.list() }) {
@@ -48,7 +49,11 @@ class HistoryRepo
                     ApiResult.Ok(HistoryResult(items, offline = false))
                 }
                 is ApiResult.Err -> {
-                    if (r.error is DomainError.Unavailable) fromCache() ?: r else r
+                    if (r.error is DomainError.Unavailable || r.error is DomainError.Unauthorized) {
+                        fromCache() ?: r
+                    } else {
+                        r
+                    }
                 }
             }
         }
