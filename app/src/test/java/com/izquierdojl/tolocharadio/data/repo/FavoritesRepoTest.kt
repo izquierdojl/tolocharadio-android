@@ -42,6 +42,7 @@ class FavoritesRepoTest {
             assertEquals(false, ok.value.offline)
             assertEquals(listOf("u1", "u2"), ok.value.items.map { it.station.id })
             assertEquals(setOf("u1", "u2"), repo.favoriteIds.value)
+            assertEquals(listOf(fav1, fav2), repo.favorites.value)
             coVerify { dao.replaceAll(match { it.map(CachedFavorite::id) == listOf("u1", "u2") }) }
         }
 
@@ -57,6 +58,7 @@ class FavoritesRepoTest {
             assertEquals(true, ok.value.offline)
             assertEquals("u9", ok.value.items.single().station.id)
             assertEquals(setOf("u9"), repo.favoriteIds.value)
+            assertEquals("u9", repo.favorites.value.single().station.id)
         }
 
     @Test
@@ -99,7 +101,18 @@ class FavoritesRepoTest {
             val r = repo.add("u1")
             assertTrue(r is ApiResult.Ok)
             assertEquals(setOf("u1"), repo.favoriteIds.value)
+            assertEquals(listOf(fav1), repo.favorites.value)
             coVerify { dao.upsert(match { it.id == "u1" }) }
+        }
+
+    @Test
+    fun `add OK agrega la favorita al final de la lista observada`() =
+        runTest {
+            coEvery { api.list() } returns Response.success(FavoriteListDto(listOf(fav1)))
+            coEvery { api.add(any()) } returns Response.success(FavoriteResultDto(fav2))
+            repo.list()
+            repo.add("u2")
+            assertEquals(listOf("u1", "u2"), repo.favorites.value.map { it.station.id })
         }
 
     @Test
@@ -119,6 +132,7 @@ class FavoritesRepoTest {
             val r = repo.remove("u1")
             assertTrue(r is ApiResult.Ok)
             assertEquals(emptySet<String>(), repo.favoriteIds.value)
+            assertEquals(emptyList<FavoriteDto>(), repo.favorites.value)
             coVerify { dao.deleteById("u1") }
         }
 

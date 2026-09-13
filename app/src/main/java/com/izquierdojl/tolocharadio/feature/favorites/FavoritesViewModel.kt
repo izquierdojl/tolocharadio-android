@@ -80,6 +80,29 @@ class FavoritesViewModel
 
         init {
             refresh()
+            // Reconciliación reactiva: altas/bajas hechas en otras pantallas
+            // (Explorar, ficha) se reflejan al momento, sin recargar de red.
+            viewModelScope.launch {
+                repo.favorites.collect(::onFavoritesChanged)
+            }
+        }
+
+        /**
+         * Aplica la lista observada del repo conservando el estado transitorio
+         * de la UI (deshacer en curso, guardado de orden, banner offline).
+         */
+        private fun onFavoritesChanged(items: List<FavoriteDto>) {
+            val current = _ui.value
+            if (current is FavoritesUiState.Loading && items.isEmpty()) return
+            if (items.isEmpty() && current is FavoritesUiState.Error) return
+            confirmed = items
+            val pendingUndo = (current as? FavoritesUiState.Content)?.pendingUndo
+            _ui.value =
+                when {
+                    items.isEmpty() && pendingUndo == null -> FavoritesUiState.Empty
+                    current is FavoritesUiState.Content -> current.copy(items = items)
+                    else -> FavoritesUiState.Content(items)
+                }
         }
 
         /**
@@ -126,9 +149,6 @@ class FavoritesViewModel
                 }
             }
         }
-
-        /** Alias de [refresh] para el botón de reintento. */
-        fun retry() = refresh()
 
         /**
          * Toggle genérico (p. ej. corazón en ficha): si está en la lista

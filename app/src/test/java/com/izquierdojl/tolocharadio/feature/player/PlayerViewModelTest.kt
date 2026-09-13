@@ -13,6 +13,7 @@ import com.izquierdojl.tolocharadio.core.network.DomainError
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.PlaybackStatusDto
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
+import com.izquierdojl.tolocharadio.data.repo.HistoryRepo
 import com.izquierdojl.tolocharadio.data.repo.PlaybackRepo
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackStatusReason
 import com.izquierdojl.tolocharadio.domain.playback.ResolvePlaybackSourceUseCase
@@ -47,6 +48,7 @@ class PlayerViewModelTest {
 
     private val context: Context = mockk(relaxed = true)
     private val playback: PlaybackRepo = mockk()
+    private val history: HistoryRepo = mockk(relaxed = true)
     private val prefs: InstancePrefs =
         mockk {
             every { baseUrl } returns flowOf("https://radio.test/")
@@ -67,6 +69,7 @@ class PlayerViewModelTest {
         PlayerViewModel(
             context,
             playback,
+            history,
             prefs,
             activeStationHolder,
             exoPlayer,
@@ -125,6 +128,43 @@ class PlayerViewModelTest {
             advanceUntilIdle()
             coVerify(exactly = 1) { playback.status("u1") }
             assertTrue(viewModel.state.value is PlayerState.Buffering)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `play playable local registra la escucha en el historial`() =
+        runTest {
+            coEvery { playback.status("u1") } returns
+                ApiResult.Ok(PlaybackStatusDto("u1", true, null))
+            val viewModel = vm()
+            viewModel.play(station)
+            advanceUntilIdle()
+            coVerify(exactly = 1) { history.recordLocalPlay(station, any()) }
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `play no playable no registra historial`() =
+        runTest {
+            coEvery { playback.status("u1") } returns
+                ApiResult.Ok(PlaybackStatusDto("u1", false, PlaybackStatusReason.STREAM_UNAVAILABLE))
+            val viewModel = vm()
+            viewModel.play(station)
+            advanceUntilIdle()
+            coVerify(exactly = 0) { history.recordLocalPlay(any(), any()) }
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `reproduccion en Cast no registra historial local`() =
+        runTest {
+            every { castPlayerManager.isCastConnected } returns true
+            coEvery { playback.status("u1") } returns
+                ApiResult.Ok(PlaybackStatusDto("u1", true, null))
+            val viewModel = vm()
+            viewModel.play(station)
+            advanceUntilIdle()
+            coVerify(exactly = 0) { history.recordLocalPlay(any(), any()) }
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)

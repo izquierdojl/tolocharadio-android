@@ -37,6 +37,15 @@ class FavoritesRepo
         /** Ids favoritas: fuente única observada por todos los ViewModels. */
         val favoriteIds: StateFlow<Set<String>> = _favoriteIds.asStateFlow()
 
+        private val _favorites = MutableStateFlow<List<FavoriteDto>>(emptyList())
+
+        /**
+         * Lista completa en orden del servidor: fuente observada por la
+         * pantalla de Favoritos para reflejar altas/bajas hechas en otras
+         * pantallas al momento.
+         */
+        val favorites: StateFlow<List<FavoriteDto>> = _favorites.asStateFlow()
+
         /**
          * Lista completa en orden del servidor. Deduplica por id (VR-01)
          * y refresca caché + flujo. Sin red o con sesión no renovable y
@@ -47,7 +56,7 @@ class FavoritesRepo
             return when (val r = safeCall { api.list() }) {
                 is ApiResult.Ok -> {
                     val items = r.value.items.distinctBy { it.station.id }
-                    _favoriteIds.value = items.map { it.station.id }.toSet()
+                    publish(items)
                     db.favoritesCache().replaceAll(items.toCached(System.currentTimeMillis()))
                     ApiResult.Ok(FavoritesResult(items, offline = false))
                 }
@@ -67,6 +76,7 @@ class FavoritesRepo
             return when (val r = safeCall { api.add(AddFavoriteBody(stationId)) }) {
                 is ApiResult.Ok -> {
                     _favoriteIds.value = _favoriteIds.value + stationId
+                    _favorites.value = _favorites.value.filterNot { it.station.id == stationId } + r.value.favorite
                     val dao = db.favoritesCache()
                     dao.upsert(
                         r.value.favorite.toCachedSingle(
@@ -89,12 +99,14 @@ class FavoritesRepo
             return when (val r = safeCall { api.remove(stationId) }) {
                 is ApiResult.Ok -> {
                     _favoriteIds.value = _favoriteIds.value - stationId
+                    _favorites.value = _favorites.value.filterNot { it.station.id == stationId }
                     db.favoritesCache().deleteById(stationId)
                     ApiResult.Ok(Unit)
                 }
                 is ApiResult.Err -> {
                     if (r.error is DomainError.NotFound) {
                         _favoriteIds.value = _favoriteIds.value - stationId
+                        _favorites.value = _favorites.value.filterNot { it.station.id == stationId }
                         db.favoritesCache().deleteById(stationId)
                         ApiResult.Ok(Unit)
                     } else {
@@ -115,14 +127,22 @@ class FavoritesRepo
         /** Vacía ids y caché al cerrar sesión o cambiar de instancia. */
         suspend fun clearLocal() {
             _favoriteIds.value = emptySet()
+            _favorites.value = emptyList()
             db.favoritesCache().clear()
         }
 
         private suspend fun fromCache(): ApiResult<FavoritesResult>? {
             val cached = db.favoritesCache().loadOrdered()
             if (cached.isEmpty()) return null
-            _favoriteIds.value = cached.map { it.id }.toSet()
-            return ApiResult.Ok(FavoritesResult(cached.toFavorites(), offline = true))
+            val favorites = cached.toFavorites()
+            publish(favorites)
+            return ApiResult.Ok(FavoritesResult(favorites, offline = true))
+        }
+
+        /** Publica la lista completa y sincroniza los ids observados. */
+        private fun publish(items: List<FavoriteDto>) {
+            _favorites.value = items
+            _favoriteIds.value = items.map { it.station.id }.toSet()
         }
 
         private fun FavoriteDto.toCachedSingle(

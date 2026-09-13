@@ -59,6 +59,28 @@ class HistoryViewModel
 
         init {
             refresh()
+            // Reconciliación reactiva: escuchas registradas desde el player
+            // (u otros orígenes) aparecen al momento, sin recargar de red.
+            viewModelScope.launch {
+                repo.items.collect(::onHistoryChanged)
+            }
+        }
+
+        /**
+         * Aplica la lista observada del repo conservando el estado transitorio
+         * de la UI (borrados en vuelo, banner offline).
+         */
+        private fun onHistoryChanged(items: List<HistoryEntryDto>) {
+            val current = _ui.value
+            if (current is HistoryUiState.Loading && items.isEmpty()) return
+            if (items.isEmpty() && current is HistoryUiState.Error) return
+            val pendingDeletes = (current as? HistoryUiState.Content)?.pendingDeletes
+            _ui.value =
+                when {
+                    items.isEmpty() && pendingDeletes.isNullOrEmpty() -> HistoryUiState.Empty
+                    current is HistoryUiState.Content -> current.copy(items = items)
+                    else -> HistoryUiState.Content(items)
+                }
         }
 
         /** Carga en curso: evita duplicar peticiones al reanudar. */

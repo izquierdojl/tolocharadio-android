@@ -18,6 +18,7 @@ import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.userMessage
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
+import com.izquierdojl.tolocharadio.data.repo.HistoryRepo
 import com.izquierdojl.tolocharadio.data.repo.PlaybackRepo
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackStatusReason
@@ -71,6 +72,7 @@ class PlayerViewModel
     constructor(
         @ApplicationContext private val context: Context,
         private val playback: PlaybackRepo,
+        private val history: HistoryRepo,
         private val prefs: InstancePrefs,
         private val activeStationHolder: ActiveStationHolder,
         val exoPlayer: ExoPlayer,
@@ -214,12 +216,17 @@ class PlayerViewModel
         ) {
             val base = prefs.baseUrl.first()
             if (castPlayerManager.isCastConnected) {
+                // Cast reproduce por la URL pública (0026): el servidor no
+                // registra la escucha, así que no se inserta en el historial.
                 castPlayerManager.connectToStation(station, source)
             } else {
                 val item = mediaItemFactory.create(station, source, base)
                 castPlayerManager.exoPlayer.setMediaSource(mediaItemFactory.createMediaSource(item, source))
                 castPlayerManager.exoPlayer.prepare()
                 castPlayerManager.exoPlayer.playWhenReady = true
+                // El proxy registrará la escucha server-side; localmente se
+                // refleja al momento para que Historial/accesos se actualicen.
+                history.recordLocalPlay(station)
             }
             syncCastState()
         }

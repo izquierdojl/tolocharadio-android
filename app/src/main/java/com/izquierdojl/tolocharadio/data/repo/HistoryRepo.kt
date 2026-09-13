@@ -8,6 +8,7 @@ import com.izquierdojl.tolocharadio.data.local.toCached
 import com.izquierdojl.tolocharadio.data.local.toHistoryEntries
 import com.izquierdojl.tolocharadio.data.remote.api.HistoryApi
 import com.izquierdojl.tolocharadio.data.remote.dto.HistoryEntryDto
+import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,6 +57,22 @@ class HistoryRepo
                     }
                 }
             }
+        }
+
+        /**
+         * Registra localmente la escucha de [station] al momento (optimista):
+         * deduplica por emisora, la deja en primera posición y actualiza la
+         * caché. El servidor sigue siendo la verdad; el siguiente [list]
+         * reconcilia `playedAt` y orden.
+         */
+        suspend fun recordLocalPlay(
+            station: StationDto,
+            now: Long = System.currentTimeMillis(),
+        ) {
+            if (station.id.isBlank()) return
+            val entry = HistoryEntryDto(station = station, playedAt = now)
+            _items.value = listOf(entry) + _items.value.filterNot { it.station.id == station.id }
+            db.historyCache().upsertAll(listOf(entry).toCached(now))
         }
 
         /**
