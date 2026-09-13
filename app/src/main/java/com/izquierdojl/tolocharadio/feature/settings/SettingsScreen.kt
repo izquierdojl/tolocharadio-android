@@ -11,10 +11,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -34,6 +37,11 @@ import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val ui by viewModel.ui.collectAsState()
     val appInfoUiState by viewModel.appInfoUiState.collectAsState()
+    val snackbar = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { snackbar.showSnackbar(it) }
+    }
 
     Column(Modifier.fillMaxSize()) {
         SectionHeader(title = "Configuración")
@@ -115,10 +123,12 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         }
     }
 
-    if (appInfoUiState is AppInfoUiState.Showing) {
+    (appInfoUiState as? AppInfoUiState.Showing)?.let { showing ->
         AppInfoDialog(
-            info = (appInfoUiState as AppInfoUiState.Showing).info,
+            info = showing.info,
             onDismiss = { viewModel.dismissAppInfoDialog() },
+            onCopyResult = viewModel::onCopyResult,
+            snackbar = snackbar,
         )
     }
 }
