@@ -1,5 +1,6 @@
 package com.izquierdojl.tolocharadio.feature.favorites
 
+import app.cash.turbine.test
 import com.izquierdojl.tolocharadio.MainDispatcherRule
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.DomainError
@@ -11,6 +12,7 @@ import com.izquierdojl.tolocharadio.domain.ObserveFavoritesUseCase
 import com.izquierdojl.tolocharadio.domain.ReorderFavoritesUseCase
 import com.izquierdojl.tolocharadio.domain.ToggleFavoriteUseCase
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -107,5 +109,136 @@ class FavoritesViewModelTest {
             val state = v.ui.value as FavoritesUiState.Content
             assertEquals(emptyList<FavoriteDto>(), state.items)
             assertNotNull(state.pendingUndo)
+        }
+
+    private fun twoFavorites(): List<FavoriteDto> =
+        listOf(
+            FavoriteDto(StationDto("u1", "Uno"), 1000),
+            FavoriteDto(StationDto("u2", "Dos"), 2000),
+        )
+
+    private fun viewModelWith(
+        items: List<FavoriteDto>,
+        offline: Boolean = false,
+        reorderResult: ApiResult<Unit> = ApiResult.Ok(Unit),
+    ): FavoritesViewModel {
+        favoritesFlow.value = items
+        coEvery { observe() } returns ApiResult.Ok(FavoritesResult(items, offline = offline))
+        coEvery { reorder(any(), any()) } returns reorderResult
+        return FavoritesViewModel(observe, toggle, reorder, repo)
+    }
+
+    @Test
+    fun `moveUp sube una posicion y guarda (FR-012)`() =
+        runTest {
+            val v = viewModelWith(twoFavorites())
+            advanceUntilIdle()
+
+            v.moveBy("u2", -1)
+            advanceUntilIdle()
+
+            coVerify { reorder(listOf("u1", "u2"), listOf("u2", "u1")) }
+        }
+
+    @Test
+    fun `moveDown baja una posicion y guarda (FR-012)`() =
+        runTest {
+            val v = viewModelWith(twoFavorites())
+            advanceUntilIdle()
+
+            v.moveBy("u1", 1)
+            advanceUntilIdle()
+
+            coVerify { reorder(listOf("u1", "u2"), listOf("u2", "u1")) }
+        }
+
+    @Test
+    fun `moveUp en el extremo no mueve ni guarda (FR-013)`() =
+        runTest {
+            val v = viewModelWith(twoFavorites())
+            advanceUntilIdle()
+
+            v.moveBy("u1", -1)
+            advanceUntilIdle()
+
+            val state = v.ui.value as FavoritesUiState.Content
+            assertEquals(listOf("u1", "u2"), state.items.map { it.station.id })
+            coVerify(exactly = 0) { reorder(any(), any()) }
+        }
+
+    @Test
+    fun `moveDown en el extremo no mueve ni guarda (FR-013)`() =
+        runTest {
+            val v = viewModelWith(twoFavorites())
+            advanceUntilIdle()
+
+            v.moveBy("u2", 1)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { reorder(any(), any()) }
+        }
+
+    @Test
+    fun `move con id inexistente no hace nada`() =
+        runTest {
+            val v = viewModelWith(twoFavorites())
+            advanceUntilIdle()
+
+            v.moveBy("zzz", -1)
+            v.moveBy("zzz", 1)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { reorder(any(), any()) }
+        }
+
+    @Test
+    fun `move sin conexion no hace nada (FR-018)`() =
+        runTest {
+            val v = viewModelWith(twoFavorites(), offline = true)
+            advanceUntilIdle()
+
+            v.moveBy("u2", -1)
+            v.moveBy("u1", 1)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { reorder(any(), any()) }
+        }
+
+    @Test
+    fun `commitOrder error restaura el orden confirmado y avisa (FR-010)`() =
+        runTest {
+            val v =
+                viewModelWith(
+                    twoFavorites(),
+                    reorderResult = ApiResult.Err(DomainError.Unavailable("down")),
+                )
+            advanceUntilIdle()
+
+            v.messages.test {
+                v.moveBy("u2", -1)
+                advanceUntilIdle()
+                val state = v.ui.value as FavoritesUiState.Content
+                assertEquals(listOf("u1", "u2"), state.items.map { it.station.id })
+                assertTrue(awaitItem().isNotBlank())
+            }
+        }
+
+    @Test
+    fun `commitOrder conflicto muestra el orden del servidor y avisa (FR-011)`() =
+        runTest {
+            val v =
+                viewModelWith(
+                    twoFavorites(),
+                    reorderResult = ApiResult.Err(DomainError.Conflict("ORDER_CHANGED", "")),
+                )
+            advanceUntilIdle()
+
+            v.messages.test {
+                v.moveBy("u1", 1)
+                advanceUntilIdle()
+                val state = v.ui.value as FavoritesUiState.Content
+                assertEquals(listOf("u1", "u2"), state.items.map { it.station.id })
+                assertTrue(awaitItem().isNotBlank())
+            }
         }
 }

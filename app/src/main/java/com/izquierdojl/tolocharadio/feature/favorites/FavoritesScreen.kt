@@ -1,10 +1,12 @@
 package com.izquierdojl.tolocharadio.feature.favorites
 
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,12 +22,16 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -49,12 +55,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -75,8 +87,17 @@ import kotlinx.coroutines.launch
 /** Distancia al borde (px) que dispara el auto-scroll durante el arrastre. */
 private const val DRAG_EDGE_PX = 96f
 
-/** Desplazamiento (px) por tick de auto-scroll durante el arrastre. */
+/** Desplazamiento (px) máximo por tick de auto-scroll durante el arrastre. */
 private const val DRAG_SCROLL_PX = 32f
+
+/** Fracción mínima del auto-scroll justo en el borde del umbral. */
+private const val DRAG_SCROLL_MIN_RATIO = 0.25f
+
+/** Escala de la fila activa durante el arrastre (feedback de "levantado"). */
+private const val DRAG_LIFT_SCALE = 1.02f
+
+/** Elevación (dp) de la fila activa durante el arrastre. */
+private const val DRAG_LIFT_ELEVATION = 8
 
 /** Nº máximo de etiquetas visibles por fila (paridad con `StationCard`). */
 private const val MAX_ROW_TAGS = 3
@@ -89,8 +110,36 @@ data class FavoriteListActions(
     val onRemove: (String) -> Unit,
     val onMove: (Int, Int) -> Unit,
     val onCommit: () -> Unit,
+    val onMoveUp: (String) -> Unit,
+    val onMoveDown: (String) -> Unit,
     val onRetry: () -> Unit,
     val onEditServer: () -> Unit = {},
+)
+
+/** Datos de pintado de una fila de favorita. */
+private data class FavoriteRowState(
+    val fav: FavoriteDto,
+    val canMoveUp: Boolean,
+    val canMoveDown: Boolean,
+    val showReorderControls: Boolean,
+    val isDragging: Boolean,
+)
+
+/** Callbacks de una fila de favorita. */
+private data class FavoriteRowActions(
+    val onOpen: () -> Unit,
+    val onPlay: () -> Unit,
+    val onRemove: () -> Unit,
+    val onMoveUp: () -> Unit,
+    val onMoveDown: () -> Unit,
+)
+
+/** Callbacks del asa de arrastre. */
+private data class DragCallbacks(
+    val onMove: (Int, Int) -> Unit,
+    val onCommit: () -> Unit,
+    val onAutoScroll: (Float) -> Unit,
+    val onDragStateChange: (Boolean) -> Unit,
 )
 
 /**
@@ -151,6 +200,8 @@ fun FavoritesScreen(
                         onRemove = viewModel::removeWithUndo,
                         onMove = viewModel::moveItem,
                         onCommit = viewModel::commitOrder,
+                        onMoveUp = { viewModel.moveBy(it, -1) },
+                        onMoveDown = { viewModel.moveBy(it, 1) },
                         onRetry = viewModel::refresh,
                         onEditServer = onEditServer,
                     ),
@@ -188,14 +239,7 @@ fun FavoritesScreenContent(
                     onRemove = actions.onRemove,
                 )
             } else {
-                FavoritesList(
-                    s = state,
-                    onStation = actions.onStation,
-                    onPlay = actions.onPlay,
-                    onRemove = actions.onRemove,
-                    onMove = actions.onMove,
-                    onCommit = actions.onCommit,
-                )
+                FavoritesList(s = state, actions = actions)
             }
     }
 }
@@ -234,12 +278,9 @@ private fun FavoritesGrid(
 @Composable
 private fun FavoritesList(
     s: FavoritesUiState.Content,
-    onStation: (String) -> Unit,
-    onPlay: (FavoriteDto) -> Unit,
-    onRemove: (String) -> Unit,
-    onMove: (Int, Int) -> Unit,
-    onCommit: () -> Unit,
+    actions: FavoriteListActions,
 ) {
+    val reorderEnabled = !s.offline && s.items.size > 1
     if (s.offline) {
         Text(
             "Mostrando caché sin conexión.",
@@ -254,86 +295,126 @@ private fun FavoritesList(
     val scope = rememberCoroutineScope()
     var columnTop by remember { mutableFloatStateOf(Float.NaN) }
     var scrollJob by remember { mutableStateOf<Job?>(null) }
+    var draggingId by remember { mutableStateOf<String?>(null) }
     LazyColumn(
         state = listState,
         modifier = Modifier.onGloballyPositioned { columnTop = it.positionInWindow().y },
         contentPadding = PaddingValues(vertical = 8.dp),
     ) {
-        items(s.items, key = { it.station.id }) { fav ->
+        itemsIndexed(s.items, key = { _, fav -> fav.station.id }) { index, fav ->
             FavoriteRow(
-                fav = fav,
-                dragModifier =
-                    Modifier.favoriteDragHandle(
-                        id = fav.station.id,
-                        listState = listState,
-                        columnTop = { columnTop },
-                        indexOf = { s.items.indexOfFirst { it.station.id == fav.station.id } },
-                        onMove = onMove,
-                        onCommit = onCommit,
-                        onAutoScroll = { dy ->
-                            if (scrollJob?.isActive != true) {
-                                scrollJob = scope.launch { listState.scrollBy(dy) }
-                            }
-                        },
+                state =
+                    FavoriteRowState(
+                        fav = fav,
+                        canMoveUp = reorderEnabled && index > 0,
+                        canMoveDown = reorderEnabled && index < s.items.lastIndex,
+                        showReorderControls = reorderEnabled,
+                        isDragging = draggingId == fav.station.id,
                     ),
-                onOpen = { onStation(fav.station.id) },
-                onPlay = { onPlay(fav) },
-                onRemove = { onRemove(fav.station.id) },
+                actions =
+                    FavoriteRowActions(
+                        onOpen = { actions.onStation(fav.station.id) },
+                        onPlay = { actions.onPlay(fav) },
+                        onRemove = { actions.onRemove(fav.station.id) },
+                        onMoveUp = { actions.onMoveUp(fav.station.id) },
+                        onMoveDown = { actions.onMoveDown(fav.station.id) },
+                    ),
+                modifier = Modifier.animateItem(),
+                dragModifier =
+                    if (reorderEnabled) {
+                        Modifier.favoriteDragHandle(
+                            id = fav.station.id,
+                            listState = listState,
+                            columnTop = { columnTop },
+                            indexOf = { s.items.indexOfFirst { it.station.id == fav.station.id } },
+                            callbacks =
+                                DragCallbacks(
+                                    onMove = actions.onMove,
+                                    onCommit = actions.onCommit,
+                                    onAutoScroll = { dy ->
+                                        if (scrollJob?.isActive != true) {
+                                            scrollJob = scope.launch { listState.scrollBy(dy) }
+                                        }
+                                    },
+                                    onDragStateChange = { active ->
+                                        draggingId = if (active) fav.station.id else null
+                                    },
+                                ),
+                        )
+                    } else {
+                        Modifier
+                    },
             )
         }
     }
-    Text(
-        "Arrastra el asa para reordenar. El corazón quita la favorita (puedes deshacer).",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(16.dp),
-    )
+    if (reorderEnabled) {
+        Text(
+            "Arrastra el asa para reordenar. El corazón quita la favorita (puedes deshacer).",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
 }
 
 @Composable
 private fun FavoriteRow(
-    fav: FavoriteDto,
+    state: FavoriteRowState,
+    actions: FavoriteRowActions,
+    modifier: Modifier = Modifier,
     dragModifier: Modifier,
-    onOpen: () -> Unit,
-    onPlay: () -> Unit,
-    onRemove: () -> Unit,
 ) {
+    val shape = RoundedCornerShape(12.dp)
+    val lift = if (state.isDragging) DRAG_LIFT_ELEVATION.dp else 0.dp
+    val rowModifier =
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .zIndex(if (state.isDragging) 1f else 0f)
+            .graphicsLayer {
+                val scale = if (state.isDragging) DRAG_LIFT_SCALE else 1f
+                scaleX = scale
+                scaleY = scale
+            }.shadow(lift, shape)
+            .background(if (state.isDragging) MaterialTheme.colorScheme.surface else Color.Transparent, shape)
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+        modifier = rowModifier,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            Icons.Filled.DragHandle,
-            contentDescription = "Reordenar",
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = dragModifier.padding(8.dp),
-        )
-        StationArtwork(fav.station, Modifier.size(48.dp))
+        if (state.showReorderControls) {
+            Icon(
+                Icons.Filled.DragHandle,
+                contentDescription = "Reordenar",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = dragModifier.padding(8.dp),
+            )
+        }
+        StationArtwork(state.fav.station, Modifier.size(48.dp))
         Spacer(Modifier.width(8.dp))
         Column(
-            modifier = Modifier.weight(1f).clickable(onClick = onOpen).padding(vertical = 4.dp),
+            modifier = Modifier.weight(1f).clickable(onClick = actions.onOpen).padding(vertical = 4.dp),
         ) {
             Text(
-                fav.station.name.ifBlank { "Emisora sin nombre" },
+                state.fav.station.name.ifBlank { "Emisora sin nombre" },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.titleSmall,
             )
             Text(
-                listOfNotNull(fav.station.country, fav.station.language).joinToString(" · "),
+                listOfNotNull(state.fav.station.country, state.fav.station.language).joinToString(" · "),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            val tags = fav.station.tags.take(MAX_ROW_TAGS)
+            val tags = state.fav.station.tags.take(MAX_ROW_TAGS)
             if (tags.isNotEmpty()) {
                 Spacer(Modifier.height(2.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     tags.forEach { TagChip(it) }
                 }
             }
-            relativeTime(fav.addedAt)?.let {
+            relativeTime(state.fav.addedAt)?.let {
                 Text(
                     it,
                     style = MaterialTheme.typography.labelSmall,
@@ -341,52 +422,107 @@ private fun FavoriteRow(
                 )
             }
         }
-        IconButton(onClick = onPlay) {
+        IconButton(onClick = actions.onPlay) {
             Icon(Icons.Filled.PlayArrow, contentDescription = "Reproducir")
         }
-        FavoriteButton(isFavorite = true, onToggle = onRemove)
+        FavoriteButton(isFavorite = true, onToggle = actions.onRemove)
+        if (state.showReorderControls) {
+            FavoriteRowMenu(
+                canMoveUp = state.canMoveUp,
+                canMoveDown = state.canMoveDown,
+                onMoveUp = actions.onMoveUp,
+                onMoveDown = actions.onMoveDown,
+            )
+        }
+    }
+}
+
+/** Menú accesible para mover una posición arriba/abajo (FR-012, FR-013). */
+@Composable
+private fun FavoriteRowMenu(
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = "Más opciones")
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text("Mover arriba") },
+                enabled = canMoveUp,
+                onClick = {
+                    open = false
+                    onMoveUp()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Mover abajo") },
+                enabled = canMoveDown,
+                onClick = {
+                    open = false
+                    onMoveDown()
+                },
+            )
+        }
     }
 }
 
 /**
- * Asa de arrastre: pulsación larga + vertical mueve la fila en vivo
- * ([onMove]) y al soltar guarda el orden ([onCommit]).
+ * Asa de arrastre: arrastre inmediato + vertical mueve la fila en vivo
+ * ([DragCallbacks.onMove]), resalta la fila activa y al soltar guarda el
+ * orden ([DragCallbacks.onCommit]).
  */
 private fun Modifier.favoriteDragHandle(
     id: String,
     listState: LazyListState,
     columnTop: () -> Float,
     indexOf: () -> Int,
-    onMove: (Int, Int) -> Unit,
-    onCommit: () -> Unit,
-    onAutoScroll: (Float) -> Unit,
+    callbacks: DragCallbacks,
 ): Modifier =
     composed {
+        val haptics = LocalHapticFeedback.current
         val indexOfState by rememberUpdatedState(indexOf)
-        val onMoveState by rememberUpdatedState(onMove)
-        val onCommitState by rememberUpdatedState(onCommit)
-        val autoScrollState by rememberUpdatedState(onAutoScroll)
+        val callbacksState by rememberUpdatedState(callbacks)
         val columnTopState by rememberUpdatedState(columnTop)
         var handleY by remember { mutableFloatStateOf(0f) }
         this.then(
             Modifier
                 .onGloballyPositioned { handleY = it.positionInWindow().y }
                 .pointerInput(id, listState) {
-                    detectDragGesturesAfterLongPress(
-                        onDragEnd = { onCommitState() },
-                        onDragCancel = { onCommitState() },
+                    detectDragGestures(
+                        onDragStart = {
+                            callbacksState.onDragStateChange(true)
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        },
+                        onDragEnd = {
+                            callbacksState.onDragStateChange(false)
+                            callbacksState.onCommit()
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        },
+                        onDragCancel = {
+                            callbacksState.onDragStateChange(false)
+                            callbacksState.onCommit()
+                        },
                         onDrag = { change, _ ->
                             change.consume()
                             val top = columnTopState()
                             if (!top.isNaN()) {
-                                onDragMove(
-                                    viewportY = handleY + change.position.y - top,
-                                    id = id,
-                                    listState = listState,
-                                    indexOfState = indexOfState,
-                                    onMoveState = onMoveState,
-                                    autoScrollState = autoScrollState,
-                                )
+                                val moved =
+                                    onDragMove(
+                                        viewportY = handleY + change.position.y - top,
+                                        id = id,
+                                        listState = listState,
+                                        indexOfState = indexOfState,
+                                        onMoveState = callbacksState.onMove,
+                                        autoScrollState = callbacksState.onAutoScroll,
+                                    )
+                                if (moved) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
                             }
                         },
                     )
@@ -394,7 +530,10 @@ private fun Modifier.favoriteDragHandle(
         )
     }
 
-/** Calcula la fila bajo el dedo durante el arrastre y mueve/auto-desplaza. */
+/**
+ * Calcula la fila bajo el dedo durante el arrastre, mueve y auto-desplaza.
+ * Devuelve `true` si la fila cambió de posición (para la háptica).
+ */
 private fun onDragMove(
     viewportY: Float,
     id: String,
@@ -402,7 +541,7 @@ private fun onDragMove(
     indexOfState: () -> Int,
     onMoveState: (Int, Int) -> Unit,
     autoScrollState: (Float) -> Unit,
-) {
+): Boolean {
     val info = listState.layoutInfo
     val target =
         info.visibleItemsInfo
@@ -411,13 +550,25 @@ private fun onDragMove(
                     viewportY >= item.offset &&
                     viewportY <= item.offset + item.size
             }?.index
+    var moved = false
     if (target != null) {
         val from = indexOfState()
-        if (from != -1 && from != target) onMoveState(from, target)
+        if (from != -1 && from != target) {
+            onMoveState(from, target)
+            moved = true
+        }
     }
     val viewportH = info.viewportSize.height.toFloat()
     when {
-        viewportY < DRAG_EDGE_PX -> autoScrollState(-DRAG_SCROLL_PX)
-        viewportY > viewportH - DRAG_EDGE_PX -> autoScrollState(DRAG_SCROLL_PX)
+        viewportY < DRAG_EDGE_PX -> autoScrollState(-dragScrollDelta(DRAG_EDGE_PX - viewportY))
+        viewportY > viewportH - DRAG_EDGE_PX ->
+            autoScrollState(dragScrollDelta(viewportY - (viewportH - DRAG_EDGE_PX)))
     }
+    return moved
+}
+
+/** Velocidad de auto-scroll (px/tick) proporcional a la cercanía al borde. */
+private fun dragScrollDelta(distanceToEdge: Float): Float {
+    val ratio = (distanceToEdge / DRAG_EDGE_PX).coerceIn(0f, 1f)
+    return DRAG_SCROLL_PX * (DRAG_SCROLL_MIN_RATIO + (1f - DRAG_SCROLL_MIN_RATIO) * ratio)
 }
