@@ -17,19 +17,25 @@ import com.google.android.gms.cast.framework.SessionManagerListener
 import com.izquierdojl.tolocharadio.core.util.CastPermissions
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
+import com.izquierdojl.tolocharadio.di.VolumeScope
 import com.izquierdojl.tolocharadio.domain.playback.HlsStation
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
 import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
+import com.izquierdojl.tolocharadio.feature.player.PlaybackVolumeController
 import com.izquierdojl.tolocharadio.feature.player.PlayerState
 import com.izquierdojl.tolocharadio.feature.player.PlayerStateType
 import com.izquierdojl.tolocharadio.feature.player.StationMediaItemFactory
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,6 +48,7 @@ sealed interface CastNotice {
 
 @Singleton
 @OptIn(UnstableApi::class)
+@Suppress("LongParameterList")
 class CastPlayerManager
     @Inject
     constructor(
@@ -50,6 +57,8 @@ class CastPlayerManager
         private val prefs: InstancePrefs,
         val exoPlayer: ExoPlayer,
         private val mediaItemFactory: StationMediaItemFactory,
+        private val volume: PlaybackVolumeController,
+        @VolumeScope private val volumeScope: CoroutineScope,
     ) {
         private val _connectionState = MutableStateFlow(CastConnectionState.DISCONNECTED)
         val connectionState: StateFlow<CastConnectionState> = _connectionState.asStateFlow()
@@ -70,6 +79,10 @@ class CastPlayerManager
         private var castContext: CastContext? = null
         private var sessionManagerListener: SessionManagerListener<CastSession>? = null
         private var mediaSession: androidx.media3.session.MediaSession? = null
+
+        /** Player de la sesión que expone el volumen del dispositivo (spec 0035). */
+        private var volumeEventsJob: Job? = null
+        private var volumeSupportJob: Job? = null
 
         /** Error de reproducción remoto pendiente de mostrar (se limpia al recargar). */
         private var castError: PlayerState.Error? = null
@@ -100,10 +113,25 @@ class CastPlayerManager
 
         init {
             initCastContext()
+            observeVolumeSupport()
+        }
+
+        /**
+         * Si el receptor no admite volumen (spec 0035, FR-009), reinstala el player de la
+         * sesión con un `DeviceInfo` local para que media3 devuelva las teclas al móvil.
+         */
+        private fun observeVolumeSupport() {
+            volumeSupportJob =
+                volumeScope.launch {
+                    volume.castVolumeSupported.collect { supported ->
+                        if (!supported) reinstallSessionPlayerAsLocal()
+                    }
+                }
         }
 
         fun setMediaSession(session: androidx.media3.session.MediaSession) {
             this.mediaSession = session
+            castPlayer?.let { session.setPlayer(it) }
         }
 
         private fun initCastContext() {
@@ -137,7 +165,7 @@ class CastPlayerManager
                 ) {
                     userDisconnectRequested = false
                     _connectionState.value = CastConnectionState.CONNECTED
-                    createCastPlayer()
+                    createCastPlayer(session)
                 }
 
                 override fun onSessionStartFailed(
@@ -186,7 +214,7 @@ class CastPlayerManager
                     wasSuspended: Boolean,
                 ) {
                     _connectionState.value = CastConnectionState.CONNECTED
-                    createCastPlayer()
+                    createCastPlayer(session)
                 }
 
                 override fun onSessionResumeFailed(
@@ -221,9 +249,12 @@ class CastPlayerManager
          * recrea: `CastPlayer.release()` termina la sesión (`endCurrentSession`)
          * y mataría la sesión recién reanudada (bug 0031). Media3 soporta la
          * suspensión/reanudación con el mismo player.
+         *
+         * La sesión recibe el wrapper [CastDeviceVolumePlayer] y el controlador de
+         * volumen se enlaza al receptor (spec 0035, FR-001/FR-009/FR-015).
          */
         @OptIn(UnstableApi::class)
-        private fun createCastPlayer() {
+        private fun createCastPlayer(session: CastSession) {
             castError = null
             if (castPlayer == null) {
                 castContext?.let { ctx ->
@@ -232,15 +263,38 @@ class CastPlayerManager
                             addListener(castPlayerListener)
                         }
                 }
-                // Update MediaSession to use CastPlayer
                 castPlayer?.let { player ->
                     mediaSession?.setPlayer(player)
                 }
+                startVolumeEvents()
+            }
+            if (!volume.isRemoteActive) {
+                volume.bind(CastSessionVolumeDevice(session))
             }
             // FR-009: Request audio focus when connecting to Cast
             requestAudioFocus()
             lastDeviceName = currentDeviceName()
             updateCastState()
+        }
+
+        /** Reinstala el player de la sesión como local tras detectar receptor sin volumen. */
+        private fun reinstallSessionPlayerAsLocal() {
+            val player = castPlayer ?: return
+            mediaSession?.setPlayer(player)
+            emitDeviceVolume()
+        }
+
+        private fun startVolumeEvents() {
+            volumeEventsJob?.cancel()
+            volumeEventsJob =
+                volumeScope.launch {
+                    combine(volume.castVolume, volume.muted) { _, _ -> }.collect { emitDeviceVolume() }
+                }
+        }
+
+        private fun emitDeviceVolume() {
+            val player = castPlayer ?: return
+            player.setDeviceVolume(volume.deviceVolumePercent(), 0)
         }
 
         /**
@@ -265,6 +319,9 @@ class CastPlayerManager
         }
 
         private fun releaseCastPlayer() {
+            volumeEventsJob?.cancel()
+            volumeEventsJob = null
+            volume.unbind()
             castPlayer?.removeListener(castPlayerListener)
             castPlayer?.release()
             castPlayer = null
@@ -403,6 +460,8 @@ class CastPlayerManager
         }
 
         fun release() {
+            volumeSupportJob?.cancel()
+            volumeSupportJob = null
             sessionManagerListener?.let { listener ->
                 castContext?.sessionManager?.removeSessionManagerListener(listener, CastSession::class.java)
             }
