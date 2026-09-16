@@ -29,6 +29,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -79,6 +80,7 @@ class PlayerViewModel
         private val activeStationHolder: ActiveStationHolder,
         val exoPlayer: ExoPlayer,
         val castPlayerManager: CastPlayerManager,
+        private val volumeController: PlaybackVolumeController,
         private val resolveSource: ResolvePlaybackSourceUseCase,
         private val mediaItemFactory: StationMediaItemFactory,
     ) : ViewModel() {
@@ -86,12 +88,11 @@ class PlayerViewModel
         val state: StateFlow<PlayerState> = _state.asStateFlow()
 
         /**
-         * Silencio local (spec 004, FR-005): modificador independiente que
-         * corta el volumen sin detener la emisión. Se resetea en [play]
-         * y [stop] (acuerdo de clarify: siempre vuelve con sonido).
+         * Silencio de la salida activa (spec 004/0035, FR-007/FR-015): fuente única en
+         * [PlaybackVolumeController] (local o Cast). Se resetea en [play] y [stop]
+         * (acuerdo de clarify: siempre vuelve con sonido).
          */
-        private val _isMuted = MutableStateFlow(false)
-        val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
+        val isMuted: StateFlow<Boolean> = volumeController.muted
 
         /**
          * Reproductor a pantalla completa visible (spec 0018, FR-005). Se
@@ -102,6 +103,15 @@ class PlayerViewModel
 
         /** Estado de Cast para la UI (FR-006, FR-011). */
         val castState: StateFlow<CastPlayerState> = castPlayerManager.castState
+
+        /** Volumen real del dispositivo Cast para el slider (FR-003, FR-005). */
+        val castVolume: StateFlow<Float> = volumeController.castVolume
+
+        /** `false` si el receptor no admite volumen: oculta el slider (FR-009). */
+        val castVolumeSupported: StateFlow<Boolean> = volumeController.castVolumeSupported
+
+        /** Avisos únicos del control de volumen para la UI (FR-009). */
+        val castVolumeNotices: SharedFlow<Unit> = volumeController.notices
 
         private var loadJob: Job? = null
         private var controller: MediaController? = null
@@ -293,10 +303,14 @@ class PlayerViewModel
             syncCastState()
         }
 
-        /** Silencia o restaura el sonido sin detener la emisión (spec 004, FR-005). */
+        /** Silencia o restaura la salida activa sin detener la emisión (FR-007). */
         fun toggleMute() {
-            _isMuted.value = !_isMuted.value
-            castPlayerManager.exoPlayer.volume = if (_isMuted.value) 0f else 1f
+            volumeController.toggleMute()
+        }
+
+        /** Ajusta el volumen del dispositivo Cast de forma continua (FR-004). */
+        fun setCastVolume(volume: Float) {
+            volumeController.setCastVolume(volume)
         }
 
         /** Abre el reproductor a pantalla completa (spec 0018, FR-005). */
@@ -329,8 +343,7 @@ class PlayerViewModel
         }
 
         private fun resetPlaybackSession() {
-            _isMuted.value = false
-            castPlayerManager.exoPlayer.volume = 1f
+            volumeController.resetMute()
         }
 
         /**
@@ -386,9 +399,8 @@ class PlayerViewModel
             loadJob?.cancel()
             lostStation = null
             lostDeviceName = null
-            _isMuted.value = false
+            volumeController.resetMute()
             _fullPlayerVisible.value = false
-            castPlayerManager.exoPlayer.volume = 1f
             castPlayerManager.activePlayer.stop()
             castPlayerManager.activePlayer.clearMediaItems()
             _state.value = PlayerState.Idle

@@ -38,6 +38,9 @@ class RadioPlaybackService : MediaSessionService() {
     @Inject
     lateinit var castPlayerManager: CastPlayerManager
 
+    @Inject
+    lateinit var volumeController: PlaybackVolumeController
+
     private var session: MediaSession? = null
 
     companion object {
@@ -88,7 +91,8 @@ class RadioPlaybackService : MediaSessionService() {
                         session.player.clearMediaItems()
                     }
                     CUSTOM_COMMAND_MUTE -> {
-                        session.player.volume = if (session.player.volume > 0f) 0f else 1f
+                        // Afecta a la salida activa (Cast o local), spec 0035 FR-007.
+                        volumeController.toggleMute()
                     }
                 }
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))

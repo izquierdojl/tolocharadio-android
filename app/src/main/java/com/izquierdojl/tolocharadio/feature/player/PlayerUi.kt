@@ -38,7 +38,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,6 +48,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,6 +58,7 @@ import com.izquierdojl.tolocharadio.cast.CastPlayerState
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * Panel inferior persistente sobre la barra de navegación (spec 004).
@@ -94,6 +95,13 @@ fun MiniPlayer(
             scope.launch {
                 snackbar.showSnackbar("No se pudo conectar al dispositivo")
             }
+        }
+    }
+
+    // FR-009: aviso único cuando el receptor no admite control de volumen
+    LaunchedEffect(viewModel) {
+        viewModel.castVolumeNotices.collect {
+            snackbar.showSnackbar("Este dispositivo no permite ajustar el volumen desde el móvil")
         }
     }
 
@@ -301,10 +309,11 @@ fun FullPlayerSheet(
 ) {
     val state by viewModel.state.collectAsState()
     val castState by viewModel.castState.collectAsState()
+    val castVolume by viewModel.castVolume.collectAsState()
+    val castVolumeSupported by viewModel.castVolumeSupported.collectAsState()
     val isCastConnected = castState is CastPlayerState.Cast
     val effectiveState = (castState as? CastPlayerState.Cast)?.playerState ?: state
     var showStationInfo by remember { mutableStateOf(false) }
-    var volume by remember { mutableFloatStateOf(1f) }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState()) {
         Column(Modifier.fillMaxWidth().padding(24.dp)) {
@@ -359,28 +368,14 @@ fun FullPlayerSheet(
                 Text(it.message, color = MaterialTheme.colorScheme.error)
             }
 
-            // FR-006: Volume slider for Cast
+            // FR-003/FR-004/FR-009: Volumen real del dispositivo Cast
             if (isCastConnected) {
-                Spacer(Modifier.padding(top = 16.dp))
-                Text("Volumen Chromecast", style = MaterialTheme.typography.labelMedium)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(
-                        if (volume > 0f) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                    )
-                    Slider(
-                        value = volume,
-                        onValueChange = { newVolume ->
-                            volume = newVolume
-                            viewModel.castPlayerManager.activePlayer.volume = newVolume
-                        },
-                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-                    )
-                }
+                CastVolumeControl(
+                    deviceName = (castState as? CastPlayerState.Cast)?.deviceName ?: "dispositivo",
+                    volume = castVolume,
+                    supported = castVolumeSupported,
+                    onVolumeChange = viewModel::setCastVolume,
+                )
             }
         }
     }
@@ -388,5 +383,51 @@ fun FullPlayerSheet(
         StationInfoSheet(station = station) {
             showStationInfo = false
         }
+    }
+}
+
+/**
+ * Control de volumen del dispositivo Cast del full-player (FR-003/FR-004/FR-009).
+ * Muestra el nivel real y, si el receptor no lo admite, el aviso en su lugar.
+ */
+@Composable
+private fun CastVolumeControl(
+    deviceName: String,
+    volume: Float,
+    supported: Boolean,
+    onVolumeChange: (Float) -> Unit,
+) {
+    if (!supported) {
+        Spacer(Modifier.padding(top = 16.dp))
+        Text(
+            "Este dispositivo no permite ajustar el volumen desde el móvil",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+        return
+    }
+    Spacer(Modifier.padding(top = 16.dp))
+    Text("Volumen", style = MaterialTheme.typography.labelMedium)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Icon(
+            if (volume > 0f) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+        )
+        Slider(
+            value = volume,
+            onValueChange = onVolumeChange,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp)
+                    .semantics {
+                        contentDescription = "Volumen del dispositivo $deviceName"
+                        stateDescription = "${(volume * 100).roundToInt()}%"
+                    },
+        )
     }
 }
