@@ -7,6 +7,14 @@
 
 ## Summary
 
+**v2 (2026-09-17, post-verificación en dispositivo)**: el primer fix (reordenar `bind()` antes de `startVolumeEvents()`) NO resolvió el bug: el receptor salta al 100% nada más conectar, incluso antes de reproducir.
+
+Root cause real: `emitDeviceVolume()` en `CastPlayerManager` llamaba a `player.setDeviceVolume(...)` sobre un `CastPlayer` **raw** de Media3. En Media3, `CastPlayer.setDeviceVolume` **escribe al receptor** (`CastSession.setVolume`). Al conectar, `CastSession.volume` devuelve 1.0 por defecto (antes del primer eco del receptor), por lo que la primera emisión del collector aplicaba físicamente 100% al Chromecast.
+
+Fix: usar el wrapper `CastDeviceVolumePlayer` (que existía sin usarse) como player de la sesión, y que `emitDeviceVolume()` sincronice **solo por notificación** (`emitDeviceVolumeChanged`), sin escribir nunca al receptor. Las escrituras al receptor solo ocurren por interacción del usuario (`setCastVolume`/`stepCastVolume` vía teclas/slider).
+
+## Summary v1 (original, incompleto)
+
 Reordenar `createCastPlayer()` en `CastPlayerManager` para que `volume.bind()` se ejecute ANTES de `startVolumeEvents()`. Esto garantiza que el volumen real del receptor se lea antes de que el collector emita el valor por defecto (100%) al CastPlayer.
 
 ## Changes
@@ -55,7 +63,7 @@ private fun createCastPlayer(session: CastSession) {
 
 ## Deviations from Assessment
 
-None. The fix follows the proposed remediation exactly.
+**v2**: la hipótesis del assessment (condición de carrera bind/collector) era insuficiente. La evidencia post-fix mostró que el bug es una **escritura al receptor en el ciclo de eco/notificación**: `emitDeviceVolume()` → `CastPlayer.setDeviceVolume()` → `CastSession.setVolume` al receptor con el valor stale 1.0. El fix definitivo elimina toda escritura al receptor en la sincronización de estado (solo notificación a la MediaSession) y activa el wrapper `CastDeviceVolumePlayer` que la spec 0035 contemplaba. Reordenar bind/collector se conserva (inofensivo y mejora la primera sincronización de UI).
 
 ## Follow-ups
 

@@ -128,6 +128,16 @@ class PlaybackVolumeControllerTest {
     }
 
     @Test
+    fun `bind no escribe volumen en el receptor`() {
+        val remote = FakeRemoteVolume(volume = 0.3)
+        val controller = controller()
+        controller.bind(remote)
+        // bug 0036: al conectar solo se lee el receptor; escribir aqui aplicaria
+        // un valor stale/default (100%) al Chromecast antes del eco real.
+        assertTrue(remote.writtenVolumes.isEmpty())
+    }
+
+    @Test
     fun `unbind aplica el silencio al reproductor local y deja de observar`() {
         val remote = FakeRemoteVolume()
         val controller = controller()

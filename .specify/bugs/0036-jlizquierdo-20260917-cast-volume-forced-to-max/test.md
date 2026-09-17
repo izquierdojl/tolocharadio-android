@@ -4,7 +4,7 @@
 - **Tested**: 2026-09-17
 - **Assessment**: ./assessment.md
 - **Fix**: ./fix.md
-- **Result**: partial
+- **Result**: partial (v1) → pendiente verificación on-device con v2
 
 ## Summary
 
@@ -33,8 +33,9 @@ BUILD SUCCESSFUL in 17s
 
 ## Residual Risks
 
-- On-device reproduction was not performed. The fix is logically sound (reordering `bind()` before `startVolumeEvents()` ensures the receiver volume is read first), but real-world validation with a Chromecast is recommended before closing.
-- Edge case: if `readVolume()` returns `null` during `bind()`, `_castVolume` stays at 1.0 and the bug persists. The assessment flagged this; a follow-up with `Float.NaN` initialization is suggested.
+- **v1 (primer fix, reordenar bind/collector) NO resolvió el bug en dispositivo**: el receptor saltaba al 100% nada más conectar. Root cause más profundo documentado en fix.md §Deviations: `emitDeviceVolume()` escribía al receptor vía `CastPlayer.setDeviceVolume`.
+- **v2** (wrapper CastDeviceVolumePlayer + notificación sin escritura): pendiente de verificación on-device.
+- Edge case: si `readVolume()` retorna null/stale 1.0 en `bind()`, la UI muestra 100% hasta el primer eco — solo display, el receptor ya no recibe escrituras.
 
 ## Recommendation
 

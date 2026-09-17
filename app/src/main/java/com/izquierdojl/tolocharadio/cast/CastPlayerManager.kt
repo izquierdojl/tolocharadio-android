@@ -75,7 +75,7 @@ class CastPlayerManager
         /** Último nombre conocido del receptor (la sesión lo pierde al desconectar). */
         private var lastDeviceName = "Chromecast"
 
-        private var castPlayer: CastPlayer? = null
+        private var castPlayer: CastDeviceVolumePlayer? = null
         private var castContext: CastContext? = null
         private var sessionManagerListener: SessionManagerListener<CastSession>? = null
         private var mediaSession: androidx.media3.session.MediaSession? = null
@@ -259,7 +259,10 @@ class CastPlayerManager
             if (castPlayer == null) {
                 castContext?.let { ctx ->
                     castPlayer =
-                        CastPlayer(ctx).apply {
+                        CastDeviceVolumePlayer(
+                            CastPlayer(ctx),
+                            volume,
+                        ).apply {
                             addListener(castPlayerListener)
                         }
                 }
@@ -267,8 +270,8 @@ class CastPlayerManager
                     mediaSession?.setPlayer(player)
                 }
             }
-            // bug 0036: bind FIRST so the receiver's real volume is read before
-            // startVolumeEvents() pushes the initial value to the CastPlayer.
+            // bug 0036: bind FIRST so the receiver's real volume is read before any
+            // volume event fires, and bind() MUST NOT write volume (read-only sync).
             if (!volume.isRemoteActive) {
                 volume.bind(CastSessionVolumeDevice(session))
             }
@@ -294,9 +297,17 @@ class CastPlayerManager
                 }
         }
 
+        /**
+         * Sincroniza el volumen con la sesión **solo por notificación**:
+         * [CastDeviceVolumePlayer.emitDeviceVolumeChanged] avisa a los listeners de la
+         * `MediaSession` (barra del sistema) sin escribir en el receptor. Escribir aquí
+         * con `CastPlayer.setDeviceVolume` aplicaría al Chromecast el último valor
+         * conocido — que al conectar es el default 1.0 — antes de llegar el eco real
+         * (bug 0036).
+         */
         private fun emitDeviceVolume() {
             val player = castPlayer ?: return
-            player.setDeviceVolume(volume.deviceVolumePercent(), 0)
+            player.emitDeviceVolumeChanged(volume.deviceVolumePercent(), volume.muted.value)
         }
 
         /**
