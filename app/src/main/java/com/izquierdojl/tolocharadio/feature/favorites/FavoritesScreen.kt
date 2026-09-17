@@ -186,8 +186,8 @@ fun FavoritesScreen(
         viewModel.onForeground()
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) {
-        Column(Modifier.fillMaxSize()) {
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { paddingValues ->
+        Column(Modifier.fillMaxSize().padding(paddingValues)) {
             SectionHeader(title = "Tus favoritos")
             FavoritesScreenContent(
                 state = ui,
