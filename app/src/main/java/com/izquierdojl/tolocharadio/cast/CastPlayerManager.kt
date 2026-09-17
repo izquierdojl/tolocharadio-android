@@ -266,13 +266,11 @@ class CastPlayerManager
                 castPlayer?.let { player ->
                     mediaSession?.setPlayer(player)
                 }
+                startVolumeEvents()
             }
-            // bug 0036: bind FIRST so the receiver's real volume is read before
-            // startVolumeEvents() pushes the initial value to the CastPlayer.
             if (!volume.isRemoteActive) {
                 volume.bind(CastSessionVolumeDevice(session))
             }
-            startVolumeEvents()
             // FR-009: Request audio focus when connecting to Cast
             requestAudioFocus()
             lastDeviceName = currentDeviceName()

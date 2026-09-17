@@ -136,8 +136,8 @@ fun HistoryScreen(
         )
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { paddingValues ->
-        Column(Modifier.fillMaxSize().padding(paddingValues)) {
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) {
+        Column(Modifier.fillMaxSize()) {
             HistoryScreenContent(
                 state = ui,
                 mode = mode,
