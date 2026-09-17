@@ -95,8 +95,8 @@ fun CustomStationsScreen(
         viewModel.messages.collect { snackbar.showSnackbar(it) }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) {
-        Column(Modifier.fillMaxSize()) {
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { paddingValues ->
+        Column(Modifier.fillMaxSize().padding(paddingValues)) {
             SectionHeader(
                 title = "Mis emisoras",
                 subtitle = "Añade emisoras que no están en el catálogo para escucharlas desde el reproductor.",

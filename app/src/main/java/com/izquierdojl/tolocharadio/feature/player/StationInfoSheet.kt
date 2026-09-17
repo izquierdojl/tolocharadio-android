@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -41,7 +42,6 @@ import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import java.text.NumberFormat
-import java.util.Locale
 
 /**
  * Bottom sheet modal que muestra información completa de la emisora
@@ -58,7 +58,7 @@ fun StationInfoSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
-    val numberFormat = NumberFormat.getNumberInstance(Locale.getDefault())
+    val numberFormat = NumberFormat.getNumberInstance(LocalConfiguration.current.locales[0])
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
