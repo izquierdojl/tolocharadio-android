@@ -116,6 +116,18 @@ class PlaybackVolumeControllerTest {
     }
 
     @Test
+    fun `bind nunca deja el volumen en el default 100 por ciento`() {
+        val remote = FakeRemoteVolume(volume = 0.3)
+        val controller = controller()
+        // Default castVolume should be 1.0, but bind must override it immediately
+        assertEquals(1f, controller.castVolume.value, 0.001f)
+        controller.bind(remote)
+        // After bind, castVolume MUST reflect the receiver's real volume, not 100%
+        assertEquals(0.3f, controller.castVolume.value, 0.001f)
+        assertEquals(30, controller.deviceVolumePercent())
+    }
+
+    @Test
     fun `unbind aplica el silencio al reproductor local y deja de observar`() {
         val remote = FakeRemoteVolume()
         val controller = controller()
