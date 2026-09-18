@@ -50,6 +50,9 @@ audible del receptor cambia, permaneciendo intacto el volumen del teléfono.
 
 ### User Story 2 - Control deslizante de volumen coherente con el dispositivo (Priority: P1)
 
+*(SUPERSEDED por la spec 0037 — volumen contextual único: sin control de volumen in-app con
+Cast activo; la única representación del volumen es la barra del sistema.)*
+
 Un usuario con sesión Cast abierta abre el reproductor completo y mueve el control deslizante de
 volumen. El dispositivo cambia de volumen de forma continua y el valor mostrado es siempre el
 real del dispositivo, también al cerrar y reabrir el panel o volver a la app desde segundo plano.
@@ -157,8 +160,10 @@ de sonar; volver a pulsar y comprobar que recupera exactamente el nivel previo.
   control remoto de volumen.
 - **FR-003**: El sistema MUST ofrecer un control deslizante de volumen en el reproductor completo
   cuando hay sesión Cast, mostrando siempre el nivel real actual del dispositivo.
+  *(SUPERSEDED por 0037 FR-004: sin control de volumen in-app con Cast activo.)*
 - **FR-004**: Los cambios del control deslizante MUST aplicarse al dispositivo Cast de forma
   continua durante el arrastre, sin exigir soltar el dedo ni pulsar confirmar.
+  *(SUPERSEDED por 0037 FR-004.)*
 - **FR-005**: El nivel de volumen mostrado en la app MUST reflejar los cambios originados en el
   propio dispositivo Cast o en otros mandos en un máximo de 2 segundos.
 - **FR-006**: El nivel mostrado MUST mantenerse correcto al cerrar y reabrir el reproductor, y al
@@ -170,6 +175,8 @@ de sonar; volver a pulsar y comprobar que recupera exactamente el nivel previo.
 - **FR-009**: Si el dispositivo Cast no admite control de volumen, el sistema MUST degradar con
   elegancia (avisar y ocultar/deshabilitar el control) sin bloquear la reproducción ni
   desconectar la sesión.
+  *(SUPERSEDED por 0037 FR-011: sin gestión especial ante receptores sin volumen — modelo
+  Pocket Casts.)*
 - **FR-010**: Al finalizar la sesión Cast (desconexión manual o pérdida de conexión), los
   controles de volumen MUST volver al comportamiento local, sin pasos manuales del usuario.
 - **FR-011**: El control de volumen del Cast MUST funcionar con la app en segundo plano

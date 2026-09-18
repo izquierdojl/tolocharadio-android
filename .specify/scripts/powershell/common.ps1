@@ -320,17 +320,27 @@ function Format-SpecKitCommand {
 # Find a usable Python 3 executable (python3, python, or py -3).
 # Returns the command/arguments as an array, or $null if none found.
 function Get-Python3Command {
-    if (Get-Command python3 -ErrorAction SilentlyContinue) {
-        $ver = & python3 --version 2>&1
-        if ($ver -match 'Python 3') { return @('python3') }
+    # Skip the Microsoft Store python/python3 stubs (under WindowsApps): they open
+    # the Store instead of running Python and abort scripts under
+    # $ErrorActionPreference = 'Stop' (AGENTS.md: stub parcheado).
+    foreach ($name in @('python3', 'python')) {
+        $cmd = Get-Command $name -ErrorAction SilentlyContinue
+        if (-not $cmd -or -not $cmd.Source -or $cmd.Source -like '*\Microsoft\WindowsApps\*') {
+            continue
+        }
+        try {
+            $ver = & $name --version 2>&1
+            if ($LASTEXITCODE -eq 0 -and "$ver" -match 'Python 3') { return @($name) }
+        } catch {
+            continue
+        }
     }
-    if (Get-Command python -ErrorAction SilentlyContinue) {
-        $ver = & python --version 2>&1
-        if ($ver -match 'Python 3') { return @('python') }
-    }
-    if (Get-Command py -ErrorAction SilentlyContinue) {
-        $ver = & py -3 --version 2>&1
-        if ($ver -match 'Python 3') { return @('py', '-3') }
+    $py = Get-Command py -ErrorAction SilentlyContinue
+    if ($py) {
+        try {
+            $ver = & py -3 --version 2>&1
+            if ($LASTEXITCODE -eq 0 -and "$ver" -match 'Python 3') { return @('py', '-3') }
+        } catch { }
     }
     return $null
 }

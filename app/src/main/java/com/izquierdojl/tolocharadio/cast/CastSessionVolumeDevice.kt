@@ -4,9 +4,9 @@ import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.media.RemoteMediaClient
 
 /**
- * Adaptador de [RemoteVolumeDevice] sobre una [CastSession] (spec 0035).
+ * Adaptador de [RemoteVolumeDevice] sobre una [CastSession] (spec 0037).
  *
- * Usa el volumen de dispositivo del receptor (`CastSession.setVolume`/`getVolume`).
+ * Usa el silencio de dispositivo del receptor (`CastSession.setMute`/`isMute`).
  * El eco se obtiene con `RemoteMediaClient.Callback.onStatusUpdated`.
  *
  * Todas las operaciones toleran una sesión ya cerrada.
@@ -26,13 +26,7 @@ class CastSessionVolumeDevice(
             }
         }
 
-    override fun readVolume(): Double? = runCatching { session.volume }.getOrNull()
-
     override fun readMuted(): Boolean = runCatching { session.isMute }.getOrDefault(false)
-
-    override fun writeVolume(volume: Double) {
-        runCatching { session.volume = volume }
-    }
 
     override fun writeMuted(muted: Boolean) {
         runCatching { session.isMute = muted }

@@ -29,7 +29,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -103,15 +102,6 @@ class PlayerViewModel
 
         /** Estado de Cast para la UI (FR-006, FR-011). */
         val castState: StateFlow<CastPlayerState> = castPlayerManager.castState
-
-        /** Volumen real del dispositivo Cast para el slider (FR-003, FR-005). */
-        val castVolume: StateFlow<Float> = volumeController.castVolume
-
-        /** `false` si el receptor no admite volumen: oculta el slider (FR-009). */
-        val castVolumeSupported: StateFlow<Boolean> = volumeController.castVolumeSupported
-
-        /** Avisos únicos del control de volumen para la UI (FR-009). */
-        val castVolumeNotices: SharedFlow<Unit> = volumeController.notices
 
         private var loadJob: Job? = null
         private var controller: MediaController? = null
@@ -306,11 +296,6 @@ class PlayerViewModel
         /** Silencia o restaura la salida activa sin detener la emisión (FR-007). */
         fun toggleMute() {
             volumeController.toggleMute()
-        }
-
-        /** Ajusta el volumen del dispositivo Cast de forma continua (FR-004). */
-        fun setCastVolume(volume: Float) {
-            volumeController.setCastVolume(volume)
         }
 
         /** Abre el reproductor a pantalla completa (spec 0018, FR-005). */

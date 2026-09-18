@@ -29,7 +29,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,7 +47,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,7 +56,6 @@ import com.izquierdojl.tolocharadio.cast.CastPlayerState
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 /**
  * Panel inferior persistente sobre la barra de navegación (spec 004).
@@ -95,13 +92,6 @@ fun MiniPlayer(
             scope.launch {
                 snackbar.showSnackbar("No se pudo conectar al dispositivo")
             }
-        }
-    }
-
-    // FR-009: aviso único cuando el receptor no admite control de volumen
-    LaunchedEffect(viewModel) {
-        viewModel.castVolumeNotices.collect {
-            snackbar.showSnackbar("Este dispositivo no permite ajustar el volumen desde el móvil")
         }
     }
 
@@ -309,8 +299,6 @@ fun FullPlayerSheet(
 ) {
     val state by viewModel.state.collectAsState()
     val castState by viewModel.castState.collectAsState()
-    val castVolume by viewModel.castVolume.collectAsState()
-    val castVolumeSupported by viewModel.castVolumeSupported.collectAsState()
     val isCastConnected = castState is CastPlayerState.Cast
     val effectiveState = (castState as? CastPlayerState.Cast)?.playerState ?: state
     var showStationInfo by remember { mutableStateOf(false) }
@@ -367,67 +355,11 @@ fun FullPlayerSheet(
             (effectiveState as? PlayerState.Error)?.let {
                 Text(it.message, color = MaterialTheme.colorScheme.error)
             }
-
-            // FR-003/FR-004/FR-009: Volumen real del dispositivo Cast
-            if (isCastConnected) {
-                CastVolumeControl(
-                    deviceName = (castState as? CastPlayerState.Cast)?.deviceName ?: "dispositivo",
-                    volume = castVolume,
-                    supported = castVolumeSupported,
-                    onVolumeChange = viewModel::setCastVolume,
-                )
-            }
         }
     }
     if (showStationInfo && station != null) {
         StationInfoSheet(station = station) {
             showStationInfo = false
         }
-    }
-}
-
-/**
- * Control de volumen del dispositivo Cast del full-player (FR-003/FR-004/FR-009).
- * Muestra el nivel real y, si el receptor no lo admite, el aviso en su lugar.
- */
-@Composable
-private fun CastVolumeControl(
-    deviceName: String,
-    volume: Float,
-    supported: Boolean,
-    onVolumeChange: (Float) -> Unit,
-) {
-    if (!supported) {
-        Spacer(Modifier.padding(top = 16.dp))
-        Text(
-            "Este dispositivo no permite ajustar el volumen desde el móvil",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-        )
-        return
-    }
-    Spacer(Modifier.padding(top = 16.dp))
-    Text("Volumen", style = MaterialTheme.typography.labelMedium)
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Icon(
-            if (volume > 0f) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-        )
-        Slider(
-            value = volume,
-            onValueChange = onVolumeChange,
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
-                    .semantics {
-                        contentDescription = "Volumen del dispositivo $deviceName"
-                        stateDescription = "${(volume * 100).roundToInt()}%"
-                    },
-        )
     }
 }

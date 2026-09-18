@@ -37,6 +37,7 @@ real porque el emulador no descubre receptores Cast).
 
 - [x] T001 Ejecutar los gates obligatorios en la rama para confirmar base verde: `.\gradlew.bat testDebugUnitTest detekt ktlintCheck lintDebug` (raíz del repo)
 - [x] T002 [P] Confirmar que no se añaden dependencias: media3 `1.4.1` y `play-services-cast-framework 21.5.0` ya están en `gradle/libs.versions.toml`; no editarlo (raíz del repo)
+      *(Nota 2026-09-18: contradicho por la implementación — `7496a53` editó el toml subiendo media3 a 1.11.0 "para soporte nativo de volumen en CastPlayer", justificado en el commit. Los artefactos no se actualizaron entonces.)*
 
 ---
 
