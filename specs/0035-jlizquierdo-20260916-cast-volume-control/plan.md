@@ -4,6 +4,14 @@
 
 **Input**: Feature specification from `/specs/0035-jlizquierdo-20260916-cast-volume-control/spec.md`
 
+> **Nota de obsolescencia (2026-09-18, spec 0037)**: este plan se escribió contra media3
+> 1.4.1, pero la implementación (`7496a53`) subió media3 a **1.11.0** con soporte nativo de
+> volumen de dispositivo en `CastPlayer`. Las secciones que dependen de la premisa 1.4.1 —
+> el wrapper `CastDeviceVolumePlayer`, el pipeline `startVolumeEvents`/`emitDeviceVolume`,
+> los bloqueadores D11 y las restricciones "sin subir media3" — quedan obsoletos. El
+> `CastDeviceVolumePlayer` resultó código muerto (nunca se cableó). Modelo vigente:
+> `specs/0037-jlizquierdo-20260918-contextual-volume/`.
+
 ## Summary
 
 Que las teclas de volumen del móvil y el control deslizante del reproductor controlen el

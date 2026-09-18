@@ -9,7 +9,6 @@ import com.izquierdojl.tolocharadio.cast.CastConnectionState
 import com.izquierdojl.tolocharadio.cast.CastNotice
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
 import com.izquierdojl.tolocharadio.cast.CastPlayerState
-import com.izquierdojl.tolocharadio.cast.RemoteVolumeDevice
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.DomainError
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
@@ -25,14 +24,12 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -70,8 +67,7 @@ class PlayerViewModelTest {
             every { notices } returns castNotices
             every { connectionState } returns castConnectionState
         }
-    private val volumeController =
-        PlaybackVolumeController(castExoPlayer, CoroutineScope(UnconfinedTestDispatcher()))
+    private val volumeController = PlaybackVolumeController(castExoPlayer)
     private val resolveSource = ResolvePlaybackSourceUseCase()
     private val mediaItemFactory: StationMediaItemFactory = mockk(relaxed = true)
     private val station = StationDto(id = "u1", name = "Tolocha")
@@ -233,24 +229,6 @@ class PlayerViewModelTest {
         assertTrue(viewModel.isMuted.value)
         volumeController.setMuted(false)
         assertTrue(!viewModel.isMuted.value)
-    }
-
-    @Test
-    fun `setCastVolume delega en el controlador`() {
-        val remote = mockk<RemoteVolumeDevice>(relaxed = true)
-        every { remote.readVolume() } returns 0.2
-        every { remote.readMuted() } returns false
-        volumeController.bind(remote)
-        val viewModel = vm()
-        viewModel.setCastVolume(0.5f)
-        assertEquals(0.5f, viewModel.castVolume.value, 0.001f)
-        verify { remote.writeVolume(0.5) }
-    }
-
-    @Test
-    fun `castVolumeSupported se expone a la UI`() {
-        val viewModel = vm()
-        assertTrue(viewModel.castVolumeSupported.value)
     }
 
     @Test
