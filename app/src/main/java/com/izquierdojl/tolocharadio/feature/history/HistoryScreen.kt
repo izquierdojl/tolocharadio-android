@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -136,7 +137,12 @@ fun HistoryScreen(
         )
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { paddingValues ->
+    // El Scaffold externo (TolochaNavGraph) ya aplica los insets; el interno
+    // solo aloja el Snackbar y no debe reañadir el inset superior (bug 0038).
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) { paddingValues ->
         Column(Modifier.fillMaxSize().padding(paddingValues)) {
             HistoryScreenContent(
                 state = ui,
