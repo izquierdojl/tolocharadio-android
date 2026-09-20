@@ -230,25 +230,6 @@ class FavoritesViewModel
             _ui.value = content.copy(items = items)
         }
 
-        /**
-         * Alternativa accesible: mueve la favorita [delta] posiciones
-         * (típicamente ±1) y autoguarda. No-op en los extremos, con caché
-         * offline o si el id no existe (FR-012, FR-013, FR-018).
-         */
-        fun moveBy(
-            stationId: String,
-            delta: Int,
-        ) {
-            val content = _ui.value as? FavoritesUiState.Content ?: return
-            if (content.offline) return
-            val from = content.items.indexOfFirst { it.station.id == stationId }
-            if (from == -1) return
-            val to = from + delta
-            if (to !in content.items.indices) return
-            moveItem(from, to)
-            commitOrder()
-        }
-
         /** Guarda el orden actual en el servidor (autoguardado al soltar). */
         fun commitOrder() {
             val content = _ui.value as? FavoritesUiState.Content ?: return

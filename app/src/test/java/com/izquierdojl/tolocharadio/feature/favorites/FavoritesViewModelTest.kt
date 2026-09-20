@@ -12,7 +12,6 @@ import com.izquierdojl.tolocharadio.domain.ObserveFavoritesUseCase
 import com.izquierdojl.tolocharadio.domain.ReorderFavoritesUseCase
 import com.izquierdojl.tolocharadio.domain.ToggleFavoriteUseCase
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -129,82 +128,6 @@ class FavoritesViewModelTest {
     }
 
     @Test
-    fun `moveUp sube una posicion y guarda (FR-012)`() =
-        runTest {
-            val v = viewModelWith(twoFavorites())
-            advanceUntilIdle()
-
-            v.moveBy("u2", -1)
-            advanceUntilIdle()
-
-            coVerify { reorder(listOf("u1", "u2"), listOf("u2", "u1")) }
-        }
-
-    @Test
-    fun `moveDown baja una posicion y guarda (FR-012)`() =
-        runTest {
-            val v = viewModelWith(twoFavorites())
-            advanceUntilIdle()
-
-            v.moveBy("u1", 1)
-            advanceUntilIdle()
-
-            coVerify { reorder(listOf("u1", "u2"), listOf("u2", "u1")) }
-        }
-
-    @Test
-    fun `moveUp en el extremo no mueve ni guarda (FR-013)`() =
-        runTest {
-            val v = viewModelWith(twoFavorites())
-            advanceUntilIdle()
-
-            v.moveBy("u1", -1)
-            advanceUntilIdle()
-
-            val state = v.ui.value as FavoritesUiState.Content
-            assertEquals(listOf("u1", "u2"), state.items.map { it.station.id })
-            coVerify(exactly = 0) { reorder(any(), any()) }
-        }
-
-    @Test
-    fun `moveDown en el extremo no mueve ni guarda (FR-013)`() =
-        runTest {
-            val v = viewModelWith(twoFavorites())
-            advanceUntilIdle()
-
-            v.moveBy("u2", 1)
-            advanceUntilIdle()
-
-            coVerify(exactly = 0) { reorder(any(), any()) }
-        }
-
-    @Test
-    fun `move con id inexistente no hace nada`() =
-        runTest {
-            val v = viewModelWith(twoFavorites())
-            advanceUntilIdle()
-
-            v.moveBy("zzz", -1)
-            v.moveBy("zzz", 1)
-            advanceUntilIdle()
-
-            coVerify(exactly = 0) { reorder(any(), any()) }
-        }
-
-    @Test
-    fun `move sin conexion no hace nada (FR-018)`() =
-        runTest {
-            val v = viewModelWith(twoFavorites(), offline = true)
-            advanceUntilIdle()
-
-            v.moveBy("u2", -1)
-            v.moveBy("u1", 1)
-            advanceUntilIdle()
-
-            coVerify(exactly = 0) { reorder(any(), any()) }
-        }
-
-    @Test
     fun `commitOrder error restaura el orden confirmado y avisa (FR-010)`() =
         runTest {
             val v =
@@ -215,7 +138,8 @@ class FavoritesViewModelTest {
             advanceUntilIdle()
 
             v.messages.test {
-                v.moveBy("u2", -1)
+                v.moveItem(1, 0)
+                v.commitOrder()
                 advanceUntilIdle()
                 val state = v.ui.value as FavoritesUiState.Content
                 assertEquals(listOf("u1", "u2"), state.items.map { it.station.id })
@@ -234,7 +158,8 @@ class FavoritesViewModelTest {
             advanceUntilIdle()
 
             v.messages.test {
-                v.moveBy("u1", 1)
+                v.moveItem(0, 1)
+                v.commitOrder()
                 advanceUntilIdle()
                 val state = v.ui.value as FavoritesUiState.Content
                 assertEquals(listOf("u1", "u2"), state.items.map { it.station.id })

@@ -3,9 +3,9 @@ package com.izquierdojl.tolocharadio.feature.favorites
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
@@ -18,8 +18,8 @@ import org.junit.Test
 
 /**
  * Compose Test de Favoritos sobre el contenido sin estado (sin Hilt):
- * lista, vacío, error, deshacer, reorden por arrastre y menú accesible
- * (US-1–US-3).
+ * lista, vacío, error, deshacer y reorden por arrastre como única vía
+ * (US-1–US-3, spec 0039: sin menú de mover).
  */
 class FavoritesScreenTest {
     @get:Rule
@@ -49,8 +49,6 @@ class FavoritesScreenTest {
         onRemove: (String) -> Unit = {},
         onMove: (Int, Int) -> Unit = { _, _ -> },
         onCommit: () -> Unit = {},
-        onMoveUp: (String) -> Unit = {},
-        onMoveDown: (String) -> Unit = {},
         onRetry: () -> Unit = {},
     ) {
         compose.setContent {
@@ -66,8 +64,6 @@ class FavoritesScreenTest {
                             onRemove = onRemove,
                             onMove = onMove,
                             onCommit = onCommit,
-                            onMoveUp = onMoveUp,
-                            onMoveDown = onMoveDown,
                             onRetry = onRetry,
                         ),
                 )
@@ -203,19 +199,23 @@ class FavoritesScreenTest {
     }
 
     @Test
-    fun menu_mueveYDeshabilitaExtremos() {
-        var up: String? = null
-        var down: String? = null
-        screen(FavoritesUiState.Content(favs), onMoveUp = { up = it }, onMoveDown = { down = it })
+    fun encabezado_muestraTituloYSubtitulo() {
+        screen(FavoritesUiState.Content(favs))
+        compose.onNodeWithText("Tus favoritos").assertIsDisplayed()
+        compose.onNodeWithText("Tus emisoras guardadas, en tu orden.").assertIsDisplayed()
+    }
 
-        compose.onAllNodesWithContentDescription("Más opciones")[0].performClick()
-        compose.onNodeWithText("Mover arriba").assertIsNotEnabled()
-        compose.onNodeWithText("Mover abajo").performClick()
-        assert(down == "u1")
+    @Test
+    fun sinMenuDeMover_masOpcionesAusente() {
+        screen(FavoritesUiState.Content(favs))
+        compose.onAllNodesWithContentDescription("Más opciones").assertCountEquals(0)
+        compose.onAllNodesWithText("Mover arriba").assertCountEquals(0)
+        compose.onAllNodesWithText("Mover abajo").assertCountEquals(0)
+    }
 
-        compose.onAllNodesWithContentDescription("Más opciones")[1].performClick()
-        compose.onNodeWithText("Mover abajo").assertIsNotEnabled()
-        compose.onNodeWithText("Mover arriba").performClick()
-        assert(up == "u2")
+    @Test
+    fun sinMenuDeMover_masOpcionesAusenteConMuchas() {
+        screen(FavoritesUiState.Content(manyFavs))
+        compose.onAllNodesWithContentDescription("Más opciones").assertCountEquals(0)
     }
 }
