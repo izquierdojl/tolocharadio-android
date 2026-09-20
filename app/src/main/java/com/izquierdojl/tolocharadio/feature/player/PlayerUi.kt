@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
@@ -77,7 +78,6 @@ fun MiniPlayer(
     val effectiveState = (castState as? CastPlayerState.Cast)?.playerState ?: state
     val station = playerStation(effectiveState)
     val isVisible = station != null
-    val displayName = station?.name?.ifBlank { "Emisora" } ?: ""
     val error = effectiveState as? PlayerState.Error
     // FR-012: Mostrar Snackbar cuando la conexión a Chromecast falla
     LaunchedEffect(castConnectionState) {
@@ -97,36 +97,20 @@ fun MiniPlayer(
         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
     ) {
         val safeStation = station ?: return@AnimatedVisibility
-        Surface(
-            tonalElevation = 3.dp,
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-        ) {
-            Row(
-                modifier =
-                    Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                        .semantics { contentDescription = panelAnnouncement(effectiveState, displayName) },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PanelIdentity(
-                    station = safeStation,
-                    title = displayName,
-                    subtitle = error?.message ?: panelSubtitle(safeStation, castState),
-                    isError = error != null,
-                    modifier = Modifier.weight(1f),
+        MiniPlayerContent(
+            state = effectiveState,
+            station = safeStation,
+            muted = muted,
+            subtitle = error?.message ?: panelSubtitle(safeStation, castState),
+            actions =
+                MiniPlayerActions(
                     onOpen = { showStationInfo = true },
-                )
-                PanelMainAction(
-                    state = effectiveState,
                     onToggle = viewModel::toggle,
                     onCancelLoad = viewModel::cancelLoad,
                     onRetry = viewModel::retry,
-                )
-                // En error el silencio se oculta (FR-003b); el enlace se comparte desde la ficha (spec 0039).
-                if (error == null) {
-                    PanelMuteButton(muted = muted, onToggleMute = viewModel::toggleMute)
-                }
-            }
-        }
+                    onToggleMute = viewModel::toggleMute,
+                ),
+        )
     }
     if (showStationInfo && station != null) {
         StationInfoSheet(station = station) {
@@ -140,6 +124,64 @@ fun MiniPlayer(
             viewModel = viewModel,
             onDismiss = { viewModel.closeFullPlayer() },
         )
+    }
+}
+
+/**
+ * Acciones del mini-player (evita firmas largas).
+ */
+data class MiniPlayerActions(
+    val onOpen: () -> Unit,
+    val onToggle: () -> Unit,
+    val onCancelLoad: () -> Unit,
+    val onRetry: () -> Unit,
+    val onToggleMute: () -> Unit,
+)
+
+/**
+ * Contenido sin estado del mini-player (puerta de test sin Hilt, spec 0039, C2):
+ * en reproducción normal exactamente 2 acciones (principal + silenciar), sin
+ * copiar enlace; en error solo reintentar; en carga indicador con cancelar.
+ */
+@Composable
+internal fun MiniPlayerContent(
+    state: PlayerState,
+    station: StationDto,
+    muted: Boolean,
+    subtitle: String,
+    actions: MiniPlayerActions,
+) {
+    val displayName = station.name.ifBlank { "Emisora" }
+    val error = state as? PlayerState.Error
+    Surface(
+        tonalElevation = 3.dp,
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                    .semantics { contentDescription = panelAnnouncement(state, displayName) },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PanelIdentity(
+                station = station,
+                title = displayName,
+                subtitle = subtitle,
+                isError = error != null,
+                modifier = Modifier.weight(1f),
+                onOpen = actions.onOpen,
+            )
+            PanelMainAction(
+                state = state,
+                onToggle = actions.onToggle,
+                onCancelLoad = actions.onCancelLoad,
+                onRetry = actions.onRetry,
+            )
+            // En error el silencio se oculta (FR-003b); el enlace se comparte desde la ficha (spec 0039).
+            if (error == null) {
+                PanelMuteButton(muted = muted, onToggleMute = actions.onToggleMute)
+            }
+        }
     }
 }
 

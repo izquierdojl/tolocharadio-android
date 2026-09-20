@@ -184,3 +184,11 @@ Task: "Añadir sección Enlace con Compartir + Copiar in app/src/main/java/com/i
 - Stop at any checkpoint to validate story independently
 - Tests incluidos por mandato constitucional (III) para flujos críticos, aunque la spec no los pida explícitamente
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: Cerrar el único hueco detectado por `/speckit.converge` (2026-09-20): T008 cubrió la ficha (`StationInfoSheetTest`) pero no el mini-player mínimo exigido por el plan R7 / contrato C2 / constitución III
+
+- [X] T017 Añadir test UI Compose del MiniPlayer mínimo (2 acciones en reproducción normal sin copiar enlace; reintentar en error y cancelar en carga) en `app/src/androidTest/java/com/izquierdojl/tolocharadio/feature/player/` (crear el fichero de test si no existe) per plan:R7 / C2 (partial)
