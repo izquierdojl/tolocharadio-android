@@ -2,6 +2,7 @@ package com.izquierdojl.tolocharadio.feature.player
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
@@ -31,10 +33,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,7 +62,9 @@ fun StationInfoSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     val numberFormat = NumberFormat.getNumberInstance(LocalConfiguration.current.locales[0])
+    val shareLink = resolveCopyLink(station)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -174,6 +180,59 @@ fun StationInfoSheet(
                         },
                     )
                 }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // Enlace real para compartir/copiar (spec 0039, FR-004/FR-005).
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Enlace",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(4.dp))
+            if (shareLink != null) {
+                Text(
+                    shareLink,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = {
+                        runCatching {
+                            val send =
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, shareLink)
+                                }
+                            ContextCompat.startActivity(
+                                context,
+                                Intent.createChooser(send, "Compartir emisora"),
+                                null,
+                            )
+                        }
+                    }) {
+                        Text("Compartir")
+                    }
+                    OutlinedButton(onClick = {
+                        clipboard.setText(AnnotatedString(shareLink))
+                        Toast.makeText(context, "Enlace copiado", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Text("Copiar")
+                    }
+                }
+            } else {
+                Text(
+                    "Enlace no disponible",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             Spacer(Modifier.height(8.dp))

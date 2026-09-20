@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -28,11 +27,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -111,8 +107,6 @@ data class FavoriteListActions(
     val onRemove: (String) -> Unit,
     val onMove: (Int, Int) -> Unit,
     val onCommit: () -> Unit,
-    val onMoveUp: (String) -> Unit,
-    val onMoveDown: (String) -> Unit,
     val onRetry: () -> Unit,
     val onEditServer: () -> Unit = {},
 )
@@ -120,9 +114,7 @@ data class FavoriteListActions(
 /** Datos de pintado de una fila de favorita. */
 private data class FavoriteRowState(
     val fav: FavoriteDto,
-    val canMoveUp: Boolean,
-    val canMoveDown: Boolean,
-    val showReorderControls: Boolean,
+    val showDragHandle: Boolean,
     val isDragging: Boolean,
 )
 
@@ -131,8 +123,6 @@ private data class FavoriteRowActions(
     val onOpen: () -> Unit,
     val onPlay: () -> Unit,
     val onRemove: () -> Unit,
-    val onMoveUp: () -> Unit,
-    val onMoveDown: () -> Unit,
 )
 
 /** Callbacks del asa de arrastre. */
@@ -194,7 +184,7 @@ fun FavoritesScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { paddingValues ->
         Column(Modifier.fillMaxSize().padding(paddingValues)) {
-            SectionHeader(title = "Tus favoritos")
+            SectionHeader(title = "Tus favoritos", subtitle = "Tus emisoras guardadas, en tu orden.")
             FavoritesScreenContent(
                 state = ui,
                 mode = mode,
@@ -206,8 +196,6 @@ fun FavoritesScreen(
                         onRemove = viewModel::removeWithUndo,
                         onMove = viewModel::moveItem,
                         onCommit = viewModel::commitOrder,
-                        onMoveUp = { viewModel.moveBy(it, -1) },
-                        onMoveDown = { viewModel.moveBy(it, 1) },
                         onRetry = viewModel::refresh,
                         onEditServer = onEditServer,
                     ),
@@ -307,14 +295,12 @@ private fun FavoritesList(
         modifier = Modifier.onGloballyPositioned { columnTop = it.positionInWindow().y },
         contentPadding = PaddingValues(vertical = 8.dp),
     ) {
-        itemsIndexed(s.items, key = { _, fav -> fav.station.id }) { index, fav ->
+        itemsIndexed(s.items, key = { _, fav -> fav.station.id }) { _, fav ->
             FavoriteRow(
                 state =
                     FavoriteRowState(
                         fav = fav,
-                        canMoveUp = reorderEnabled && index > 0,
-                        canMoveDown = reorderEnabled && index < s.items.lastIndex,
-                        showReorderControls = reorderEnabled,
+                        showDragHandle = reorderEnabled,
                         isDragging = draggingId == fav.station.id,
                     ),
                 actions =
@@ -322,8 +308,6 @@ private fun FavoritesList(
                         onOpen = { actions.onStation(fav.station.id) },
                         onPlay = { actions.onPlay(fav) },
                         onRemove = { actions.onRemove(fav.station.id) },
-                        onMoveUp = { actions.onMoveUp(fav.station.id) },
-                        onMoveDown = { actions.onMoveDown(fav.station.id) },
                     ),
                 modifier = Modifier.animateItem(),
                 dragModifier =
@@ -387,7 +371,7 @@ private fun FavoriteRow(
         modifier = rowModifier,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (state.showReorderControls) {
+        if (state.showDragHandle) {
             Icon(
                 Icons.Filled.DragHandle,
                 contentDescription = "Reordenar",
@@ -432,48 +416,6 @@ private fun FavoriteRow(
             Icon(Icons.Filled.PlayArrow, contentDescription = "Reproducir")
         }
         FavoriteButton(isFavorite = true, onToggle = actions.onRemove)
-        if (state.showReorderControls) {
-            FavoriteRowMenu(
-                canMoveUp = state.canMoveUp,
-                canMoveDown = state.canMoveDown,
-                onMoveUp = actions.onMoveUp,
-                onMoveDown = actions.onMoveDown,
-            )
-        }
-    }
-}
-
-/** Menú accesible para mover una posición arriba/abajo (FR-012, FR-013). */
-@Composable
-private fun FavoriteRowMenu(
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
-) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { open = true }) {
-            Icon(Icons.Filled.MoreVert, contentDescription = "Más opciones")
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text("Mover arriba") },
-                enabled = canMoveUp,
-                onClick = {
-                    open = false
-                    onMoveUp()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("Mover abajo") },
-                enabled = canMoveDown,
-                onClick = {
-                    open = false
-                    onMoveDown()
-                },
-            )
-        }
     }
 }
 

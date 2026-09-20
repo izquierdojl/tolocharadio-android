@@ -78,7 +78,7 @@ fun ExploreScreen(
     val sheetState = rememberModalBottomSheetState()
 
     Column(Modifier.fillMaxSize()) {
-        SectionHeader(title = "Explorar")
+        SectionHeader(title = "Explorar", subtitle = "Descubre emisoras de todo el mundo.")
         OutlinedTextField(
             value = viewModel.filters.name,
             onValueChange = { viewModel.setFilters(viewModel.filters.copy(name = it)) },

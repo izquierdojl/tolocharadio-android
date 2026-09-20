@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -43,11 +42,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -73,7 +70,6 @@ fun MiniPlayer(
     val castState by viewModel.castState.collectAsState()
     val castConnectionState by viewModel.castPlayerManager.connectionState.collectAsState()
     val fullPlayerVisible by viewModel.fullPlayerVisible.collectAsState()
-    val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     var showStationInfo by remember { mutableStateOf(false) }
     var wasConnecting by remember { mutableStateOf(false) }
@@ -125,20 +121,10 @@ fun MiniPlayer(
                     onCancelLoad = viewModel::cancelLoad,
                     onRetry = viewModel::retry,
                 )
-                // En error el silencio se oculta (FR-003b); copiar sigue disponible.
+                // En error el silencio se oculta (FR-003b); el enlace se comparte desde la ficha (spec 0039).
                 if (error == null) {
                     PanelMuteButton(muted = muted, onToggleMute = viewModel::toggleMute)
                 }
-                Spacer(Modifier.width(4.dp))
-                PanelCopyButton(onCopy = {
-                    val link = resolveCopyLink(safeStation)
-                    if (link != null) {
-                        clipboard.setText(AnnotatedString(link))
-                        scope.launch { snackbar.showSnackbar("Enlace copiado") }
-                    } else {
-                        scope.launch { snackbar.showSnackbar("Enlace no disponible") }
-                    }
-                })
             }
         }
     }
@@ -277,14 +263,6 @@ private fun PanelMuteButton(
             if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
             contentDescription = if (muted) "Activar sonido" else "Silenciar",
         )
-    }
-}
-
-/** Copia la URL original del stream al portapapeles (FR-006). */
-@Composable
-private fun PanelCopyButton(onCopy: () -> Unit) {
-    IconButton(onClick = onCopy) {
-        Icon(Icons.Filled.ContentCopy, contentDescription = "Copiar enlace")
     }
 }
 
