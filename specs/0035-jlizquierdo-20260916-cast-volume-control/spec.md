@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-16
 
-**Status**: Ready
+**Status**: Done (2026-09-24; control de volumen del dispositivo entregado por la spec 0037 — la herramienta in-app de esta spec queda superseded por 0037 FR-004; validado en uso real)
 
 **Input**: User description: "Planificar que cuando el dispositivo se conecte al chromecast o dispositivo compatible, se pueda controlar el volumen del mismo. He probado como lo hace Pocketcast y muestra la barra de volumen del dispositivo ChromeCast. La app debería tener la misma funcionalidad."
 
@@ -283,9 +283,9 @@ Se probó la implementación en un **Redmi M2101K7AG** (Android 17/API 37) con u
 (slider de la app) no funcionan en este dispositivo/receptor. El eco de cambios externos
 (FR-003) SÍ funciona. La degradación de receptor sin soporte (FR-009) SÍ funciona.
 
-**Decisión pendiente**: Requiere investigación adicional (upgrade de media3, uso de
+**Decisión (resuelta)**: Requería investigación adicional (upgrade de media3, uso de
 `AudioManager` para interceptar teclas, o prueba con otros receptores para determinar si
-el problema es específico de este dispositivo/receptor).
+el problema era específico de este dispositivo/receptor). **Cerrada.**
 
 **Resolución (2026-09-18, spec 0037)**: RESUELTO con el upgrade a **media3 1.11.0**
 (commit `7496a53`): el `CastPlayer` nativo soporta volumen de dispositivo — teclas y barra
@@ -293,3 +293,7 @@ del sistema funcionan sin código propio, validado en `specs/0037-jlizquierdo-20
 §3.2. La parte de FR-001/FR-005 queda confirmada; FR-004 (slider) ya no aplica por el
 supersede de 0037 FR-004. Los hallazgos anteriores corresponden a media3 1.4.1 y quedan
 como registro histórico.
+
+**Validación (2026-09-24)**: confirmado en uso real durante varios días — el control de
+volumen contextual (teclas + barra del sistema) funciona de forma aceptable. Duda de
+seguimiento **cerrada**.

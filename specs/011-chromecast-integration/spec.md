@@ -138,6 +138,8 @@ Un usuario puede distinguir visualmente cuándo el audio se está reproduciendo 
   selección de ruta sin reabrir el diálogo del framework (ruta sensible, bugs 0031/0036). El
   framework ya reintenta solo vía `onSessionResuming`/`RECONNECTING` y el botón de Cast del
   sistema. Reintento manual = volver a tocar el botón de Cast.)*
+  *(Validado en uso real 2026-09-24: la conexión Cast funciona de forma aceptable y las fallas
+  son raras; la excepción se mantiene y la duda de seguimiento queda cerrada.)*
 
 ### Key Entities
 

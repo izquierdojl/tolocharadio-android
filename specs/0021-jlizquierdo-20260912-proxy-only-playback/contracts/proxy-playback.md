@@ -89,10 +89,10 @@ autenticado le responde 401 y el `LOAD` falla con `INVALID_REQUEST`.
   (el servicio solo lo registra al consumir el proxy); la reanudación en local
   (`resumeLocalPlayback`) sí vuelve al proxy con Bearer.
 - Esta excepción a FR-001/FR-010 y a la Constitución II (Bearer también en
-  Chromecast) queda registrada aquí con revisión abierta: si el servicio ofrece
-  algún día URLs firmadas para el receptor, Cast podrá volver a la fuente
-  autenticada.
-- **Fecha de revisión: 2026-10-09.** Si para entonces el servicio no ofrece URLs
-  firmadas/sesión embebible para el receptor, la excepción se mantiene vigente y
-  se revisa de nuevo en el siguiente ciclo; si las ofrece, se reintroduce Cast
-  autenticado y se cierra el bug 0026.
+  Chromecast) queda registrada aquí como **excepción cerrada y validada**
+  (2026-09-24): tras varios días de uso real la reproducción Cast con URL pública
+  funciona de forma aceptable, así que se acepta como diseño definitivo (deja de
+  ser deuda). Si en el futuro el servicio ofrece URLs firmadas/sesión embebible
+  para el receptor, se podrá reintroducir Cast autenticado de forma opcional.
+- **Revisión: cerrada 2026-09-24** (antes de la fecha prevista 2026-10-09). No se
+  requiere reintroducir la fuente autenticada.

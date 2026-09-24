@@ -72,13 +72,17 @@ El proxy `/api/v1/playback/{id}` exige `Authorization: Bearer <token>` (contrato
 
 ## Open Questions
 
-- [NEEDS CLARIFICATION: ¿alguna emisora del catálogo requiere UA/Referer para su URL pública?] 
+- ~~[NEEDS CLARIFICATION: ¿alguna emisora del catálogo requiere UA/Referer para su URL pública?]~~
+  **RESUELTO (2026-09-24)**: tras varios días de uso real no se ha detectado ninguna emisora del
+  catálogo que requiera UA/Referer para su URL pública; la reproducción Cast funciona de forma
+  aceptable. Pregunta cerrada.
 
 ## Deuda registrada (gobernanza)
 
-- **Estado**: excepción consciente, no un defecto a corregir a corto plazo. FR-001/FR-010 de
-  0021 y FR-004 de 0024 se enmiendan con esta excepción (Cast usa URL pública; el receptor no
-  puede enviar `Authorization`). Registrado en
+- **Estado**: **CERRADA Y VALIDADA (2026-09-24)** — la excepción consciente (Cast usa URL pública;
+  el receptor no puede enviar `Authorization`) se acepta como diseño definitivo tras validarse en
+  uso real. FR-001/FR-010 de 0021 y FR-004 de 0024 quedan enmendadas con esta excepción.
+  Registrado en
   `specs/0021-jlizquierdo-20260912-proxy-only-playback/contracts/proxy-playback.md` §9.
-- **Fecha de revisión**: **2026-10-09** (≤ 2 sprints). Si el servicio ofrece URLs firmadas o
-  sesión embebible para el receptor, se reintroduce Cast autenticado y se cierra esta deuda.
+- **Revisión**: cerrada 2026-09-24 (antes de la fecha prevista 2026-10-09). No se reintroduce la
+  fuente autenticada.
