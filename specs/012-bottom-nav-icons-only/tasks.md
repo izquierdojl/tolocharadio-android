@@ -181,3 +181,11 @@ With multiple developers:
 - Verify tests fail before implementing
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
+
+---
+
+## Phase 7: Convergence
+
+**Origen**: `/speckit.converge` 2026-09-20 — 8 FR, 3 historias y 5 principios revisados contra el código. Barra solo iconos con `contentDescription`, `SectionHeader` en las 5 secciones y tipografía/padding conformes; el tooltip de US1 nunca llegó a implementarse.
+
+- [ ] T016 Reevaluar e implementar (o anotar la renuncia de forma expresa) el tooltip de US1/AC3 en `app/src/main/java/com/izquierdojl/tolocharadio/core/ui/navigation/TolochaNavGraph.kt` (`NavigationBarItem` líneas 234–246): `spec.md` (Status y Assumptions) registra que T004 se asumió sin implementar por incompatibilidad de `TooltipBox` con Compose BOM 2025.01.00, pero `gradle/libs.versions.toml` ya usa **composeBom 2026.05.00** — verificar compatibilidad y envolver los 5 items con `TooltipBox`+`PlainTooltip` (o, si se descarta, marcar AC3/Assumption como no aplicable en `spec.md`) per US1/AC3 (missing) — MEDIUM

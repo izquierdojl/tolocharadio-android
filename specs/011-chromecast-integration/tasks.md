@@ -217,3 +217,12 @@ With multiple developers:
    - Developer B: US2 (connect + transfer) + US3 (disconnect)
    - Developer C: US4 (volume control)
 3. Stories complete and integrate independently
+
+---
+
+## Phase 9: Convergence
+
+**Origen**: `/speckit.converge` 2026-09-20 — 12 FR, 5 historias y 5 principios revisados contra el código. `MediaRouteButton`, Default Receiver, desactivación de media session/notificaciones del SDK, indicadores de dispositivo y reanudación local conformes; dos huecos.
+
+- [ ] T029 Anotar el supersede de la 0037 en `specs\011-chromecast-integration\spec.md`: marcar US4 (historia completa, AC2 "el control de volumen está disponible en el mini-player") y las tareas T019/T020 en `tasks.md` como SUPERSEDED por la spec 0037 FR-004 (la app ya no muestra control de volumen in-app; las teclas y la barra del sistema controlan la salida activa de forma nativa con media3 1.11.0) per US4/AC2 (contradicts) — MEDIUM
+- [ ] T030 Completar FR-012 en `app/src/main/java/com/izquierdojl/tolocharadio/feature\player\PlayerUi.kt` (`LaunchedEffect` de `castConnectionState`, ~línea 88): al mostrar "No se pudo conectar al dispositivo" añadir acción de reintento que vuelva a intentar la conexión al dispositivo (o, si se decide no ofrecerla, anotar la excepción en `specs\011-chromecast-integration\spec.md` FR-012) per FR-012 (partial) — MEDIUM

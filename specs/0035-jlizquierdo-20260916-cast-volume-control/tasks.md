@@ -234,3 +234,11 @@ T009  CastSessionVolumeDevice                  (archivo de producción nuevo)
   (`research.md` D3).
 - Verificar que cada test Red falla antes de implementar y que los gates quedan verdes antes
   de cada checkpoint.
+
+---
+
+## Phase 8: Convergence
+
+**Origen**: `/speckit.converge` 2026-09-20 — 15 FR, 9 SC, 4 historias, decisiones de `plan.md` y 5 principios de constitución revisados contra el código. Sin hallazgos funcionales: el silencio remoto (`CastSessionVolumeDevice`), el eco nativo, la vuelta a salida local y la notificación sin controles de volumen cumplen lo vigente; lo que la 0037 supersedó ya estaba fuera del código.
+
+- [ ] T028 Completar la anotación de supersede iniciada en T018: marcar en `specs/0035-jlizquierdo-20260916-cast-volume-control/spec.md` los restos que siguen describiendo el deslizador in-app eliminado — US3 (historia completa: pruebas, AC1/AC2), FR-005, FR-006, FR-008, SC-003, SC-004, SC-005, Key Entities "Estado de volumen expuesto a la UI" y los edge cases del slider — como SUPERSEDED por 0037 FR-004/FR-008 (la representación es ahora la barra del sistema), y sustituir la sección "On-Device Testing Findings (2026-09-16)" y su "Decisión pendiente" por una nota de resolución (media3 1.11.0 desde `7496a53`: volumen de dispositivo nativo, teclas y barra validados en 0037 quickstart §3.2) per plan: supersede donde corresponda (partial) — MEDIUM

@@ -206,3 +206,11 @@ Setup + Foundational → +US1 (demo) → +US2 (MVP) → +US3 (demo) → +US4 (ci
 - Caché Room solo-lectura; verdad = servidor; limpiar al logout/cambiar `baseUrl`.
 - Commit tras cada tarea o grupo lógico; parar en cada checkpoint y validar la historia.
 
+
+---
+
+## Phase 8: Convergence
+
+**Origen**: `/speckit.converge` 2026-09-20 — 11 FR, 4 historias y 5 principios revisados contra el código. Repo/cache/reorden con deshacer, estados y offline conformes; el único hueco es la referencia al flujo de Login retirado.
+
+- [ ] T033 Anotar el supersede de la 0024/Constitución II en `specs/003-favorites-management/spec.md`: marcar FR-007 ("sin sesión redirige a Login") y cualquier AC/assumption equivalente como SUPERSEDED por la spec 0024 (sin pantallas de login: arranque bloqueante `StartupGate.NeedsCredentials` y error de credenciales → Editar servidor) per FR-007 + Constitución II (contradicts) — MEDIUM

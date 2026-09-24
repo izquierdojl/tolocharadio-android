@@ -177,3 +177,12 @@ Task: "Crear PanelHelpers.kt en app/src/main/.../feature/player/PanelHelpers.kt"
 - Commits tras cada tarea o grupo lógico; copiar jamás incluye la URL del proxy
 - Evitar: tareas vagas, conflictos en el mismo fichero en paralelo, dependencias cruzadas que rompan la independencia
 
+
+---
+
+## Phase 7: Convergence
+
+**Origen**: `/speckit.converge` 2026-09-20 — 11 FR, 3 historias y 5 principios revisados contra el código. Panel, layout de error, mute, detener en full-player y VM compartido conformes; dos FRs quedaron obsoletos por specs posteriores sin anotar.
+
+- [ ] T020 Anotar el supersede de la 0039 en `specs/004-floating-player/spec.md`: marcar FR-003 ("exactamente tres acciones… y copiar enlace"), FR-006 (botón de copiar en el panel) y la parte de copiar de T013 en `tasks.md` como SUPERSEDED por la spec 0039 FR-003 (panel con solo play/pausa + silenciar en reproducción normal; compartir/copiar se ofrece en la ficha de emisora) per FR-003/FR-006 (contradicts) — MEDIUM
+- [ ] T021 Anotar el supersede de la 010 en `specs/004-floating-player/spec.md`: marcar FR-007 y T015 ("tocar la zona izquierda abre el reproductor completo") como SUPERSEDED por la spec 010 FR-004 (el tap abre `StationInfoSheet`; el full-player se abre desde el estado de reproducción/notificación) per FR-007 (contradicts) — MEDIUM

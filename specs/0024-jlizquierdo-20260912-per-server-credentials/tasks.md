@@ -238,3 +238,11 @@ Con dos personas: tras Setup+Foundational, una toma US1 y otra US2 (coordinar T0
 - Credenciales nunca en logs ni en URL; token de acceso solo en memoria; contraseña/refresh cifrados
 - La implementación NO puede empezar hasta T001 (enmienda constitucional 3.0.0)
 - Evitar: tareas vagas, conflictos de archivo y dependencias cruzadas que rompan la independencia de las historias
+
+---
+
+## Phase 7: Convergence
+
+**Origen**: `/speckit.converge` 2026-09-20 — 14 FR, 7 SC, 3 historias, 11 clarificaciones y 5 principios de constitución revisados contra el código. Sin hallazgos funcionales en la vía local (auto-login, refresh único, formulario unificado, arranque bloqueante, `Bearer` en proxy+HLS, `tolocha_tokens` fuera de backup, sin pantallas de login); el único hueco es la anotación de la excepción de Chromecast.
+
+- [ ] T048 Anotar la excepción de Chromecast ya registrada en `specs/0021-jlizquierdo-20260912-proxy-only-playback/contracts/proxy-playback.md` §9 (bug 0026) en `specs/0024-jlizquierdo-20260912-per-server-credentials/spec.md`: marcar en FR-004 y en la clarificación "el player/Cast vuelven a inyectar el token" que Chromecast usa la URL pública (el receptor no puede enviar `Authorization` → 401) con cross-ref a 0021 §9 y a `createForCast`/`castUriFor`; corregir la afirmación de T032 en `tasks.md`; y fijar en 0021 §9 o en `.specify/bugs/0026-*/assessment.md` la fecha de revisión de la deuda (Constitución, Governance: excepciones con issue y fecha de revisión, máx. 2 sprints) per FR-004 + Constitución II (contradicts) — MEDIUM

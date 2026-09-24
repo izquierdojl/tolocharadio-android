@@ -243,3 +243,12 @@ With multiple developers:
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+
+---
+
+## Phase 8: Convergence
+
+**Origen**: `/speckit.converge` 2026-09-20 — 8 FR, 3 historias y 5 principios de constitución revisados contra el código. El material existe (paquete `com.tolocharadio`, 5 tests unit, 3 androidTest, intent-filter), pero la ruta real del tap no navega y media feature no tiene consumidores en producción.
+
+- [ ] T048 Cablear la ruta de producción del tap de notificación en `app/src/main/java/com/izquierdojl/tolocharadio/MainActivity.kt` (`handleNotificationIntent`, líneas 133–146): en vez de solo `Log.d`, pasar los datos extraídos por `NotificationNavigation.extractNotificationData` al `NotificationViewModel`/`HandleNotificationTapUseCase` para que el router enfoque el contenido y navegue a la pantalla destino (reproductor para PLAYBACK, contenido para CONTENT, info para SYSTEM), conservando el estado de la app; añadir el test de regresión equivalente per FR-003/FR-004 (missing) — HIGH
+- [ ] T049 Resolver el código sin consumidores de producción que viola la Constitución V: decidir para `PlaybackNotificationBuilder`, `ContentNotificationBuilder` y `SystemNotificationBuilder` si la spec 0016/US3 exige productores reales (entonces cablear los eventos que los alimentan) o si se eliminan junto con cualquier `handler` que siga sin invocarse tras T048 (`LockScreenHandler`, `ForceStopHandler`, `NotificationPerformanceMonitor`, `InMemoryAppStateTracker` si sigue inalcanzable); actualizar los tests afectados per Constitución V (contradicts) — CRITICAL

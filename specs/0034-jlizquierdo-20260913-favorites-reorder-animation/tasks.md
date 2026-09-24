@@ -201,3 +201,12 @@ Task: "T013 [P] [US3] Tests unitarios de moveUp/moveDown en FavoritesViewModelTe
 - No hay cambios de backend, DTO ni esquema Room; no se añaden dependencias.
 - Verificar que cada test falla antes de implementar (Red-Green).
 - No commitear sin petición explícita del usuario (AGENTS.md).
+
+---
+
+## Phase 7: Convergence
+
+**Origen**: `/speckit.converge` 2026-09-20 — 18 FR, 6 SC, 3 historias, 4 clarificaciones, decisiones D1–D8 de `research.md` y 5 principios de constitución revisados contra el código. US1/US2 conformes (animación en vivo, lift, drag inmediato, auto-scroll proporcional, háptica, gate offline/última favorita/cuadrícula) y sin regresiones del menú eliminado por la 0039.
+
+- [ ] T024 Completar el manejo de fallo de guardado de FR-010 en `app/src/main/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesViewModel.kt` (`commitOrder`, líneas 246–253): diferenciar el mensaje según la causa (conflicto entre dispositivos → texto actual; error recuperable de red → aviso de fallo de guardado con acción de reintento que reintente la permutación pendiente) y añadir el caso de test equivalente en `app/src/test/java/com/izquierdojl/tolocharadio/feature/favorites/FavoritesViewModelTest.kt` per FR-010 (partial) — MEDIUM
+- [ ] T025 Anotar el supersede de la 0039 en `specs/0034-jlizquierdo-20260913-favorites-reorder-animation/spec.md`: marcar US3 (historia completa), FR-012, FR-013, SC-005, los edge cases que mencionan el menú (lista de una sola favorita, sin conexión) y la clarificación Q3 como SUPERSEDED por la spec 0039 FR-001 (eliminación completa del menú de mover; el arrastre es la única vía) per plan: supersede 0039 (contradicts) — MEDIUM

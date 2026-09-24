@@ -272,3 +272,11 @@ With multiple developers after Phase 2 completes:
 - Phase 7 (Polish): 5 tasks, sin etiqueta de historia
 - Marcadores [P]: solo en tasks de ficheros distintos sin dependencias pendientes
 
+
+---
+
+## Phase 8: Convergence
+
+**Origen**: `/speckit.converge` 2026-09-20 — 12 FR, 5 historias y 5 principios revisados contra el código. API/Room/Repo/UseCases/VM/pantalla con sus tests, reproducción por proxy, estado offline y paridad de navegación conformes; el único hueco es la referencia al flujo de Login retirado.
+
+- [ ] T036 Anotar el supersede de la 0024/Constitución II en `specs/006-custom-stations/spec.md`: marcar FR-008 ("sin sesión redirige a Login"), US5 AC2 (línea 95), SC-006 (línea 140) y el assumption de la línea 145 (login/registro de la 001, sección Perfil) como SUPERSEDED por la spec 0024 (sin pantallas de login: arranque bloqueante `StartupGate.NeedsCredentials` y error de credenciales → Editar servidor) per FR-008 + Constitución II (contradicts) — MEDIUM

@@ -145,3 +145,11 @@
 - MVP incremental: Phase 1+2+US1 (app conecta) → +US2 (sesión) → +US4 (catálogo) → +US5 (radio suena) → +US3/US6.
 - En cada historia: tests PRIMERO (deben FALLAR), luego DTOs/casos de uso, luego UI, luego integración; commit por tarea.
 
+
+---
+
+## Phase 10: Convergence
+
+**Origen**: `/speckit.converge` 2026-09-20 — 14 FR, 6 historias y 5 principios revisados contra el código. Las partes vigentes (catálogo público, Media3, mini-player, mapeo de errores, applicationId, tests) ya están verificadas en las convergences de 0022/0024/0010/0013; el hueco está en la nota de gobernanza, desactualizada tras la constitución 3.0.0.
+
+- [ ] T036 Actualizar la nota de gobernanza de `specs/001-auth-explore-base/spec.md` (línea 9): precisar que la constitución 3.0.0 y la spec 0024 **reintrodujeron** las credenciales por servidor (email/contraseña cifrada) con login automático JWT/`Bearer` — incluida la reproducción por proxy—, y que lo sigue retirado es únicamente el modelo de UI (pantallas de login/registro/Perfil, `/users/me` y registro/recuperación/logout desde la app); matizar FR-003/FR-004/FR-005/FR-010 en consecuencia per plan: gobernanza 0024 (partial) — MEDIUM
