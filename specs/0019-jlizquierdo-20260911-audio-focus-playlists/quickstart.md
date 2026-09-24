@@ -85,7 +85,7 @@ Ninguno debe provocar cierre inesperado (SC-006).
 
 ## Criterios de "hecho"
 
-- [ ] `testDebugUnitTest`, `detekt`, `ktlintCheck` y `lintDebug` en verde.
-- [ ] Escenarios 1-5 verificados en dispositivo/emulador.
-- [ ] Sin regresiones en emisoras directas (SC-005).
-- [ ] Deuda registrada: historial server-side para emisoras de lista (Complexity Tracking del plan).
+- [X] `testDebugUnitTest`, `detekt`, `ktlintCheck` y `lintDebug` en verde.
+- [X] Escenarios 1-5 verificados en dispositivo/emulador.
+- [X] Sin regresiones en emisoras directas (SC-005).
+- [X] Deuda registrada: historial server-side para emisoras de lista (Complexity Tracking del plan). **Saldada por la spec 0021** (las listas vuelven a reproducirse por el proxy autenticado, restituyendo el historial server-side).

@@ -28,9 +28,9 @@ Guía de validación end-to-end (SC-001–SC-004). Sin código nuevo; solo build
 
 ## Criterio de aceptación
 
-- [ ] SC-001: 100% del emblema visible en circular en ≥ 2 densidades.
-- [ ] SC-002: sin recortes en ≥ 3 formas (circular, squircle, cuadrada).
-- [ ] SC-003: 0 regresiones en la matriz circular/squircle/gota/cuadrada.
-- [ ] SC-004: verificación completa < 10 minutos.
+- [X] SC-001: 100% del emblema visible en circular en ≥ 2 densidades.
+- [X] SC-002: sin recortes en ≥ 3 formas (circular, squircle, cuadrada).
+- [X] SC-003: 0 regresiones en la matriz circular/squircle/gota/cuadrada.
+- [X] SC-004: verificación completa < 10 minutos.
 
 Detalles de composición y tolerancias: ver [data-model.md](data-model.md); decisiones de geometría y regeneración: ver [research.md](research.md).

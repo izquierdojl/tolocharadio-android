@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-13
 
-**Status**: Draft
+**Status**: Done (2026-09-24; todo verificado en dispositivo por el usuario, incluida la validación de quickstart VS-1..VS-6)
 
 **Input**: User description: "En Dialogo acerca de, que tome información de versión real, ahora siempre pone 1.0, e incluye algo más de información"
 

@@ -119,7 +119,8 @@ description: "Task list for Diálogo Acerca de con versión real"
 
 - [X] T019 [P] Test instrumentado del flujo crítico (abrir diálogo → pulsar copiar → aparece snackbar y el diálogo sigue abierto), de la presencia del enlace "Ver repositorio" (FR-004) y de la supervivencia del diálogo a la rotación (FR-008, SC-005) en `app/src/androidTest/java/com/izquierdojl/tolocharadio/feature/settings/AppInfoDialogTest.kt`
 - [X] T020 Ejecutar gates y corregir: `.\gradlew.bat testDebugUnitTest detekt ktlintCheck lintDebug` (actualizar `detekt-baseline.xml` solo si aparece deuda nueva justificada)
-- [ ] T021 Ejecutar la validación de `quickstart.md` (VS-1 a VS-6) en un dispositivo/emulador
+- [X] T021 Ejecutar la validación de `quickstart.md` (VS-1 a VS-6) en un dispositivo/emulador
+  *(Cerrada 2026-09-24: validada por el usuario en uso real.)*
 
 ---
 

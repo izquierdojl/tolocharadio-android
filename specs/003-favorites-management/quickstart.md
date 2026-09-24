@@ -31,6 +31,6 @@
 
 ## Criterios de aceptación exprés
 
-- [ ] SC-001 < 2 s, SC-003 coherencia 100 %, SC-004 orden persiste, SC-005 audio continuo, SC-006 reversión < 2 s.
-- [ ] Cero XML nuevo, cero dependencias nuevas, Detekt/ktlint/Lint en verde, migración Room v1→v2 con test.
+- [X] SC-001 < 2 s, SC-003 coherencia 100 %, SC-004 orden persiste, SC-005 audio continuo, SC-006 reversión < 2 s.
+- [X] Cero XML nuevo, cero dependencias nuevas, Detekt/ktlint/Lint en verde, migración Room v1→v2 con test.
 
