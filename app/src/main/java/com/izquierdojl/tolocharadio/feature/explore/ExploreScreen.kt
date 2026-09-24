@@ -171,7 +171,7 @@ fun ExploreScreen(
                 TextButton(onClick = {
                     viewModel.setFilters(ExploreFilters(name = viewModel.filters.name))
                 }) {
-                    Text("Limpiar")
+                    Text("Limpiar filtros")
                 }
             }
         }

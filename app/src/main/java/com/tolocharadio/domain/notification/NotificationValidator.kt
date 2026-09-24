@@ -20,15 +20,6 @@ class NotificationValidator
         }
 
         /**
-         * Validates notification channel configuration.
-         * @param channelConfig The channel configuration to validate
-         * @return true if the channel configuration is valid, false otherwise
-         */
-        fun validateChannelConfig(channelConfig: NotificationChannelConfig): Boolean {
-            return channelConfig.isValid()
-        }
-
-        /**
          * Validates that the notification contains only public information.
          * @param notificationData The notification data to validate
          * @return true if the notification contains only public information, false otherwise

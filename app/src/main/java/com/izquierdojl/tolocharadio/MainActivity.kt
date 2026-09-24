@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.izquierdojl.tolocharadio.core.session.SessionManager
 import com.izquierdojl.tolocharadio.core.session.SessionState
@@ -29,7 +30,9 @@ import com.izquierdojl.tolocharadio.data.local.servers.MigrationHelper
 import com.izquierdojl.tolocharadio.data.repo.servers.ServerRepository
 import com.izquierdojl.tolocharadio.domain.auth.AuthenticateServerUseCase
 import com.izquierdojl.tolocharadio.domain.servers.StartupGate
+import com.tolocharadio.domain.notification.AppState
 import com.tolocharadio.ui.notification.NotificationNavigation
+import com.tolocharadio.ui.notification.NotificationViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -59,6 +62,11 @@ class MainActivity : FragmentActivity() {
     lateinit var pendingShortcutHolder: PendingShortcutHolder
 
     private val notificationNavigation = NotificationNavigation()
+
+    /** VM de notificaciones a ámbito de Activity (spec 0016, T048). */
+    private val notificationVm: NotificationViewModel by lazy {
+        ViewModelProvider(this)[NotificationViewModel::class.java]
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -124,24 +132,35 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        notificationVm.updateAppState(AppState.FOREGROUND)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        notificationVm.updateAppState(AppState.BACKGROUND)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleNotificationIntent(intent)
         handleShortcutIntent(intent)
     }
 
+    /**
+     * Ruta de producción del tap de notificación (spec 0016, FR-001–FR-004).
+     * La notificación multimedia de Media3 llega con la acción pero sin extras
+     * (US2/AC1): se trata como PLAYBACK para enfocar el reproductor. Con extras
+     * completos se delega en el caso de uso (validación, estado de app, router).
+     */
     private fun handleNotificationIntent(intent: Intent?) {
-        // Handle custom notification tap action
-        if (intent?.action == NotificationNavigation.NOTIFICATION_TAP_ACTION) {
-            val notificationData = notificationNavigation.extractNotificationData(intent)
-            if (notificationData != null) {
-                // Log the notification tap
-                android.util.Log.d(
-                    "MainActivity",
-                    "Notification tapped: ${notificationData.type} - ${notificationData.title}",
-                )
-                // The notification system will handle the navigation
-            }
+        if (intent?.action != NotificationNavigation.NOTIFICATION_TAP_ACTION) return
+        val data = notificationNavigation.extractNotificationData(intent)
+        if (data != null) {
+            notificationVm.handleNotificationTap(data)
+        } else {
+            notificationVm.handlePlaybackNotificationTap()
         }
     }
 

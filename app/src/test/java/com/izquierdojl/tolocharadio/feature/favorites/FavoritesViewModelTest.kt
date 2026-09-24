@@ -143,7 +143,39 @@ class FavoritesViewModelTest {
                 advanceUntilIdle()
                 val state = v.ui.value as FavoritesUiState.Content
                 assertEquals(listOf("u1", "u2"), state.items.map { it.station.id })
-                assertTrue(awaitItem().isNotBlank())
+                val msg = awaitItem()
+                assertEquals("No se pudo guardar el orden.", msg.text)
+                assertEquals("Reintentar", msg.actionLabel)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `reintento tras fallo recuperable vuelve a intentar el guardado (FR-010)`() =
+        runTest {
+            favoritesFlow.value = twoFavorites()
+            coEvery { observe() } returns ApiResult.Ok(FavoritesResult(twoFavorites(), offline = false))
+            var calls = 0
+            coEvery { reorder(any(), any()) } answers {
+                calls++
+                if (calls == 1) ApiResult.Err(DomainError.Unavailable("down")) else ApiResult.Ok(Unit)
+            }
+            val v = FavoritesViewModel(observe, toggle, reorder, repo)
+            advanceUntilIdle()
+
+            v.messages.test {
+                v.moveItem(1, 0)
+                v.commitOrder()
+                advanceUntilIdle()
+                val msg = awaitItem()
+                assertEquals("Reintentar", msg.actionLabel)
+                assertNotNull(msg.onAction)
+                msg.onAction?.invoke()
+                advanceUntilIdle()
+                assertEquals(2, calls)
+                val state = v.ui.value as FavoritesUiState.Content
+                assertFalse(state.savingOrder)
+                cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -163,7 +195,10 @@ class FavoritesViewModelTest {
                 advanceUntilIdle()
                 val state = v.ui.value as FavoritesUiState.Content
                 assertEquals(listOf("u1", "u2"), state.items.map { it.station.id })
-                assertTrue(awaitItem().isNotBlank())
+                val msg = awaitItem()
+                assertEquals("El orden cambió en otro dispositivo. Mostrando el guardado.", msg.text)
+                assertEquals(null, msg.actionLabel)
+                cancelAndIgnoreRemainingEvents()
             }
         }
 }

@@ -15,7 +15,6 @@ class NotificationHandler
         @ApplicationContext private val context: Context,
     ) {
         private val lockScreenHandler = LockScreenHandler(context)
-        private val forceStopHandler = ForceStopHandler(context)
         private val unavailableContentHandler = UnavailableContentHandler()
         private val notificationValidator = NotificationValidator()
 
@@ -79,29 +78,5 @@ class NotificationHandler
         fun canShowNotification(notificationData: NotificationData): Boolean {
             return notificationValidator.validate(notificationData) &&
                 notificationValidator.validatePublicInfoOnly(notificationData)
-        }
-
-        /**
-         * Gets the lock screen handler.
-         * @return The lock screen handler
-         */
-        fun getLockScreenHandler(): LockScreenHandler {
-            return lockScreenHandler
-        }
-
-        /**
-         * Gets the force stop handler.
-         * @return The force stop handler
-         */
-        fun getForceStopHandler(): ForceStopHandler {
-            return forceStopHandler
-        }
-
-        /**
-         * Gets the unavailable content handler.
-         * @return The unavailable content handler
-         */
-        fun getUnavailableContentHandler(): UnavailableContentHandler {
-            return unavailableContentHandler
         }
     }

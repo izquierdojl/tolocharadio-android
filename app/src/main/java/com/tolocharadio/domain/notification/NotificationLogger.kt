@@ -9,18 +9,6 @@ object NotificationLogger {
     private const val TAG = "NotificationHandler"
 
     /**
-     * Logs notification creation.
-     * @param type The notification type
-     * @param title The notification title
-     */
-    fun logNotificationCreated(
-        type: NotificationType,
-        title: String,
-    ) {
-        Log.d(TAG, "Notification created: type=$type, title=$title")
-    }
-
-    /**
      * Logs notification tap.
      * @param type The notification type
      * @param action The notification action

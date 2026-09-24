@@ -1,6 +1,5 @@
 package com.tolocharadio.domain.notification
 
-import android.app.NotificationManager
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -42,45 +41,6 @@ class NotificationValidatorTest {
             )
 
         assertFalse(validator.validate(notificationData))
-    }
-
-    @Test
-    fun `valid channel config should pass validation`() {
-        val channelConfig =
-            NotificationChannelConfig(
-                id = "test_channel",
-                name = "Test Channel",
-                description = "Test channel description",
-                importance = NotificationManager.IMPORTANCE_DEFAULT,
-            )
-
-        assertTrue(validator.validateChannelConfig(channelConfig))
-    }
-
-    @Test
-    fun `channel config with empty id should fail validation`() {
-        val channelConfig =
-            NotificationChannelConfig(
-                id = "",
-                name = "Test Channel",
-                description = "Test channel description",
-                importance = NotificationManager.IMPORTANCE_DEFAULT,
-            )
-
-        assertFalse(validator.validateChannelConfig(channelConfig))
-    }
-
-    @Test
-    fun `channel config with invalid importance should fail validation`() {
-        val channelConfig =
-            NotificationChannelConfig(
-                id = "test_channel",
-                name = "Test Channel",
-                description = "Test channel description",
-                importance = -1,
-            )
-
-        assertFalse(validator.validateChannelConfig(channelConfig))
     }
 
     @Test

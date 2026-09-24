@@ -5,7 +5,6 @@ import android.app.Application
 import android.app.Application.ActivityLifecycleCallbacks
 import android.os.Bundle
 import com.izquierdojl.tolocharadio.core.shortcuts.ShortcutSyncCoordinator
-import com.tolocharadio.ui.notification.NotificationChannelManager
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -17,8 +16,6 @@ class TolochaApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // Create notification channels
-        NotificationChannelManager(this).createAllChannels()
         // Sincroniza los accesos directos del icono con el historial (spec 0018).
         shortcutSyncCoordinator.start()
         registerActivityLifecycleCallbacks(ForegroundShortcutSync(shortcutSyncCoordinator))

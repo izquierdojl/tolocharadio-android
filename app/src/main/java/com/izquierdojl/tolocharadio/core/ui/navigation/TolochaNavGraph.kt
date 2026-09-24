@@ -17,11 +17,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -65,6 +71,10 @@ import com.izquierdojl.tolocharadio.feature.servers.ServerFormScreen
 import com.izquierdojl.tolocharadio.feature.servers.ServerListScreen
 import com.izquierdojl.tolocharadio.feature.settings.SettingsScreen
 import com.izquierdojl.tolocharadio.feature.shortcuts.ShortcutLaunchViewModel
+import com.tolocharadio.domain.notification.NotificationAction
+import com.tolocharadio.domain.notification.NotificationLogger
+import com.tolocharadio.ui.notification.NotificationState
+import com.tolocharadio.ui.notification.NotificationViewModel
 
 private data class BottomDest(val route: String, val label: String, val icon: ImageVector)
 
@@ -130,6 +140,39 @@ fun TolochaNavGraph(
                 shortcutVm.consume()
                 snackbar.showSnackbar(resolution.message)
             }
+        }
+    }
+
+    // Tap de notificación: enfoca reproductor, contenido o home (spec 0016, FR-003/FR-004).
+    val notificationVm: NotificationViewModel = hiltViewModel(context)
+    val notificationNav by notificationVm.notificationState.collectAsState()
+    LaunchedEffect(notificationNav) {
+        when (val s = notificationNav) {
+            is NotificationState.Navigate -> {
+                when (s.action) {
+                    NotificationAction.OPEN_PLAYER -> playerVm.openFullPlayer()
+                    NotificationAction.OPEN_CONTENT,
+                    NotificationAction.OPEN_INFO,
+                    ->
+                        if (s.contentId != null) {
+                            navController.navigate(Routes.stationDetail(s.contentId))
+                        } else {
+                            navController.navigate(Routes.HOME) { launchSingleTop = true }
+                        }
+                    NotificationAction.OPEN_MAIN ->
+                        navController.navigate(Routes.HOME) {
+                            popUpTo(Routes.HOME) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                }
+                notificationVm.resetState()
+            }
+            is NotificationState.Error -> {
+                NotificationLogger.logError("Error de navegación por notificación: ${s.message}")
+                snackbar.showSnackbar("No se pudo abrir la notificación")
+                notificationVm.resetState()
+            }
+            else -> Unit
         }
     }
 
@@ -231,19 +274,32 @@ fun TolochaNavGraph(
                     MiniPlayer(viewModel = playerVm, snackbar = snackbar)
                     NavigationBar {
                         BOTTOM_DESTS.forEach { dest ->
-                            NavigationBarItem(
-                                selected =
-                                    currentRoute == dest.route ||
-                                        (dest.route == Routes.EXPLORE && currentRoute == Routes.STATION_DETAIL),
-                                onClick = {
-                                    navController.navigate(dest.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+                            val tooltipState = rememberTooltipState()
+                            // Tooltip de accesibilidad al mantener pulsado (0012, US1/AC3).
+                            TooltipBox(
+                                positionProvider =
+                                    TooltipDefaults.rememberTooltipPositionProvider(
+                                        TooltipAnchorPosition.Above,
+                                    ),
+                                tooltip = {
+                                    PlainTooltip { Text(dest.label) }
                                 },
-                                icon = { Icon(dest.icon, contentDescription = dest.label) },
-                            )
+                                state = tooltipState,
+                            ) {
+                                NavigationBarItem(
+                                    selected =
+                                        currentRoute == dest.route ||
+                                            (dest.route == Routes.EXPLORE && currentRoute == Routes.STATION_DETAIL),
+                                    onClick = {
+                                        navController.navigate(dest.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = { Icon(dest.icon, contentDescription = dest.label) },
+                                )
+                            }
                         }
                     }
                 }

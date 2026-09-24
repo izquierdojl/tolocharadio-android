@@ -28,6 +28,16 @@ const val UNDO_TIMEOUT_MS = 10_000L
 /** Favorita eliminada pendiente de deshacer, con su posición original. */
 data class PendingUndo(val favorite: FavoriteDto, val index: Int)
 
+/**
+ * Mensaje transitorio para el snackbar, con acción opcional cuando el
+ * error es recuperable (p. ej. reintento del guardado de orden, FR-010).
+ */
+data class FavoritesMessage(
+    val text: String,
+    val actionLabel: String? = null,
+    val onAction: (() -> Unit)? = null,
+)
+
 /** UI de Favoritos: lista del servidor, vacío, error y progreso de orden. */
 sealed interface FavoritesUiState {
     data object Loading : FavoritesUiState
@@ -54,6 +64,7 @@ sealed interface FavoritesUiState {
  * gana el servidor (aclaración 2026-09-05).
  */
 @HiltViewModel
+@Suppress("TooManyFunctions")
 class FavoritesViewModel
     @Inject
     constructor(
@@ -65,14 +76,18 @@ class FavoritesViewModel
         private val _ui = MutableStateFlow<FavoritesUiState>(FavoritesUiState.Loading)
         val ui: StateFlow<FavoritesUiState> = _ui.asStateFlow()
 
-        private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 1)
-        val messages: SharedFlow<String> = _messages.asSharedFlow()
+        private val _messages = MutableSharedFlow<FavoritesMessage>(extraBufferCapacity = 1)
+        val messages: SharedFlow<FavoritesMessage> = _messages.asSharedFlow()
 
         /** Ventana de Deshacer (ms). Mutable para tests; en producción [UNDO_TIMEOUT_MS]. */
         var undoTimeoutMs: Long = UNDO_TIMEOUT_MS
 
         /** Último orden confirmado por el servidor (reversión y permutación). */
         private var confirmed: List<FavoriteDto> = emptyList()
+
+        /** Orden intentado que falló de forma recuperable (reintento, FR-010). */
+        private var pendingOrder: List<String>? = null
+
         private var undoJob: Job? = null
 
         /** Carga en curso: evita duplicar peticiones al reanudar. */
@@ -140,7 +155,7 @@ class FavoritesViewModel
                                         isAuthError = r.error is DomainError.Unauthorized,
                                     )
                             } else {
-                                _messages.tryEmit(r.error.userMessage())
+                                _messages.tryEmit(FavoritesMessage(r.error.userMessage()))
                             }
                         }
                     }
@@ -163,7 +178,7 @@ class FavoritesViewModel
             viewModelScope.launch {
                 when (val r = toggle(stationId, false)) {
                     is ApiResult.Ok -> refresh()
-                    is ApiResult.Err -> _messages.tryEmit(r.error.userMessage())
+                    is ApiResult.Err -> _messages.tryEmit(FavoritesMessage(r.error.userMessage()))
                 }
             }
         }
@@ -191,7 +206,7 @@ class FavoritesViewModel
                         // Reversión: vuelve a su sitio y avisa.
                         cancelUndo()
                         _ui.value = content
-                        _messages.tryEmit(r.error.userMessage())
+                        _messages.tryEmit(FavoritesMessage(r.error.userMessage()))
                     }
                 }
             }
@@ -212,7 +227,7 @@ class FavoritesViewModel
                         _ui.value = content.copy(items = items, pendingUndo = null)
                     }
                     is ApiResult.Err -> {
-                        _messages.tryEmit(r.error.userMessage())
+                        _messages.tryEmit(FavoritesMessage(r.error.userMessage()))
                         refresh()
                     }
                 }
@@ -233,26 +248,63 @@ class FavoritesViewModel
         /** Guarda el orden actual en el servidor (autoguardado al soltar). */
         fun commitOrder() {
             val content = _ui.value as? FavoritesUiState.Content ?: return
-            val next = content.items.map { it.station.id }
+            val intended = content.items
+            val next = intended.map { it.station.id }
             if (next == confirmed.map { it.station.id }) return
             _ui.value = content.copy(savingOrder = true)
-            viewModelScope.launch {
-                when (val r = reorder(confirmed.map { it.station.id }, next)) {
-                    is ApiResult.Ok -> {
-                        confirmed = content.items
-                        _ui.value = content.copy(savingOrder = false)
-                        refresh()
+            viewModelScope.launch { persistOrder(next, intended) }
+        }
+
+        /**
+         * Envía la permutación al servidor. Tras un fallo recuperable se
+         * conserva [pendingOrder] para el reintento del snackbar (FR-010);
+         * en conflicto entre dispositivos gana el servidor (FR-011).
+         */
+        private suspend fun persistOrder(
+            next: List<String>,
+            intended: List<FavoriteDto>,
+        ) {
+            when (val r = reorder(confirmed.map { it.station.id }, next)) {
+                is ApiResult.Ok -> {
+                    confirmed = intended
+                    pendingOrder = null
+                    (_ui.value as? FavoritesUiState.Content)?.let { _ui.value = it.copy(savingOrder = false) }
+                    refresh()
+                }
+                is ApiResult.Err -> {
+                    val conflict = r.error is DomainError.Conflict
+                    pendingOrder = if (conflict) null else next
+                    (_ui.value as? FavoritesUiState.Content)?.let {
+                        _ui.value = it.copy(items = confirmed, savingOrder = false)
                     }
-                    is ApiResult.Err -> {
-                        // Gana el servidor: se muestra su orden con aviso.
-                        _ui.value = content.copy(items = confirmed, savingOrder = false)
-                        _messages.tryEmit(
-                            "El orden cambió en otro dispositivo. Mostrando el guardado.",
-                        )
-                        refresh()
-                    }
+                    _messages.tryEmit(
+                        if (conflict) {
+                            FavoritesMessage("El orden cambió en otro dispositivo. Mostrando el guardado.")
+                        } else {
+                            FavoritesMessage(
+                                text = "No se pudo guardar el orden.",
+                                actionLabel = "Reintentar",
+                                onAction = ::retryCommitOrder,
+                            )
+                        },
+                    )
+                    refresh()
                 }
             }
+        }
+
+        /** Reintenta guardar el orden tras un fallo recuperable (FR-010). */
+        private fun retryCommitOrder() {
+            val target = pendingOrder ?: return
+            val content = _ui.value as? FavoritesUiState.Content ?: return
+            val byId = content.items.associateBy { it.station.id }
+            if (byId.keys != target.toSet()) {
+                // La lista cambió desde el fallo: se descarta la reintención.
+                pendingOrder = null
+                return
+            }
+            _ui.value = content.copy(items = target.mapNotNull { byId[it] })
+            commitOrder()
         }
 
         private fun cancelUndo() {

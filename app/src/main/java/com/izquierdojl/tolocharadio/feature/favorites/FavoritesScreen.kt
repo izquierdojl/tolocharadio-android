@@ -170,7 +170,14 @@ fun FavoritesScreen(
         }
     }
     LaunchedEffect(Unit) {
-        viewModel.messages.collect { snackbar.showSnackbar(it) }
+        viewModel.messages.collect { msg ->
+            if (msg.actionLabel != null) {
+                val result = snackbar.showSnackbar(msg.text, actionLabel = msg.actionLabel)
+                if (result == SnackbarResult.ActionPerformed) msg.onAction?.invoke()
+            } else {
+                snackbar.showSnackbar(msg.text)
+            }
+        }
     }
     // Al volver del reposo, refresca con la sesión/red restauradas.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
