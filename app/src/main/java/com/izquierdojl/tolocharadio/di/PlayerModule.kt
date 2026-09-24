@@ -18,7 +18,7 @@ import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import javax.inject.Singleton
 
-/** ExoPlayer compartido + datasource del proxy del servidor (sin autenticación). */
+/** ExoPlayer compartido + datasource del proxy autenticado del servidor. */
 @Module
 @InstallIn(SingletonComponent::class)
 object PlayerModule {

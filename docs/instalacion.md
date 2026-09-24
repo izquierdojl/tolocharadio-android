@@ -16,6 +16,7 @@ Para publicar tus propias releases (firma con keystore, secrets de GitHub y vers
 - **Android SDK** con `compileSdk`/`targetSdk` **37**; `minSdk = 26`.
 - **Gradle** mediante el wrapper incluido (`gradlew`).
 - Una instancia **TolochaRadio** con login email/contraseña (JWT + refresh), por ejemplo `https://radio.mi-dominio.com`.
+- La instancia debe estar **actualizada** (con resolución de listas `m3u`/`m3u8`/`pls` en el proxy de playback): las emisoras de lista solo suenan contra instancias que ya resuelven listas en servidor (spec 0021).
 
 ### Comandos
 

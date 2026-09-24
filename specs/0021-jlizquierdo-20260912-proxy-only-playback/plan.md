@@ -109,3 +109,9 @@ app/src/test/java/com/izquierdojl/tolocharadio/
 | — | — | — |
 
 **Deuda saldada (gobernanza)**: [issue #4](https://github.com/izquierdojl/tolocharadio-android/issues/4) — "Resolver listas m3u/m3u8/pls en el proxy para restaurar historial". El backend ya lo resolvió (`resolve-playlist-proxy`); este cambio retira la excepción en el cliente y restaura el historial server-side. Actualizar la Complexity Tracking de la spec 0019 y cerrar el issue al implementar.
+
+**Excepción registrada en convergencia (2026-09-20)**: Chromecast no usa el proxy
+autenticado sino la URL pública de la emisora (`createForCast`/`castUriFor`,
+bug 0026: el receptor no puede enviar `Authorization` y el proxy responde 401).
+Excepción a FR-001/FR-010 y a la Constitución II, documentada en
+`contracts/proxy-playback.md` §9. La reproducción local sigue 100% proxy-only.

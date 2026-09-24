@@ -14,7 +14,7 @@ Contrato de reproducción del cliente contra el servicio ya actualizado (repo `t
 
 ## 2. Reglas del cliente (MUST)
 
-1. Toda reproducción usa `streamUrl(baseUrl, stationId)` como URI; nunca la `station.url` del proveedor (FR-001).
+1. Toda reproducción **local** usa `streamUrl(baseUrl, stationId)` como URI; nunca la `station.url` del proveedor (FR-001). **Excepción**: Chromecast usa la URL pública — ver §9.
 2. El cliente no descarga, parsea ni resuelve listas (FR-002).
 3. El motor se elige por extensión de `station.url` (`.m3u8` → HLS), con URI siempre proxy (FR-003):
    - HLS → `MediaItem.mimeType = MimeTypes.APPLICATION_M3U8` + `HlsMediaSource.Factory(authDataSource)`.
@@ -50,7 +50,7 @@ Todos los errores conservan botón de reintento y no cierran la app (FR-006, SC-
 
 ## 5. Autenticación y seguridad
 
-- `AuthDataSourceFactory` fija `Authorization: Bearer <access>` en cada `DataSource` que crea; se usa para stream principal y subrecursos HLS (FR-004).
+- `PlayerDataSourceFactory` fija `Authorization: Bearer <access>` en cada `DataSource` que crea; se usa para stream principal y subrecursos HLS (FR-004).
 - El token vive en memoria y se lee con `SessionManager.accessTokenNow()` al crear el datasource; un refresh se refleja en peticiones posteriores.
 - La firma `u/d/s` de los subrecursos la genera el servicio (anti-SSRF); el cliente la transporta sin interpretarla.
 - HTTPS-only; la app no introduce URLs de proveedores (FR-011).
@@ -74,3 +74,21 @@ Todos los errores conservan botón de reintento y no cierran la app (FR-006, SC-
 | US2 (HLS continuo por proxy) | `StationMediaItemFactoryTest` + quickstart §2 |
 | No regresión directa (SC-005) | batería existente de reproducción |
 | Retirada de código (SC-007) | sin referencias a parser/fetcher/cola/directo |
+
+## 9. Excepción registrada: Chromecast (converge 2026-09-20, bug 0026)
+
+FR-001/FR-010 pedían que Cast usara la misma fuente autenticada que la
+reproducción local. Es técnicamente imposible: el receptor Chromecast descarga
+la URL por su cuenta y **no puede enviar cabeceras HTTP**, así que el proxy
+autenticado le responde 401 y el `LOAD` falla con `INVALID_REQUEST`.
+
+- Cast envía la **URL pública** de la emisora (`StationMediaItemFactory.createForCast` /
+  `castUriFor` + `CastPlayerManager.connectToStation`); si la emisora no trae URL,
+  cae al proxy (comportamiento anterior).
+- Consecuencia asumida: lo escuchado vía Cast **no registra historial server-side**
+  (el servicio solo lo registra al consumir el proxy); la reanudación en local
+  (`resumeLocalPlayback`) sí vuelve al proxy con Bearer.
+- Esta excepción a FR-001/FR-010 y a la Constitución II (Bearer también en
+  Chromecast) queda registrada aquí con revisión abierta: si el servicio ofrece
+  algún día URLs firmadas para el receptor, Cast podrá volver a la fuente
+  autenticada.

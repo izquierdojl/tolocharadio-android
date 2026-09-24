@@ -3,7 +3,6 @@ package com.izquierdojl.tolocharadio.feature.player
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
-import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import com.izquierdojl.tolocharadio.core.session.SessionManager
 import okhttp3.OkHttpClient
@@ -30,7 +29,4 @@ class PlayerDataSourceFactory
             delegate.setRequestProperty("User-Agent", "TolochaRadio-Android")
             return delegate
         }
-
-        /** Datasource clásico por si se necesita un fallback HTTP. */
-        fun fallback(): DataSource.Factory = DefaultHttpDataSource.Factory().setUserAgent("TolochaRadio-Android")
     }

@@ -227,3 +227,13 @@ Con dos personas: tras Setup+Foundational, una toma US1 y otra US2 (coinciden en
 - La única lógica de cliente que queda es pura/JVM (`HlsStation`, `ResolvePlaybackSourceUseCase`, `PlaybackStatusReason`)
 - El Bearer va en todas las peticiones (incl. subrecursos `/playback/:id/hls`); nunca en la URL
 - Evitar: tareas vagas, conflictos de archivo y dependencias cruzadas que rompan la independencia de las historias
+
+---
+
+## Phase 7: Convergence
+
+**Origen**: `/speckit.converge` 2026-09-20 — 14 FR, 7 SC, decisiones de `plan.md` y 5 principios de constitución revisados contra el código. Sin regresión en la vía local (proxy-only, Bearer, precheck bloqueante, errores accionables y 0 referencias a código de listas en `app/src`).
+
+- [X] T037 Documentar en `specs/0021-jlizquierdo-20260912-proxy-only-playback/contracts/proxy-playback.md` y en la Complexity Tracking de la spec que Cast usa la URL pública (`StationMediaItemFactory.createForCast`/`castUriFor` + `CastPlayerManager.connectToStation`) en vez del proxy autenticado, con motivo técnico (el receptor no puede enviar `Authorization` → 401, bug 0026) y consecuencia (sin historial server-side en Cast) per FR-001/FR-010 + Constitución II (contradicts) — CRITICAL — hecho 2026-09-20 (§9 del contrato + nota en plan.md)
+- [X] T038 Añadir o recuperar en `README.md` o `docs/` la nota de release de que las emisoras de lista requieren una instancia del servicio actualizada con `resolve-playlist-proxy` per FR-013 (partial) — hecho 2026-09-20 (`docs/instalacion.md`, Requisitos)
+- [X] T039 Eliminar `PlayerDataSourceFactory.fallback()` sin usos y corregir el KDoc stale de `PlayerModule` ("sin autenticación") per Constitución V (unrequested) — hecho 2026-09-20
