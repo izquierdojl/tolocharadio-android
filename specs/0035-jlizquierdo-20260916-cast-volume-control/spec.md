@@ -80,6 +80,10 @@ cerrar y reabrir el panel y comprobar que mantiene el valor real.
 
 ### User Story 3 - Los cambios hechos desde el propio dispositivo se reflejan en la app (Priority: P2)
 
+*(SUPERSEDED parcialmente por la spec 0037 — volumen contextual único: el reflejo lo hace la
+barra del sistema (eco nativo ≤ 2 s); el "control deslizante de la app" de esta historia ya no
+existe.)*
+
 Un usuario baja el volumen con el mando del TV, con la app de Google Home o desde otro teléfono.
 Al volver a la app, el control de volumen muestra el nivel actualizado sin tener que tocarlo.
 
@@ -166,12 +170,17 @@ de sonar; volver a pulsar y comprobar que recupera exactamente el nivel previo.
   *(SUPERSEDED por 0037 FR-004.)*
 - **FR-005**: El nivel de volumen mostrado en la app MUST reflejar los cambios originados en el
   propio dispositivo Cast o en otros mandos en un máximo de 2 segundos.
+  *(SUPERSEDED parcialmente por 0037 FR-004/FR-008: la representación ya no es "en la app" sino
+  la barra del sistema, con eco ≤ 2 s nativo de media3 1.11.0.)*
 - **FR-006**: El nivel mostrado MUST mantenerse correcto al cerrar y reabrir el reproductor, y al
   volver la app desde segundo plano.
+  *(SUPERSEDED parcialmente por 0037 FR-004: "el nivel mostrado" es ahora la barra del sistema.)*
 - **FR-007**: El botón de silencio de la app MUST silenciar el dispositivo Cast cuando la sesión
   está activa, recordando el nivel previo, y MUST restablecerlo al des-silenciar.
 - **FR-008**: Ajustar el volumen (tecla o control deslizante) mientras el dispositivo está
   silenciado MUST restablecer el audio al nuevo nivel ajustado.
+  *(SUPERSEDED parcialmente por 0037 FR-004/FR-007: sin control deslizante; aplica a las teclas
+  y la barra del sistema.)*
 - **FR-009**: Si el dispositivo Cast no admite control de volumen, el sistema MUST degradar con
   elegancia (avisar y ocultar/deshabilitar el control) sin bloquear la reproducción ni
   desconectar la sesión.
@@ -201,6 +210,8 @@ de sonar; volver a pulsar y comprobar que recupera exactamente el nivel previo.
   cuándo las teclas y el control deslizante operan en remoto.
 - **Estado de volumen expuesto a la UI**: representación observable del nivel remoto que alimenta
   tanto la barra del sistema como el control deslizante del reproductor.
+  *(SUPERSEDED parcialmente por 0037 FR-004: la única representación es la barra del sistema; la
+  app no mantiene estado de volumen expuesto (solo silencio).)*
 
 ## Success Criteria *(mandatory)*
 
@@ -212,10 +223,13 @@ de sonar; volver a pulsar y comprobar que recupera exactamente el nivel previo.
   ajustes realizados con sesión activa.
 - **SC-003**: Mover el control deslizante del 0 al 100% produce el cambio audible correspondiente
   en el dispositivo en menos de 1 segundo.
+  *(SUPERSEDED por 0037 FR-004: no existe control deslizante in-app.)*
 - **SC-004**: Un cambio de volumen hecho desde otro mando se refleja en la app en menos de 2
   segundos en al menos el 95% de los intentos.
+  *(SUPERSEDED parcialmente por 0037 FR-008: se refleja en la barra del sistema, no "en la app".)*
 - **SC-005**: Tras cerrar y reabrir el reproductor, el nivel mostrado coincide con el nivel real
   del dispositivo en el 100% de los casos.
+  *(SUPERSEDED parcialmente por 0037 FR-004: el nivel lo muestra la barra del sistema.)*
 - **SC-006**: Silenciar y des-silenciar restablece exactamente el nivel previo en el 100% de los
   casos.
 - **SC-007**: Ningún ajuste de volumen interrumpe la reproducción en el 100% de los casos.
@@ -272,3 +286,10 @@ Se probó la implementación en un **Redmi M2101K7AG** (Android 17/API 37) con u
 **Decisión pendiente**: Requiere investigación adicional (upgrade de media3, uso de
 `AudioManager` para interceptar teclas, o prueba con otros receptores para determinar si
 el problema es específico de este dispositivo/receptor).
+
+**Resolución (2026-09-18, spec 0037)**: RESUELTO con el upgrade a **media3 1.11.0**
+(commit `7496a53`): el `CastPlayer` nativo soporta volumen de dispositivo — teclas y barra
+del sistema funcionan sin código propio, validado en `specs/0037-jlizquierdo-20260918-contextual-volume/quickstart.md`
+§3.2. La parte de FR-001/FR-005 queda confirmada; FR-004 (slider) ya no aplica por el
+supersede de 0037 FR-004. Los hallazgos anteriores corresponden a media3 1.4.1 y quedan
+como registro histórico.

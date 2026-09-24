@@ -15,6 +15,7 @@
 - Q: Si un arrastre se cancela o se interrumpe, ¿qué debe pasar con el orden que veías? → A: Conservar el orden mostrado y tratarlo como un soltar normal (se guarda).
 - Q: ¿Cómo debe empezar el arrastre de una favorita? → A: Arrastre inmediato al tocar y mover el asa, sin pulsación larga ni espera previa.
 - Q: ¿Cómo se debe ofrecer la alternativa de reordenar sin arrastre? → A: Menú de desbordamiento "..." por fila con "Mover arriba" / "Mover abajo".
+  *(SUPERSEDED por la spec 0039: eliminación completa del menú; el arrastre es la única vía.)*
 - Q: ¿Qué debe pasar si el usuario intenta reordenar sin conexión (caché offline)? → A: Deshabilitar el reorden sin conexión (sin asa ni acciones), caché en solo lectura.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -75,6 +76,9 @@ desplaza automáticamente de forma progresiva.
 
 ### User Story 3 - Reordenar sin gestos de arrastre (Priority: P3)
 
+*(SUPERSEDED por la spec 0039 FR-001 — eliminación completa del menú de mover: esta historia
+ya no aplica; ver también la clarificación Q3 de esta spec.)*
+
 Como usuario que no puede o no quiere usar gestos de arrastre (incluida la navegación
 asistida por lector de pantalla), quiero una forma alternativa de mover una favorita
 una posición arriba o abajo, para reordenar con acciones explícitas.
@@ -102,6 +106,7 @@ que el orden se guarda igual que con el arrastre.
 
 - **Lista de una sola favorita**: no hay nada que reordenar; el asa y las acciones del
   menú de movimiento deben mostrarse inactivas o no mostrarse, y no debe guardarse orden.
+  *(Parte del menú SUPERSEDED por la 0039: solo aplica ocultar el asa.)*
 - **Soltar fuera de la lista o cancelar el gesto**: el orden queda en la última posición
   mostrada y se trata como un soltar normal (se guarda automáticamente), sin dejar la
   lista en estado inconsistente.
@@ -111,6 +116,7 @@ que el orden se guarda igual que con el arrastre.
   permutación, prevalece el orden del servidor y se avisa al usuario.
 - **Sin conexión**: la lista muestra la caché offline en modo solo lectura; el asa y las
   acciones de movimiento aparecen deshabilitadas y no se permite reordenar.
+  *(Parte del menú SUPERSEDED por la 0039: solo aplica ocultar el asa.)*
 - **Arrastre hasta un extremo con auto-scroll**: la posición debe seguir actualizándose
   mientras la lista se desplaza, sin perder la fila activa.
 - **Interrupción (rotación, salida a segundo plano, llamada) durante el arrastre**: al
@@ -153,9 +159,11 @@ que el orden se guarda igual que con el arrastre.
 - **FR-012**: El sistema MUST ofrecer, en cada fila de la vista de lista, un menú de
   desbordamiento ("...") con las acciones "Mover arriba" y "Mover abajo", usables con
   lector de pantalla y equivalentes en resultado al arrastre.
+  *(SUPERSEDED por la spec 0039 FR-001: eliminación completa del menú de mover.)*
 - **FR-013**: Las acciones del menú de movimiento MUST aparecer deshabilitadas cuando la
-  favorita ya está en el extremo correspondiente, de modo que no se pueda mover fuera de
-  la lista.
+  favorita ya está en el extremo correspondiente, de modo que no se pueda mover fuera de la
+  lista.
+  *(SUPERSEDED por la spec 0039 FR-001.)*
 - **FR-014**: El sistema MUST respetar la preferencia del sistema de "reducir
   movimiento", reduciendo o eliminando las animaciones sin perder la indicación de
   posición.
@@ -190,6 +198,8 @@ que el orden se guarda igual que con el arrastre.
   se reduce al menos un 40 % respecto al comportamiento actual.
 - **SC-005**: El 100 % de los flujos de reorden se pueden completar usando solo lector de
   pantalla y acciones alternativas, sin gesto de arrastre.
+  *(SUPERSEDED por la spec 0039 FR-001: ya no existen acciones alternativas de menú; el
+  arrastre con asa es la única vía.)*
 - **SC-006**: Con la preferencia "reducir movimiento" activada, no se observan
   animaciones de reacomodo, pero la posición de destino sigue siendo identificable.
 

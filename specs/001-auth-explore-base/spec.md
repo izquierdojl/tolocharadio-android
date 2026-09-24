@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-> **Nota de gobernanza (2026-09-12)**: el modelo de autenticación de usuario (login/registro/sesión/JWT/Bearer) definido en esta spec queda **retirado** por la spec `0022-jlizquierdo-20260912-server-only-access` y la constitución 2.0.0; la app opera solo con servidores y sin credenciales de usuario. El resto de la spec se conserva como histórico.
+> **Nota de gobernanza (actualizada 2026-09-20)**: el **modelo de UI** de autenticación de usuario definido en esta spec (pantallas de login/registro/Perfil, `GET`/`PATCH /users/me`, registro/recuperación de contraseña y logout desde la app) queda **retirado**: la constitución 2.0.0 y la spec `0022-jlizquierdo-20260912-server-only-access` lo eliminaron. **Sin embargo, la constitución 3.0.0 y la spec `0024-jlizquierdo-20260912-per-server-credentials` reintrodujeron las credenciales por servidor** (email/contraseña cifrada) con **login automático JWT/`Bearer`** — incluida la reproducción por proxy (ver también 0021) —; lo que sigue retirado es únicamente el modelo de UI anterior, no el uso de credenciales. El resto de la spec se conserva como histórico.
 
 **Input**: User description: "Comencemos con esta especificación para la feature de auth + explorar contra tu instancia y el desarrollo inicial de la aplicación."
 
@@ -221,12 +221,21 @@ sin tocar Explorar ni el player.
   (email + password), persistir access en memoria y refresh cifrado,
   renovar ante 401 con `POST /auth/refresh` (reintento único) y
   logout con `POST /auth/logout` + borrado local.
+  *(Matiz 2026-09-20 — constitución 3.0.0 + spec 0024: se conserva la mecánica de tokens
+  (access en memoria, refresh cifrado, renovación única ante 401, `Bearer` en proxy), pero el
+  **login ya no es una pantalla**: las credenciales por servidor se guardan y el login
+  `POST /auth/login` es automático. El logout desde la app queda retirado; se gestiona
+  eliminando/editando el servidor.)*
 - **FR-004**: Si `registrationEnabled=true`, la app MUST ofrecer
   registro `POST /auth/register` (name/email/password 8–72) con
   errores 409/422 por campo; si es false MUST ocultar el registro.
+  *(Retirado 2026-09-20 — spec 0024: sin pantallas de registro en la app.)*
 - **FR-005**: La app MUST exigir auth para Explorar, Favoritas,
   Historial, Mis emisoras y Perfil (redirección a Login, paridad
   con `RequireAuth` web); Home y Login/Registro son públicos.
+  *(Matiz 2026-09-20 — spec 0024: sin redirección a Login ni pantallas públicas de
+  Login/Registro. Las secciones privadas quedan tras el arranque bloqueante
+  `StartupGate.NeedsCredentials`; sin credenciales válidas no se llega a la app.)*
 - **FR-006**: Explorar MUST consumir `GET /stations` con filtros
   `name/country/language/tag`, `limit` (default 24, max 100),
   `offset`, `unique` y paginación con `hasMore`; filtros con
@@ -253,6 +262,9 @@ sin tocar Explorar ni el player.
   inmediata) en esta spec; cambio de password y forgot/reset
   (historia 6) SHOULD incluirse si no crece el alcance, si no se
   difieren con test pendiente.
+  *(Matiz 2026-09-20 — spec 0022/0024: la pantalla de Perfil, `GET`/`PATCH /users/me` y el
+  cambio/recuperación de contraseña quedan **retirados**; la gestión de la instancia/credenciales
+  se hace desde el flujo de servidor de la spec 0024 ("Editar servidor").)*
 - **FR-011**: Todos los errores backend `{error:{code,message,
   status,details?}}` MUST mapearse a dominio tipado y mensajes en
   español (401→sesión, 404→no encontrado, 409→conflicto,

@@ -83,6 +83,11 @@ Una persona puede quitar una de sus emisoras personalizadas con el botón de pap
 
 ### User Story 5 - Llegar a Mis emisoras navegando como en la web (Priority: P2)
 
+*(SUPERSEDED parcialmente por la spec 0024 — converge 2026-09-20: ya NO hay pantallas de login.
+Las secciones privadas quedan tras el arranque bloqueante `StartupGate.NeedsCredentials`; si las
+credenciales fallan, se resuelve en "Editar servidor". El "se le pide login" de esta historia
+ya no aplica.)*
+
 Una persona llega a Mis emisoras desde la barra inferior de navegación, igual que a Favoritos o Historial. Si no ha iniciado sesión e intenta entrar, se le pide login como en el resto de secciones privadas.
 
 **Why this priority**: cierra la "navegación" pedida por el usuario y la paridad con la web (`/mis-emisoras` exige cuenta).
@@ -93,6 +98,7 @@ Una persona llega a Mis emisoras desde la barra inferior de navegación, igual q
 
 1. **Given** sesión iniciada, **When** pulso "Mis emisoras" en la barra inferior, **Then** llego a mi lista en menos de 2 segundos con red normal.
 2. **Given** sin sesión, **When** intento abrir Mis emisoras, **Then** se me lleva a Login (igual que Favoritos, Historial o Perfil).
+   *(SUPERSEDED por la spec 0024: sin pantalla de Login; sin credenciales el arranque queda bloqueado en `StartupGate.NeedsCredentials`.)*
 3. **Given** una emisora personalizada reproduciéndose, **When** navego entre las 5 secciones, **Then** la música no se corta en ningún cambio.
 
 ---
@@ -118,6 +124,9 @@ Una persona llega a Mis emisoras desde la barra inferior de navegación, igual q
 - **FR-006**: El sistema MUST permitir reproducir una emisora personalizada con un solo toque vía proxy autenticado, con mini-reproductor persistente y continuidad al navegar entre secciones; ante stream no disponible MUST mostrar error accionable con reintento.
 - **FR-007**: El sistema MUST permitir eliminar una emisora personalizada (`DELETE /custom-stations/:id`) con reflejo inmediato en la lista, confirmación en español y reversión ante error; tras eliminar MUST refrescar Favoritos porque una personalizada puede ser favorita.
 - **FR-008**: Mis emisoras MUST exigir sesión como el resto de secciones privadas: sin sesión redirige a Login; con sesión caducada intenta renovación transparente una vez antes de pedir login.
+  *(SUPERSEDED parcialmente por la spec 0024 — converge 2026-09-20: sin pantallas de login.
+  "Sin sesión" = arranque bloqueante `StartupGate.NeedsCredentials` (o error de credenciales →
+  "Editar servidor"); la renovación transparente de token (una vez) se mantiene igual.)*
 - **FR-009**: Mis emisoras MUST ser alcanzable desde la barra inferior de navegación con paridad web (`/mis-emisoras`), y cada emisora MUST permitir reproducción sin interrumpir la navegación (reproductor persistente).
 - **FR-010**: Todos los errores del servidor con formato `{error:{code,message,status,details?}}` MUST traducirse a mensajes en español orientados a la acción, mostrando el detalle por campo cuando el servidor devuelva 422; PROHIBIDO mostrar texto técnico crudo.
 - **FR-011**: Sin red y con una visita previa, Mis emisoras MUST mostrar la última lista conocida marcada como offline y MUST permitir reintento manual; en primer arranque sin caché MUST mostrar error con reintento.
@@ -138,11 +147,13 @@ Una persona llega a Mis emisoras desde la barra inferior de navegación, igual q
 - **SC-004**: Reproducir una emisora personalizada y navegar por 3 secciones no interrumpe el audio en el 100 % de las pruebas con red normal.
 - **SC-005**: La eliminación de una emisora personalizada se refleja en la lista en menos de 2 segundos tras la acción, y ante fallo de red la lista se corrige sola (reversión) en menos de 2 segundos tras el error.
 - **SC-006**: Una persona sin sesión que intenta abrir Mis emisoras llega a Login en el 100 % de los casos, igual que con Favoritos o Historial.
+  *(SUPERSEDED por la spec 0024: sin credenciales no se llega a la app — `StartupGate.NeedsCredentials`.)*
 
 ## Assumptions
 
 - La instancia del usuario implementa el contrato de emisoras personalizadas visto en `izquierdojl/tolocharadio` (`GET/POST /custom-stations`, `DELETE /custom-stations/:id`); si su versión difiere, se declara en notas de release.
 - El usuario de esta spec ya tiene cuenta y sesión (el login/registro lo cubre la spec 001); Mis emisoras exige sesión como en la web (`RequireAuth` en `/mis-emisoras`).
+  *(SUPERSEDED por la spec 0024 — converge 2026-09-20: no hay pantallas de login/registro; las credenciales por servidor se guardan y la app autentica automáticamente con `Bearer`, incluida la reproducción por proxy.)*
 - La lista de personalizadas por usuario es pequeña (decenas como máximo): se carga completa sin paginación; el contrato devuelve `{items}` sin `hasMore`.
 - La caché offline de personalizadas es solo de lectura (última lista conocida); la fuente de verdad al abrir con red es siempre el servidor.
 - Escuchar una personalizada vía proxy registra historial en servidor igual que el catálogo; la personalizada puede aparecer en Historial y puede marcarse como favorita (por eso el borrado invalida Favoritos, como hace la web).

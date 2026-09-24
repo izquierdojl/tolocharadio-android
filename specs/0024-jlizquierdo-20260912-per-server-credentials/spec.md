@@ -24,6 +24,8 @@ La spec 0022 asumió que la instancia no exige autenticación de usuario y elimi
 
 - Q: ¿El "usuario" del servidor es el email de la cuenta? → A: Sí; el campo es email (mismo contrato que las specs 001/007).
 - Q: ¿La reproducción por el proxy exige sesión? → A: Sí; el proxy y los subrecursos HLS exigen `Bearer`, y el player/Cast vuelven a inyectar el token.
+  *(Excepción Chromecast registrada en la spec 0021, contracts `proxy-playback.md` §9 — el
+  receptor no puede enviar `Authorization` → URL pública, bug 0026.)*
 - Q: ¿Qué hace la app al arrancar si el servidor activo/por defecto no tiene credenciales (p. ej. migrado de la 0022)? → A: Abre la pantalla unificada de servidor de forma bloqueante hasta completar las credenciales.
 - Q: ¿Cómo se edita un servidor desde la lista? → A: Con un icono "Editar" en cada tarjeta; tocar la tarjeta sigue cambiando el servidor activo.
 - Q: ¿Cómo se comporta el campo contraseña al editar? → A: Precargada enmascarada; si no se toca se conserva, y si se cambia se revalida y se vuelve a iniciar sesión.
@@ -101,6 +103,10 @@ Una persona con credenciales incorrectas (por ejemplo, contraseña cambiada en l
 - **FR-002**: MUST existir un único formulario de alta/edición de servidor (URL, alias, email, contraseña) usado en todos los casos: bienvenida sin servidores y sección Servidores (alta y edición).
 - **FR-003**: El formulario MUST validar que URL, email y contraseña están completos antes de llamar al servidor, y MUST mostrar avisos en español sin texto técnico.
 - **FR-004**: La app MUST autenticarse automáticamente contra el servidor con las credenciales guardadas (login → token) y MUST usar `Authorization: Bearer` en todas las peticiones que lo requieran, incluida la reproducción (proxy y subrecursos HLS) y Chromecast, sin pantallas de login/registro.
+  *(Excepción: Chromecast usa la URL pública de la emisora — vía
+  `StationMediaItemFactory.createForCast` / `castUriFor`, el receptor no puede enviar
+  `Authorization` (401) — registrada en `specs/0021-jlizquierdo-20260912-proxy-only-playback/contracts/proxy-playback.md`
+  §9 y en el bug 0026; la reproducción local, proxy y subrecursos HLS sí llevan `Bearer`.)*
 - **FR-005**: Ante un 401, la app MUST renovar el token una sola vez (refresh) y reintentar la petición; si no es posible, MUST mostrar un error de credenciales accionable.
 - **FR-006**: Cuando el error mostrado sea de autenticación/credenciales, el botón Reintentar MUST abrir la ficha/edición del servidor activo; cuando el error sea de red, MUST reintentar la carga (FR-005 de la 0022 se ajusta a esto).
 - **FR-007**: Al guardar la edición de un servidor, la app MUST revalidar las credenciales e iniciar sesión sin requerir reinicio manual ni pantallas adicionales; el campo contraseña MUST precargarse enmascarado y, si no se modifica, MUST conservarse la contraseña guardada.

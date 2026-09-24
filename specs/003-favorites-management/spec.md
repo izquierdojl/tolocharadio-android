@@ -87,6 +87,7 @@ Una persona puede llegar a Favoritos desde la barra inferior, abrir la ficha de 
 
 1. **Given** sesión iniciada, **When** pulso "Favoritos" en la barra inferior, **Then** llego a mi lista en menos de 2 segundos con red normal.
 2. **Given** sin sesión, **When** pulso "Favoritos", **Then** se me lleva a Login (igual que Historial o Perfil).
+   *(SUPERSEDED por la spec 0024: sin pantalla de Login; sin credenciales el arranque queda bloqueado en `StartupGate.NeedsCredentials`.)*
 3. **Given** una favorita en la lista, **When** pulso reproducir, **Then** suena y puedo ir a Explorar o Perfil sin que se corte; el mini-reproductor sigue visible.
 4. **Given** una favorita en la lista, **When** pulso su título o imagen, **Then** se abre su ficha con los mismos datos y acciones que en Explorar.
 
@@ -111,6 +112,9 @@ Una persona puede llegar a Favoritos desde la barra inferior, abrir la ficha de 
 - **FR-005**: Al quitar desde la lista de Favoritos, el sistema MUST ofrecer deshacer durante 10 segundos (vuelve a guardar la emisora sin perder su posición cuando sea posible).
 - **FR-006**: Las personas con cuenta MUST poder reordenar su lista mediante arrastrar y soltar con asa visible y guardado automático al soltar, y el sistema MUST guardar ese orden en el servidor (`PUT /favorites/order` con la lista completa de identificadores en el nuevo orden); el orden guardado MUST conservarse entre sesiones.
 - **FR-007**: Favoritos MUST exigir sesión como el resto de secciones privadas: sin sesión redirige a Login; con sesión caducada intenta renovación transparente una vez antes de pedir login.
+  *(SUPERSEDED parcialmente por la spec 0024 — converge 2026-09-20: sin pantallas de login.
+  "Sin sesión" = arranque bloqueante `StartupGate.NeedsCredentials` (o error de credenciales →
+  "Editar servidor"); la renovación transparente de token (una vez) se mantiene.)*
 - **FR-008**: Favoritos MUST ser alcanzable desde la barra inferior de navegación con paridad web (`/favoritos`), y cada favorita MUST enlazar a su ficha y permitir reproducción sin interrumpir la navegación (reproductor persistente).
 - **FR-009**: Todos los errores del servidor con formato `{error:{code,message,status}}` MUST traducirse a mensajes en español orientados a la acción (sesión expirada, no encontrado 404, conflicto 409, validación 422, servicio caído 503 con reintento); PROHIBIDO mostrar texto técnico crudo.
 - **FR-010**: Sin red y con una visita previa, la lista de Favoritos MUST mostrar la última versión conocida marcada como offline y MUST permitir reintento manual; en primer arranque sin caché MUST mostrar error con reintento.
@@ -137,6 +141,7 @@ Una persona puede llegar a Favoritos desde la barra inferior, abrir la ficha de 
 
 - La instancia del usuario implementa el contrato de favoritos visto en `izquierdojl/tolocharadio` (`GET/POST /favorites`, `DELETE /favorites/:stationId`, `PUT /favorites/order` como permutación exacta); si su versión difiere, se declara en notas de release.
 - El usuario de esta spec ya tiene cuenta y sesión (el login/registro lo cubre la spec 001); Favoritos exige sesión como en la web.
+  *(SUPERSEDED por la spec 0024 — converge 2026-09-20: no hay pantallas de login/registro; las credenciales por servidor se guardan y la app autentica automáticamente con `Bearer`, incluida la reproducción por proxy.)*
 - La lista de favoritas por usuario es de decenas, no de miles: se carga completa sin paginación; si el servidor pagina en el futuro, se pagina igual que Explorar.
 - El orden personalizado se guarda como lista completa de ids (el servidor lo exige así); envíos parciales se completan en cliente antes de guardar.
 - La caché offline de favoritas es solo de lectura (última lista conocida); la fuente de verdad al abrir con red es siempre el servidor.

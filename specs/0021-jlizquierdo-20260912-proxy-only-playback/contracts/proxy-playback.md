@@ -92,3 +92,7 @@ autenticado le responde 401 y el `LOAD` falla con `INVALID_REQUEST`.
   Chromecast) queda registrada aquí con revisión abierta: si el servicio ofrece
   algún día URLs firmadas para el receptor, Cast podrá volver a la fuente
   autenticada.
+- **Fecha de revisión: 2026-10-09.** Si para entonces el servicio no ofrece URLs
+  firmadas/sesión embebible para el receptor, la excepción se mantiene vigente y
+  se revisa de nuevo en el siguiente ciclo; si las ofrece, se reintroduce Cast
+  autenticado y se cierra el bug 0026.

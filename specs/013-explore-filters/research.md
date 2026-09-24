@@ -9,6 +9,12 @@
 
 **Decision**: Crear un componente `FilterComboBox` reutilizable basado en `ExposedDropdownMenuBox` de Material3.
 
+**Actualización (converge 2026-09-20)**: el `ExposedDropdownMenuBox` se **sustituyó por una
+lista inline dentro del bottom sheet**. El popup de Material3 se solapaba con el propio bottom
+sheet (bug `filter-dropdown-overlap`, ver `.specify/bugs/filter-dropdown-overlap/fix.md`). El
+resto de la decisión se mantiene: `FilterComboBox` conserva el autocompletado por coincidencia
+parcial, los estados de carga/error y la entrada manual.
+
 **Rationale**:
 - Material3 proporciona `ExposedDropdownMenuBox` y `DropdownMenu` que soportan autocompletado nativo
 - El proyecto ya usa Material3 (ver `build.gradle.kts`)

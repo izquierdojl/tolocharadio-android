@@ -59,6 +59,11 @@ Los desplegables de país, idioma y género funcionan como controles de autocomp
 - **FR-001**: El sistema DEBE mostrar un campo desplegable de autocompletado para filtrar por **país**, con valores obtenidos del catálogo del servidor.
 - **FR-002**: El sistema DEBE mostrar un campo desplegable de autocompletado para filtrar por **idioma**, con valores obtenidos del catálogo del servidor.
 - **FR-003**: El sistema DEBE mostrar un campo desplegable de autocompletado para filtrar por **género/etiqueta**, con valores obtenidos del catálogo del servidor.
+
+*(FR-001–FR-003, converge 2026-09-20: el desplegable NO usa `ExposedDropdownMenuBox`; el
+popup se solapaba con el bottom sheet (bug `filter-dropdown-overlap`), así que se sustituyó
+por una **lista inline dentro del bottom sheet**. Se conservan el autocompletado (coincidencia
+parcial) y la entrada manual del componente `FilterComboBox`.)*
 - **FR-004**: El sistema DEBE permitir combinar búsqueda por nombre con filtros de país, idioma y género simultáneamente.
 - **FR-005**: El sistema DEBE mostrar un botón "Limpiar filtros" que vacíe todos los campos de filtro y recargue resultados sin filtros.
 - **FR-006**: Si la carga de una lista de filtros falla, el sistema DEBE permitir entrada manual del valor con un aviso informativo.

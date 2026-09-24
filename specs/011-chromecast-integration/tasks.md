@@ -100,7 +100,9 @@ All source code under `app/src/main/java/com/izquierdojl/tolocharadio/`
 ### Implementation for User Story 4
 
 - [x] T019 [US4] Add volume slider to `FullPlayerSheet` in `feature/player/PlayerUi.kt` that controls CastPlayer volume when Cast is connected
+  *(SUPERSEDED por la spec 0037 FR-004 — converge 2026-09-20: se retiró el slider; las teclas y la barra del sistema controlan la salida activa de forma nativa con media3 1.11.0.)*
 - [x] T020 [US4] Wire phone hardware volume buttons to CastPlayer volume when Cast is connected in `CastPlayerManager.kt`
+  *(SUPERSEDED por la spec 0037 FR-004 — converge 2026-09-20: media3 1.11.0 gestiona el ruteo de teclas nativamente; no se requiere código propio.)*
 
 **Checkpoint**: Volume slider visible in full player during Cast. Hardware volume buttons control Cast volume.
 
@@ -224,5 +226,5 @@ With multiple developers:
 
 **Origen**: `/speckit.converge` 2026-09-20 — 12 FR, 5 historias y 5 principios revisados contra el código. `MediaRouteButton`, Default Receiver, desactivación de media session/notificaciones del SDK, indicadores de dispositivo y reanudación local conformes; dos huecos.
 
-- [ ] T029 Anotar el supersede de la 0037 en `specs\011-chromecast-integration\spec.md`: marcar US4 (historia completa, AC2 "el control de volumen está disponible en el mini-player") y las tareas T019/T020 en `tasks.md` como SUPERSEDED por la spec 0037 FR-004 (la app ya no muestra control de volumen in-app; las teclas y la barra del sistema controlan la salida activa de forma nativa con media3 1.11.0) per US4/AC2 (contradicts) — MEDIUM
-- [ ] T030 Completar FR-012 en `app/src/main/java/com/izquierdojl/tolocharadio/feature\player\PlayerUi.kt` (`LaunchedEffect` de `castConnectionState`, ~línea 88): al mostrar "No se pudo conectar al dispositivo" añadir acción de reintento que vuelva a intentar la conexión al dispositivo (o, si se decide no ofrecerla, anotar la excepción en `specs\011-chromecast-integration\spec.md` FR-012) per FR-012 (partial) — MEDIUM
+- [X] T029 Anotar el supersede de la 0037 en `specs\011-chromecast-integration\spec.md`: marcar US4 (historia completa, AC2 "el control de volumen está disponible en el mini-player") y las tareas T019/T020 en `tasks.md` como SUPERSEDED por la spec 0037 FR-004 (la app ya no muestra control de volumen in-app; las teclas y la barra del sistema controlan la salida activa de forma nativa con media3 1.11.0) per US4/AC2 (contradicts) — MEDIUM
+- [X] T030 Completar FR-012 en `app/src/main/java/com/izquierdojl/tolocharadio/feature\player\PlayerUi.kt` (`LaunchedEffect` de `castConnectionState`, ~línea 88): al mostrar "No se pudo conectar al dispositivo" añadir acción de reintento que vuelva a intentar la conexión al dispositivo (o, si se decide no ofrecerla, anotar la excepción en `specs\011-chromecast-integration\spec.md` FR-012) per FR-012 (partial) — MEDIUM

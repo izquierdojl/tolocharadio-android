@@ -76,7 +76,9 @@
 
 - [X] T012 [US2] Implementar `isMuted`+`toggleMute` (volumen `0f`/`1f`) y `loadJob`+`cancelLoad()` con reset de mute en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerViewModel.kt` (hace pasar T011)
 - [X] T013 [US2] Añadir botones de silencio y copiar con `LocalClipboardManager`+`SnackbarHostState`/`SnackbarHost` (`"Enlace copiado"` / `"enlace no disponible"`, solo `station.url`) y cablear el botón principal en `Buffering` a `cancelLoad()` en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerUi.kt` y `app/src/main/java/com/izquierdojl/tolocharadio/core/ui/navigation/TolochaNavGraph.kt`
+  *(El botón de copiar del panel queda SUPERSEDED por la spec 0039 FR-003/FR-004 — converge 2026-09-20: compartir/copiar se ofrece en la ficha de la emisora; el silenciar y el `cancelLoad()` se mantienen.)*
 - [X] T014 [US2] Implementar layout de error (principal=reintentar, copiar visible, mute oculto + mensaje breve en ES) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerUi.kt` según `contracts/mini-panel-ui.md`
+  *(Parte "copiar visible" SUPERSEDED por la spec 0039 FR-003 — converge 2026-09-20: en error solo reintentar.)*
 
 **Checkpoint**: US1+US2 funcionan — panel completo con los 3 controles y sus estados
 
@@ -89,6 +91,7 @@
 **Independent Test**: reproducir desde Búsqueda y desde Favoritos comprobando panel idéntico y estado conservado al navegar (spec US3)
 
 - [X] T015 [US3] Abrir `FullPlayerSheet` con la misma emisora al tocar la zona izquierda (los botones no abren el sheet) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerUi.kt`
+  *(SUPERSEDED por la spec 010 FR-004 — converge 2026-09-20: el tap abre `StationInfoSheet`; el full-player se abre desde el estado de reproducción/notificación.)*
 - [X] T016 [US3] Verificar paridad en Mis emisoras/Perfil/inicio+ficha (mismo panel/estado) con `PlayerPanelTest.kt` en `app/src/androidTest/java/com/izquierdojl/tolocharadio/PlayerPanelTest.kt`, o recorrido manual documentado si el entorno API 37 lo impide (precedente specs 002/003)
 
 **Checkpoint**: las 3 historias funcionan de forma independiente y coherente
@@ -184,5 +187,5 @@ Task: "Crear PanelHelpers.kt en app/src/main/.../feature/player/PanelHelpers.kt"
 
 **Origen**: `/speckit.converge` 2026-09-20 — 11 FR, 3 historias y 5 principios revisados contra el código. Panel, layout de error, mute, detener en full-player y VM compartido conformes; dos FRs quedaron obsoletos por specs posteriores sin anotar.
 
-- [ ] T020 Anotar el supersede de la 0039 en `specs/004-floating-player/spec.md`: marcar FR-003 ("exactamente tres acciones… y copiar enlace"), FR-006 (botón de copiar en el panel) y la parte de copiar de T013 en `tasks.md` como SUPERSEDED por la spec 0039 FR-003 (panel con solo play/pausa + silenciar en reproducción normal; compartir/copiar se ofrece en la ficha de emisora) per FR-003/FR-006 (contradicts) — MEDIUM
-- [ ] T021 Anotar el supersede de la 010 en `specs/004-floating-player/spec.md`: marcar FR-007 y T015 ("tocar la zona izquierda abre el reproductor completo") como SUPERSEDED por la spec 010 FR-004 (el tap abre `StationInfoSheet`; el full-player se abre desde el estado de reproducción/notificación) per FR-007 (contradicts) — MEDIUM
+- [X] T020 Anotar el supersede de la 0039 en `specs/004-floating-player/spec.md`: marcar FR-003 ("exactamente tres acciones… y copiar enlace"), FR-006 (botón de copiar en el panel) y la parte de copiar de T013 en `tasks.md` como SUPERSEDED por la spec 0039 FR-003 (panel con solo play/pausa + silenciar en reproducción normal; compartir/copiar se ofrece en la ficha de emisora) per FR-003/FR-006 (contradicts) — MEDIUM
+- [X] T021 Anotar el supersede de la 010 en `specs/004-floating-player/spec.md`: marcar FR-007 y T015 ("tocar la zona izquierda abre el reproductor completo") como SUPERSEDED por la spec 010 FR-004 (el tap abre `StationInfoSheet`; el full-player se abre desde el estado de reproducción/notificación) per FR-007 (contradicts) — MEDIUM

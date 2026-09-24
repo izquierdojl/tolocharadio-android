@@ -72,6 +72,10 @@ Un usuario tiene audio reproduciéndose en un Chromecast. Toca el botón de Cast
 
 ### User Story 4 - Control de volumen del Chromecast (Priority: P2)
 
+*(SUPERSEDED por la spec 0037 FR-004 — converge 2026-09-20: la app ya no muestra control de
+volumen in-app. Las teclas físicas y la barra del sistema controlan la salida activa de forma
+nativa con media3 1.11.0; ver también T019/T020 marcadas como superseded en `tasks.md`.)*
+
 Un usuario tiene audio reproduciéndose en un Chromecast. Puede ajustar el volumen del Chromecast desde la app usando los controles de volumen del teléfono o un slider en la interfaz.
 
 **Why this priority**: El control de volumen mejora la experiencia pero no es esencial para la funcionalidad básica. El usuario puede usar el control remoto del Chromecast o del TV.
@@ -82,6 +86,7 @@ Un usuario tiene audio reproduciéndose en un Chromecast. Puede ajustar el volum
 
 1. **Given** audio reproduciéndose en Chromecast, **When** el usuario ajusta el volumen con los botones del teléfono, **Then** el volumen del Chromecast cambia (no el del teléfono).
 2. **Given** audio reproduciéndose en Chromecast, **When** el usuario ve el mini-player, **Then** el control de volumen está disponible y funcional.
+   *(SUPERSEDED por 0037 FR-004: sin control de volumen in-app; la barra del sistema lo sustituye.)*
 
 ---
 
@@ -126,6 +131,13 @@ Un usuario puede distinguir visualmente cuándo el audio se está reproduciendo 
 - **FR-010**: La integración con Chromecast MUST usar el Default Media Receiver (CC1AD845) sin requerir registro en Google.
 - **FR-011**: El sistema MUST desactivar la media session y notificaciones del SDK de Cast para evitar duplicados con la MediaSession existente de la app.
 - **FR-012**: Si la conexión al Chromecast falla, el sistema MUST mostrar un Snackbar con mensaje de error claro en español y botón de reintento, volviendo al estado de reproducción local.
+  *(Excepción anotada — converge 2026-09-20: el Snackbar "No se pudo conectar al dispositivo" SÍ
+  se muestra (`PlayerUi.kt:83-92`) y se vuelve al estado local (`resumeLocalPlayback`), pero **no
+  se ofrece botón de reintento**: la conexión se inicia exclusivamente desde el selector de rutas
+  del sistema (`MediaRouteButton`, `TolochaNavGraph.kt:238`) y la app no puede reprogramar una
+  selección de ruta sin reabrir el diálogo del framework (ruta sensible, bugs 0031/0036). El
+  framework ya reintenta solo vía `onSessionResuming`/`RECONNECTING` y el botón de Cast del
+  sistema. Reintento manual = volver a tocar el botón de Cast.)*
 
 ### Key Entities
 

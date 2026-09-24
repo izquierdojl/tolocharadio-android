@@ -96,14 +96,25 @@ Una persona reproduce desde cualquier sección (Favoritos, Búsqueda, Historial,
 - **FR-001**: El sistema MUST mostrar un panel fijo justo encima de la barra inferior de navegación siempre que haya una emisora activa (cargando, sonando, pausada o en error), en todas las pantallas con barra inferior (Favoritos, Búsqueda/Explorar, Historial, Mis emisoras, Perfil e inicio), y MUST ocultarlo cuando no haya nada en reproducción.
 - **FR-002**: La zona izquierda del panel MUST mostrar el icono de la emisora (su imagen cuando exista y cargue; avatar genérico en caso contrario) y a su derecha el nombre en una línea con recorte, más una segunda línea con formato "{país} · {idioma} · {codec} {bitrate} kbps" omitiendo cada parte que falte (si no hay ningún dato, "Emisora de radio"); PROHIBIDO mostrar identificadores internos o texto de error técnico en estas líneas.
 - **FR-003**: La zona derecha del panel MUST ofrecer exactamente tres acciones en estado normal (play/pausa, silencio y copiar enlace), con iconos que reflejan el estado actual (pausado vs sonando, silenciado vs con sonido). En estado de error rige FR-010 en lugar de este layout.
+  *(SUPERSEDED por la spec 0039 FR-003 — converge 2026-09-20: en reproducción normal solo
+  play/pausa + silenciar; sin botón de compartir/copiar en el panel. Compartir/copiar pasa a la
+  ficha de la emisora, 0039 FR-004.)*
 - **FR-003b**: En estado de error, el botón play/pausa se convierte en reintentar, el botón de silencio se oculta y el botón de copiar sigue disponible (layout de error: reintentar + copiar).
+  *(SUPERSEDED parcialmente por la spec 0039 FR-003/FR-004: en error solo reintentar (+cancelar en
+  carga); el botón de copiar del panel desaparece.)*
 - **FR-004**: El botón play/pausa MUST pausar y reanudar la misma emisora sin cambiar de emisora ni reiniciar la lista; durante la carga MUST mostrar espera y pulsar el botón principal MUST cancelar el intento (detiene la carga y oculta el panel, volviendo a sin-reproducción).
 - **FR-005**: El botón de silencio MUST cortar el sonido sin detener la emisión (al quitarlo el sonido vuelve al instante sin reconectar) y MUST conservar su estado al navegar entre secciones; es independiente de pausar. El silencio MUST resetearse al cambiar de emisora y al reiniciar la app (siempre vuelve con sonido).
 - **FR-006**: El botón de copiar MUST llevar al portapapeles la URL original del stream de la emisora, MUST mostrar confirmación breve en español, y si no hay URL disponible MUST mostrar "enlace no disponible" sin copiar nada.
+  *(SUPERSEDED por la spec 0039 FR-004 — converge 2026-09-20: el copiar/compartir se ofrece desde
+  la ficha de la emisora, no desde el panel.)*
 - **FR-007**: Tocar la zona izquierda del panel (icono/nombre) MUST abrir el reproductor completo con la misma emisora; los tres botones de la derecha no MUST abrir el completo al pulsarlos (solo ejecutan su acción).
+  *(SUPERSEDED por la spec 010 FR-004 — converge 2026-09-20: el tap abre `StationInfoSheet`; el
+  reproductor completo se abre desde el estado de reproducción/notificación.)*
 - **FR-008**: El reproductor completo MUST conservar la acción de detener/cerrar (sale del estado de reproducción y oculta el panel); el panel inferior no ofrece detener.
 - **FR-009**: El panel MUST reflejar el mismo estado en todas las pantallas con barra inferior (Favoritos, Búsqueda/Explorar, Historial, Mis emisoras, Perfil, inicio) y en la ficha de emisora: la misma emisora y los mismos estados (cargando/sonando/pausado/silenciado/error) en todas ellas.
 - **FR-010**: En estado de error, el panel MUST mostrar un mensaje breve en español con opción de reintentar desde el botón principal (que sustituye a play/pausa según FR-003b; copiar sigue disponible y silencio queda oculto), y nunca una pantalla en blanco ni texto técnico crudo.
+  *(SUPERSEDED parcialmente por la spec 0039 FR-003 — converge 2026-09-20: en error, copiar ya no
+  está disponible; solo reintentar.)*
 - **FR-011**: Fuera de alcance: ecualizador, temporizador de apagado, cola de reproducción, historial de lo copiado y reordenar el panel; esta spec no cambia cómo se descubre ni se guarda una emisora.
 
 ### Key Entities
