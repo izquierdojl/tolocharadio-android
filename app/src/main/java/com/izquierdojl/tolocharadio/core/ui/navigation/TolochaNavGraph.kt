@@ -3,6 +3,7 @@ package com.izquierdojl.tolocharadio.core.ui.navigation
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -272,36 +273,16 @@ fun TolochaNavGraph(
             if (chromeVisible) {
                 Column {
                     MiniPlayer(viewModel = playerVm, snackbar = snackbar)
-                    NavigationBar {
-                        BOTTOM_DESTS.forEach { dest ->
-                            val tooltipState = rememberTooltipState()
-                            // Tooltip de accesibilidad al mantener pulsado (0012, US1/AC3).
-                            TooltipBox(
-                                positionProvider =
-                                    TooltipDefaults.rememberTooltipPositionProvider(
-                                        TooltipAnchorPosition.Above,
-                                    ),
-                                tooltip = {
-                                    PlainTooltip { Text(dest.label) }
-                                },
-                                state = tooltipState,
-                            ) {
-                                NavigationBarItem(
-                                    selected =
-                                        currentRoute == dest.route ||
-                                            (dest.route == Routes.EXPLORE && currentRoute == Routes.STATION_DETAIL),
-                                    onClick = {
-                                        navController.navigate(dest.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    },
-                                    icon = { Icon(dest.icon, contentDescription = dest.label) },
-                                )
+                    TolochaNavigationBar(
+                        currentRoute = currentRoute,
+                        onNavigate = { route ->
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                        }
-                    }
+                        },
+                    )
                 }
             }
         },
@@ -393,6 +374,55 @@ fun TolochaNavGraph(
                         }
                     },
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Barra de navegación inferior (spec 012). Extraída para poder fijar con un test
+ * de UI el ancho de los 5 destinos (regresión del bug 0040).
+ *
+ * `TooltipBox` no es `RowScope` y su `content` es `@Composable () -> Unit`: si
+ * envuelve directamente un [NavigationBarItem], el `Modifier.weight(1f)` del item
+ * queda en un nodo que ya no es hijo directo del `Row` y la barra lo ignora, de
+ * modo que el primer destino ocupa todo el ancho y el resto se mide a 0. El
+ * `Box(Modifier.weight(1f))` restaura el `weight` en el hijo directo del `Row`.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun TolochaNavigationBar(
+    currentRoute: String?,
+    onNavigate: (String) -> Unit,
+) {
+    NavigationBar {
+        // `NavigationBarItem` es una extensión de `RowScope`; al envolverlo en un
+        // `Box` (BoxScope) hay que conservar el receptor del `Row` explícitamente.
+        val rowScope = this
+        BOTTOM_DESTS.forEach { dest ->
+            val tooltipState = rememberTooltipState()
+            // Tooltip de accesibilidad al mantener pulsado (0012, US1/AC3).
+            Box(Modifier.weight(1f)) {
+                TooltipBox(
+                    positionProvider =
+                        TooltipDefaults.rememberTooltipPositionProvider(
+                            TooltipAnchorPosition.Above,
+                        ),
+                    tooltip = {
+                        PlainTooltip { Text(dest.label) }
+                    },
+                    state = tooltipState,
+                ) {
+                    with(rowScope) {
+                        NavigationBarItem(
+                            selected =
+                                currentRoute == dest.route ||
+                                    (dest.route == Routes.EXPLORE && currentRoute == Routes.STATION_DETAIL),
+                            onClick = { onNavigate(dest.route) },
+                            icon = { Icon(dest.icon, contentDescription = dest.label) },
+                        )
+                    }
+                }
             }
         }
     }
