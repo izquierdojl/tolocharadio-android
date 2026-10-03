@@ -13,6 +13,7 @@ import com.izquierdojl.tolocharadio.data.remote.api.FavoritesApi
 import com.izquierdojl.tolocharadio.data.remote.api.HistoryApi
 import com.izquierdojl.tolocharadio.data.remote.api.PlaybackApi
 import com.izquierdojl.tolocharadio.data.remote.api.StationsApi
+import com.izquierdojl.tolocharadio.data.remote.api.StatsApi
 import com.izquierdojl.tolocharadio.data.remote.api.SystemApi
 import dagger.Lazy
 import dagger.Module
@@ -81,4 +82,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun playback(api: Retrofit): PlaybackApi = api.create(PlaybackApi::class.java)
+
+    @Provides
+    @Singleton
+    fun stats(api: Retrofit): StatsApi = api.create(StatsApi::class.java)
 }

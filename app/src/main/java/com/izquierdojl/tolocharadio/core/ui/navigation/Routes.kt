@@ -9,6 +9,7 @@ object Routes {
     const val HISTORY = "history"
     const val CUSTOM_STATIONS = "custom-stations"
     const val SETTINGS = "settings"
+    const val STATS = "stats"
     const val SERVERS = "servers"
     const val SERVER_FORM = "server-form?serverId={serverId}"
 

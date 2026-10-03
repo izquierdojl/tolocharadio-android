@@ -34,7 +34,10 @@ import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
  * primer nivel (FR-006); no hay cierre de sesión (FR-008).
  */
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    onStats: () -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
     val ui by viewModel.ui.collectAsState()
     val appInfoUiState by viewModel.appInfoUiState.collectAsState()
     val snackbar = remember { SnackbarHostState() }
@@ -108,17 +111,15 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             }
 
             Spacer(Modifier.height(24.dp))
-            Text(
-                text = "Acerca de",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            contentDescription = "Acerca de la aplicación"
-                        }
-                        .clickable { viewModel.showAppInfoDialog() }
-                        .padding(vertical = 12.dp),
+            SettingsActionRow(
+                label = "Gráficas",
+                description = "Ver gráficas de escucha",
+                onClick = onStats,
+            )
+            SettingsActionRow(
+                label = "Acerca de",
+                description = "Acerca de la aplicación",
+                onClick = viewModel::showAppInfoDialog,
             )
         }
     }
@@ -131,4 +132,26 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             snackbar = snackbar,
         )
     }
+}
+
+/**
+ * Fila de acción de Configuración (patrón de "Acerca de"): etiqueta
+ * clicable con `contentDescription` para accesibilidad (FR-001).
+ */
+@Composable
+internal fun SettingsActionRow(
+    label: String,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.bodyLarge,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = description }
+                .clickable(onClick = onClick)
+                .padding(vertical = 12.dp),
+    )
 }
