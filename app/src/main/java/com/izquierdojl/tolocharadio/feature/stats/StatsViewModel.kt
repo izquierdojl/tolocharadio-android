@@ -55,6 +55,7 @@ class StatsViewModel
     constructor(
         private val load: LoadStatsUseCase,
         private val compute: ComputeStatsSummaryUseCase,
+        private val errorLogger: StatsErrorLogger,
     ) : ViewModel() {
         private val _ui = MutableStateFlow<StatsUiState>(StatsUiState.Loading)
         val ui: StateFlow<StatsUiState> = _ui.asStateFlow()
@@ -91,12 +92,14 @@ class StatsViewModel
                     val range = _period.value.range()
                     when (val r = load(range)) {
                         is ApiResult.Ok -> _ui.value = stateFor(range, r.value)
-                        is ApiResult.Err ->
+                        is ApiResult.Err -> {
+                            errorLogger.log(r.error)
                             _ui.value =
                                 StatsUiState.Error(
                                     r.error.userMessage(),
                                     isAuthError = r.error is DomainError.Unauthorized,
                                 )
+                        }
                     }
                 } finally {
                     loading = false

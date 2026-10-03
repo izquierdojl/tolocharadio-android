@@ -24,6 +24,7 @@ import com.izquierdojl.tolocharadio.domain.stats.TimelineGranularity
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -41,6 +42,7 @@ class StatsViewModelTest {
 
     private val load: LoadStatsUseCase = mockk()
     private val compute = ComputeStatsSummaryUseCase()
+    private val errorLogger: StatsErrorLogger = mockk(relaxed = true)
 
     private val top =
         StatsTopListDto(listOf(StatsTopEntryDto(StationDto("s1", "Rock FM"), 60_000)))
@@ -50,7 +52,7 @@ class StatsViewModelTest {
     private val emptyBundle =
         ApiResult.Ok(StatsBundle(StatsTopListDto(), StatsTimelineDto()))
 
-    private fun vm() = StatsViewModel(load, compute)
+    private fun vm() = StatsViewModel(load, compute, errorLogger)
 
     @Test
     fun `carga inicial con datos muestra Content con resumen y granularidad dia`() =
@@ -237,5 +239,22 @@ class StatsViewModelTest {
                 listOf(3_000L, 1_000L),
                 state.bundle.recent.items.map { it.startedAt },
             )
+        }
+
+    @Test
+    fun `un error de carga se registra con log estructurado y el exito no lo hace (Principio IV)`() =
+        runTest {
+            val error = DomainError.Unavailable("down")
+            coEvery { load(any()) } returnsMany listOf(ApiResult.Err(error), okBundle)
+            val v = vm()
+            advanceUntilIdle()
+
+            verify(exactly = 1) { errorLogger.log(error) }
+
+            v.retry()
+            advanceUntilIdle()
+
+            assertTrue(v.ui.value is StatsUiState.Content)
+            verify(exactly = 1) { errorLogger.log(any()) }
         }
 }

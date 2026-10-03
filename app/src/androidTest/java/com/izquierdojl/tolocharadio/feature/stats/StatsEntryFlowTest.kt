@@ -7,6 +7,7 @@ import androidx.compose.ui.test.performClick
 import com.izquierdojl.tolocharadio.core.ui.theme.TolochaTheme
 import com.izquierdojl.tolocharadio.domain.stats.StatsPeriod
 import com.izquierdojl.tolocharadio.feature.settings.SettingsActionRow
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -57,5 +58,30 @@ class StatsEntryFlowTest {
         compose.onNodeWithText("Tus estadísticas").assertIsDisplayed()
         compose.onNodeWithText("Reintentar").performClick()
         assertTrue(retried)
+    }
+
+    @Test
+    fun estadoDeErrorDeCredenciales_ofreceEditarServidor() {
+        var retried = false
+        var edited = false
+        compose.setContent {
+            TolochaTheme {
+                StatsScreenContent(
+                    state =
+                        StatsUiState.Error(
+                            "No se pudo autenticar con el servidor. Revisa el email y la contraseña.",
+                            isAuthError = true,
+                        ),
+                    period = StatsPeriod.THIRTY,
+                    onPeriodChange = {},
+                    onRetry = { retried = true },
+                    onEditServer = { edited = true },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Editar servidor").assertIsDisplayed().performClick()
+        assertTrue(edited)
+        assertFalse(retried)
     }
 }

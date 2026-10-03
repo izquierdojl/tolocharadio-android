@@ -238,3 +238,12 @@ Task: "T019 [P] [US1] Bloque TimelineChart.kt"
 - Commits solo si el usuario lo pide explícitamente
 - Detenerse en cualquier checkpoint para validar la historia de forma independiente
 - Evitar: tareas vagas, conflictos de archivo compartido y dependencias entre historias que rompan la independencia
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: Huecos detectados por /speckit.converge (2026-10-03) al contrastar spec/plan/tasks con el código actual; ambos CRITICAL por Principio IV (MUST).
+
+- [X] T036 CRITICAL Ante un error de credenciales en la vista de graficas, hacer que la accion de reintento abra la edicion del servidor activo (patron de HistoryScreen/FavoritesScreen: retryLabel "Editar servidor" y onRetry -> onEditServer segun isAuthError) en app/src/main/java/com/izquierdojl/tolocharadio/feature/stats/StatsScreen.kt con el callback onEditServer cableado desde core/ui/navigation/TolochaNavGraph.kt per spec Edge Cases (sesion caducada) + Constitution IV (partial)
+- [X] T037 CRITICAL Registrar los errores de carga de graficas con log estructurado (tag, causa y code/status del DomainError, sin PII ni credenciales) en el manejo de ApiResult.Err de app/src/main/java/com/izquierdojl/tolocharadio/feature/stats/StatsViewModel.kt per Constitution IV (missing)

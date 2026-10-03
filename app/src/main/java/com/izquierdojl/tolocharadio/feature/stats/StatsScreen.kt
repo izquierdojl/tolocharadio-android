@@ -41,7 +41,10 @@ import com.izquierdojl.tolocharadio.feature.stats.blocks.TopStationsChart
  * FR-001). [StatsScreenContent] es stateless para el test de UI.
  */
 @Composable
-fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
+fun StatsScreen(
+    viewModel: StatsViewModel = hiltViewModel(),
+    onEditServer: () -> Unit = {},
+) {
     val state by viewModel.ui.collectAsState()
     val period by viewModel.period.collectAsState()
     StatsScreenContent(
@@ -49,6 +52,7 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
         period = period,
         onPeriodChange = viewModel::onPeriodChange,
         onRetry = viewModel::retry,
+        onEditServer = onEditServer,
     )
     LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onForeground() }
 }
@@ -60,6 +64,7 @@ fun StatsScreenContent(
     period: StatsPeriod,
     onPeriodChange: (StatsPeriod) -> Unit,
     onRetry: () -> Unit,
+    onEditServer: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxSize()) {
@@ -80,7 +85,12 @@ fun StatsScreenContent(
                 EmptyState(
                     title = "Todavía no hay escucha en este periodo. Reproduce una emisora y vuelve aquí.",
                 )
-            is StatsUiState.Error -> ErrorBanner(message = current.message, onRetry = onRetry)
+            is StatsUiState.Error ->
+                ErrorBanner(
+                    message = current.message,
+                    onRetry = if (current.isAuthError) onEditServer else onRetry,
+                    retryLabel = if (current.isAuthError) "Editar servidor" else "Reintentar",
+                )
             is StatsUiState.Content -> ContentBlocks(current)
         }
     }

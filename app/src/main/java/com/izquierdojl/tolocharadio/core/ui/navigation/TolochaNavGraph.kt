@@ -364,7 +364,7 @@ fun TolochaNavGraph(
                 SettingsScreen(onStats = { navController.navigate(Routes.STATS) })
             }
             composable(Routes.STATS) {
-                StatsScreen()
+                StatsScreen(onEditServer = editActiveServer)
             }
             composable(Routes.SERVERS) {
                 ServerListScreen(
