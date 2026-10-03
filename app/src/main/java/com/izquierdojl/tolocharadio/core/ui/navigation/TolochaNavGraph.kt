@@ -72,6 +72,7 @@ import com.izquierdojl.tolocharadio.feature.servers.ServerFormScreen
 import com.izquierdojl.tolocharadio.feature.servers.ServerListScreen
 import com.izquierdojl.tolocharadio.feature.settings.SettingsScreen
 import com.izquierdojl.tolocharadio.feature.shortcuts.ShortcutLaunchViewModel
+import com.izquierdojl.tolocharadio.feature.stats.StatsScreen
 import com.tolocharadio.domain.notification.NotificationAction
 import com.tolocharadio.domain.notification.NotificationLogger
 import com.tolocharadio.ui.notification.NotificationState
@@ -360,7 +361,10 @@ fun TolochaNavGraph(
                 )
             }
             composable(Routes.SETTINGS) {
-                SettingsScreen()
+                SettingsScreen(onStats = { navController.navigate(Routes.STATS) })
+            }
+            composable(Routes.STATS) {
+                StatsScreen(onEditServer = editActiveServer)
             }
             composable(Routes.SERVERS) {
                 ServerListScreen(
