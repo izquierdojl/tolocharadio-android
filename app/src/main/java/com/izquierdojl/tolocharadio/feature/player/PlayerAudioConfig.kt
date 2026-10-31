@@ -4,7 +4,9 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import com.izquierdojl.tolocharadio.domain.playback.BufferProfileSpec
 
 /**
  * Configuración de audio del reproductor local (spec 0019, FR-001..FR-005).
@@ -36,4 +38,21 @@ object PlayerAudioConfig {
         builder
             .setAudioAttributes(audioAttributes, HANDLE_AUDIO_FOCUS)
             .setHandleAudioBecomingNoisy(HANDLE_AUDIO_BECOMING_NOISY)
+
+    /** Construye el `LoadControl` del perfil (spec 0042, R1). */
+    fun loadControlFor(spec: BufferProfileSpec): DefaultLoadControl =
+        DefaultLoadControl
+            .Builder()
+            .setBufferDurationsMs(
+                spec.minBufferMs.toInt(),
+                spec.maxBufferMs.toInt(),
+                spec.bufferForPlaybackMs.toInt(),
+                spec.bufferForPlaybackAfterRebufferMs.toInt(),
+            ).build()
+
+    /** Aplica atributos de audio y el buffer del perfil. */
+    fun applyTo(
+        builder: ExoPlayer.Builder,
+        spec: BufferProfileSpec,
+    ): ExoPlayer.Builder = applyTo(builder).setLoadControl(loadControlFor(spec))
 }

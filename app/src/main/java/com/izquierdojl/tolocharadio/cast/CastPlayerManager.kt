@@ -20,6 +20,7 @@ import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.domain.playback.HlsStation
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
 import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
+import com.izquierdojl.tolocharadio.feature.player.PlaybackEngine
 import com.izquierdojl.tolocharadio.feature.player.PlaybackVolumeController
 import com.izquierdojl.tolocharadio.feature.player.PlayerState
 import com.izquierdojl.tolocharadio.feature.player.PlayerStateType
@@ -50,10 +51,12 @@ class CastPlayerManager
         private val context: Context,
         private val activeStationHolder: ActiveStationHolder,
         private val prefs: InstancePrefs,
-        val exoPlayer: ExoPlayer,
+        private val engine: PlaybackEngine,
         private val mediaItemFactory: StationMediaItemFactory,
         private val volume: PlaybackVolumeController,
     ) {
+        val exoPlayer: ExoPlayer
+            get() = engine.player
         private val _connectionState = MutableStateFlow(CastConnectionState.DISCONNECTED)
         val connectionState: StateFlow<CastConnectionState> = _connectionState.asStateFlow()
 

@@ -273,7 +273,7 @@ fun TolochaNavGraph(
         bottomBar = {
             if (chromeVisible) {
                 Column {
-                    MiniPlayer(viewModel = playerVm, snackbar = snackbar)
+                    MiniPlayer(viewModel = playerVm, snackbar = snackbar, onEditServer = editActiveServer)
                     TolochaNavigationBar(
                         currentRoute = currentRoute,
                         onNavigate = { route ->

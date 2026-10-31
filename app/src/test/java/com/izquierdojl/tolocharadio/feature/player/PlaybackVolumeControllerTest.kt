@@ -2,6 +2,7 @@ package com.izquierdojl.tolocharadio.feature.player
 
 import androidx.media3.exoplayer.ExoPlayer
 import com.izquierdojl.tolocharadio.cast.RemoteVolumeDevice
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertEquals
@@ -18,8 +19,12 @@ import org.junit.Test
  */
 class PlaybackVolumeControllerTest {
     private val exoPlayer: ExoPlayer = mockk(relaxed = true)
+    private val engine: PlaybackEngine =
+        mockk {
+            every { player } returns exoPlayer
+        }
 
-    private fun controller() = PlaybackVolumeController(exoPlayer)
+    private fun controller() = PlaybackVolumeController(engine)
 
     @Test
     fun `bind con app silenciada escribe el silencio al receptor y conserva el origen`() {
