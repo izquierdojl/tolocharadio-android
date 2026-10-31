@@ -1,6 +1,8 @@
 package com.izquierdojl.tolocharadio.feature.player
 
 import androidx.media3.common.C
+import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.playback.BufferProfileSpec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -21,5 +23,13 @@ class PlayerAudioConfigTest {
     fun `gestiona foco y becoming noisy`() {
         assertTrue(PlayerAudioConfig.HANDLE_AUDIO_FOCUS)
         assertTrue(PlayerAudioConfig.HANDLE_AUDIO_BECOMING_NOISY)
+    }
+
+    @Test
+    fun `construye un LoadControl por perfil`() {
+        BufferProfile.entries.forEach { profile ->
+            val control = PlayerAudioConfig.loadControlFor(BufferProfileSpec.forProfile(profile))
+            assertTrue(control is androidx.media3.exoplayer.DefaultLoadControl)
+        }
     }
 }

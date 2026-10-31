@@ -6,11 +6,14 @@ import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.core.util.AppBuildInfo
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
+import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 import com.izquierdojl.tolocharadio.domain.servers.GetServersUseCase
 import com.izquierdojl.tolocharadio.domain.servers.SavedServer
+import com.izquierdojl.tolocharadio.feature.player.PlaybackProfileController
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -23,6 +26,7 @@ class SettingsViewModelTest {
 
     private val prefs: InstancePrefs = mockk(relaxed = true)
     private val getServers: GetServersUseCase = mockk()
+    private val profileController: PlaybackProfileController = mockk(relaxed = true)
 
     private val buildInfo =
         AppBuildInfo(
@@ -56,8 +60,10 @@ class SettingsViewModelTest {
     ): SettingsViewModel {
         every { prefs.themeMode } returns flowOf(ThemeMode.DARK)
         every { prefs.startScreen } returns flowOf(StartScreen.FAVORITES)
+        every { prefs.bufferProfile } returns flowOf(BufferProfile.BALANCED)
+        every { prefs.resumeOnConnectivity } returns flowOf(true)
         every { getServers() } returns flowOf(servers)
-        return SettingsViewModel(prefs, getServers, info)
+        return SettingsViewModel(prefs, getServers, info, profileController)
     }
 
     @Test
@@ -83,6 +89,25 @@ class SettingsViewModelTest {
             val v = vm()
             v.onThemeModeChange(ThemeMode.LIGHT)
             coVerify { prefs.setThemeMode(ThemeMode.LIGHT) }
+        }
+
+    @Test
+    fun `cambio de buffer persiste y solicita aplicacion`() =
+        runTest {
+            val v = vm()
+            v.onBufferProfileChange(BufferProfile.MAX_STABILITY)
+            coVerify { prefs.setBufferProfile(BufferProfile.MAX_STABILITY) }
+            verify { profileController.request(BufferProfile.MAX_STABILITY) }
+            assertEquals(BufferProfile.MAX_STABILITY, v.ui.value.bufferProfile)
+        }
+
+    @Test
+    fun `cambio de reanudacion persiste`() =
+        runTest {
+            val v = vm()
+            v.onResumeOnConnectivityChange(false)
+            coVerify { prefs.setResumeOnConnectivity(false) }
+            assertEquals(false, v.ui.value.resumeOnConnectivity)
         }
 
     @Test

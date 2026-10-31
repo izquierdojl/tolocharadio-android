@@ -11,12 +11,13 @@ import com.izquierdojl.tolocharadio.cast.CastPlayerManager
 import com.izquierdojl.tolocharadio.cast.CastPlayerState
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.DomainError
-import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.PlaybackStatusDto
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
-import com.izquierdojl.tolocharadio.data.repo.HistoryRepo
 import com.izquierdojl.tolocharadio.data.repo.PlaybackRepo
+import com.izquierdojl.tolocharadio.domain.playback.InterruptionCause
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackStatusReason
+import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
+import com.izquierdojl.tolocharadio.domain.playback.RecoveryState
 import com.izquierdojl.tolocharadio.domain.playback.ResolvePlaybackSourceUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -29,7 +30,6 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -50,14 +50,25 @@ class PlayerViewModelTest {
 
     private val context: Context = mockk(relaxed = true)
     private val playback: PlaybackRepo = mockk()
-    private val history: HistoryRepo = mockk(relaxed = true)
-    private val prefs: InstancePrefs =
-        mockk {
-            every { baseUrl } returns flowOf("https://radio.test/")
-        }
     private val activeStationHolder: ActiveStationHolder = mockk(relaxed = true)
     private val exoPlayer: ExoPlayer = mockk(relaxed = true)
     private val castExoPlayer: ExoPlayer = mockk(relaxed = true)
+    private val engine: PlaybackEngine =
+        mockk {
+            every { player } returns exoPlayer
+            every { playerFlow } returns MutableStateFlow(exoPlayer)
+        }
+    private val recoveryStatus = MutableStateFlow<RecoveryState>(RecoveryState.Idle)
+    private val recoveryManager: PlaybackRecoveryManager =
+        mockk(relaxed = true) {
+            every { status } returns recoveryStatus
+        }
+    private val profileApplying = MutableStateFlow(false)
+    private val profileController: PlaybackProfileController =
+        mockk(relaxed = true) {
+            every { applying } returns profileApplying
+        }
+    private val localPlaybackStarter: LocalPlaybackStarter = mockk(relaxed = true)
     private val castNotices = MutableSharedFlow<CastNotice>(extraBufferCapacity = 1)
     private val castConnectionState = MutableStateFlow(CastConnectionState.DISCONNECTED)
     private val castPlayerManager: CastPlayerManager =
@@ -67,23 +78,22 @@ class PlayerViewModelTest {
             every { notices } returns castNotices
             every { connectionState } returns castConnectionState
         }
-    private val volumeController = PlaybackVolumeController(castExoPlayer)
+    private val volumeController = PlaybackVolumeController(engine)
     private val resolveSource = ResolvePlaybackSourceUseCase()
-    private val mediaItemFactory: StationMediaItemFactory = mockk(relaxed = true)
     private val station = StationDto(id = "u1", name = "Tolocha")
 
     private fun vm() =
         PlayerViewModel(
             context,
             playback,
-            history,
-            prefs,
             activeStationHolder,
-            exoPlayer,
+            engine,
             castPlayerManager,
             volumeController,
             resolveSource,
-            mediaItemFactory,
+            localPlaybackStarter,
+            recoveryManager,
+            profileController,
         )
 
     @Before
@@ -147,7 +157,7 @@ class PlayerViewModelTest {
             val viewModel = vm()
             viewModel.play(station)
             advanceUntilIdle()
-            coVerify(exactly = 1) { history.recordLocalPlay(station, any()) }
+            coVerify(exactly = 1) { localPlaybackStarter.start(station, true, true) }
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -159,7 +169,7 @@ class PlayerViewModelTest {
             val viewModel = vm()
             viewModel.play(station)
             advanceUntilIdle()
-            coVerify(exactly = 0) { history.recordLocalPlay(any(), any()) }
+            coVerify(exactly = 0) { localPlaybackStarter.start(any(), any(), any()) }
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -172,7 +182,7 @@ class PlayerViewModelTest {
             val viewModel = vm()
             viewModel.play(station)
             advanceUntilIdle()
-            coVerify(exactly = 0) { history.recordLocalPlay(any(), any()) }
+            coVerify(exactly = 0) { localPlaybackStarter.start(any(), any(), any()) }
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -194,10 +204,10 @@ class PlayerViewModelTest {
         val viewModel = vm()
         viewModel.toggleMute()
         assertTrue(viewModel.isMuted.value)
-        verify { castExoPlayer.volume = 0f }
+        verify { exoPlayer.volume = 0f }
         viewModel.toggleMute()
         assertTrue(!viewModel.isMuted.value)
-        verify { castExoPlayer.volume = 1f }
+        verify { exoPlayer.volume = 1f }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -463,4 +473,71 @@ class PlayerViewModelTest {
             coVerify(exactly = 1) { playback.status("u1") }
             verify(exactly = 1) { castPlayerManager.connectToStation(station, any()) }
         }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `recovery Reconnecting se refleja en el estado`() =
+        runTest {
+            every { activeStationHolder.station } returns station
+            recoveryStatus.value = RecoveryState.Reconnecting("u1", 2, 5, InterruptionCause.STALL)
+            val viewModel = vm()
+            advanceUntilIdle()
+            val state = viewModel.state.value
+            assertTrue(state is PlayerState.Reconnecting)
+            assertEquals(2, (state as PlayerState.Reconnecting).attempt)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `recovery WaitingForNetwork se refleja como espera de red`() =
+        runTest {
+            every { activeStationHolder.station } returns station
+            recoveryStatus.value = RecoveryState.WaitingForNetwork("u1", InterruptionCause.NO_CONNECTIVITY)
+            val viewModel = vm()
+            advanceUntilIdle()
+            val state = viewModel.state.value
+            assertTrue(state is PlayerState.Reconnecting)
+            assertTrue((state as PlayerState.Reconnecting).waitingForNetwork)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `recovery Failed de credenciales expone EDIT_SERVER`() =
+        runTest {
+            every { activeStationHolder.station } returns station
+            recoveryStatus.value =
+                RecoveryState.Failed(
+                    "u1",
+                    InterruptionCause.AUTH_ERROR,
+                    "La sesión del servidor ha caducado.",
+                    PlayerErrorAction.EDIT_SERVER,
+                )
+            val viewModel = vm()
+            advanceUntilIdle()
+            val state = viewModel.state.value
+            assertTrue(state is PlayerState.Error)
+            assertEquals(PlayerErrorAction.EDIT_SERVER, (state as PlayerState.Error).action)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `profile applying se muestra como ajuste en curso`() =
+        runTest {
+            every { activeStationHolder.station } returns station
+            profileApplying.value = true
+            val viewModel = vm()
+            advanceUntilIdle()
+            val state = viewModel.state.value
+            assertTrue(state is PlayerState.Reconnecting)
+            assertTrue((state as PlayerState.Reconnecting).applying)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `syncFromHolder restaura un error persistido`() {
+        every { activeStationHolder.station } returns station
+        every { activeStationHolder.playerState } returns PlayerStateType.ERROR
+        val viewModel = vm()
+        assertTrue(viewModel.state.value is PlayerState.Error)
+    }
 }

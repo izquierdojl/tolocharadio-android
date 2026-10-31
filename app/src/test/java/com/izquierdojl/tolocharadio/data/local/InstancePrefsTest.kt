@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
+import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -56,5 +57,38 @@ class InstancePrefsTest {
             store.state.value = mutablePreferencesOf(stringPreferencesKey("view_mode") to "XXX")
             val prefs = InstancePrefs(store)
             assertEquals(ViewMode.LIST, prefs.viewMode.first())
+        }
+
+    @Test
+    fun `buffer y reanudacion tienen defaults de producto`() =
+        runTest {
+            val prefs = InstancePrefs(FakeDataStore())
+            assertEquals(BufferProfile.BALANCED, prefs.bufferProfile.first())
+            assertEquals(true, prefs.resumeOnConnectivity.first())
+        }
+
+    @Test
+    fun `setBufferProfile persiste y se lee de vuelta`() =
+        runTest {
+            val prefs = InstancePrefs(FakeDataStore())
+            prefs.setBufferProfile(BufferProfile.MAX_STABILITY)
+            assertEquals(BufferProfile.MAX_STABILITY, prefs.bufferProfile.first())
+        }
+
+    @Test
+    fun `buffer corrupto cae a BALANCED`() =
+        runTest {
+            val store = FakeDataStore()
+            store.state.value = mutablePreferencesOf(stringPreferencesKey("buffer_profile") to "XXX")
+            val prefs = InstancePrefs(store)
+            assertEquals(BufferProfile.BALANCED, prefs.bufferProfile.first())
+        }
+
+    @Test
+    fun `setResumeOnConnectivity persiste y se lee de vuelta`() =
+        runTest {
+            val prefs = InstancePrefs(FakeDataStore())
+            prefs.setResumeOnConnectivity(false)
+            assertEquals(false, prefs.resumeOnConnectivity.first())
         }
 }

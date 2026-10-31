@@ -9,6 +9,7 @@ import com.izquierdojl.tolocharadio.BuildConfig
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
+import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -53,6 +54,14 @@ class InstancePrefs
                 } ?: ViewMode.LIST
             }
 
+        /** Perfil de buffer local (spec 0042, FR-010/FR-012). Default BALANCED. */
+        val bufferProfile: Flow<BufferProfile> =
+            store.data.map { BufferProfile.fromPersisted(it[KEY_BUFFER_PROFILE]) }
+
+        /** Reanudar al recuperar conexión (spec 0042, FR-023). Default true. */
+        val resumeOnConnectivity: Flow<Boolean> =
+            store.data.map { it[KEY_RESUME_ON_CONNECTIVITY] ?: true }
+
         suspend fun setBaseUrl(url: String) {
             store.edit { it[KEY_BASE_URL] = url }
         }
@@ -81,6 +90,16 @@ class InstancePrefs
             store.edit { it[KEY_VIEW_MODE] = mode.name }
         }
 
+        /** Persiste el perfil de buffer local (spec 0042, FR-012). */
+        suspend fun setBufferProfile(profile: BufferProfile) {
+            store.edit { it[KEY_BUFFER_PROFILE] = profile.name }
+        }
+
+        /** Persiste la preferencia de reanudación al recuperar conexión (FR-023). */
+        suspend fun setResumeOnConnectivity(enabled: Boolean) {
+            store.edit { it[KEY_RESUME_ON_CONNECTIVITY] = enabled }
+        }
+
         private companion object {
             val KEY_BASE_URL = stringPreferencesKey("base_url")
             val KEY_SETUP_DONE = booleanPreferencesKey("setup_done")
@@ -88,5 +107,7 @@ class InstancePrefs
             val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
             val KEY_START_SCREEN = stringPreferencesKey("start_screen")
             val KEY_VIEW_MODE = stringPreferencesKey("view_mode")
+            val KEY_BUFFER_PROFILE = stringPreferencesKey("buffer_profile")
+            val KEY_RESUME_ON_CONNECTIVITY = booleanPreferencesKey("resume_on_connectivity")
         }
     }

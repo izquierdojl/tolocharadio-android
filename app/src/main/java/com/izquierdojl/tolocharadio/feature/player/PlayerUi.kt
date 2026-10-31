@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,6 +33,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +55,7 @@ import com.izquierdojl.tolocharadio.cast.CastConnectionState
 import com.izquierdojl.tolocharadio.cast.CastPlayerState
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
+import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
 import kotlinx.coroutines.launch
 
 /**
@@ -62,9 +65,11 @@ import kotlinx.coroutines.launch
  * Transiciones suaves con AnimatedVisibility (spec 010, US4, SC-005).
  */
 @Composable
+@Suppress("CyclomaticComplexMethod")
 fun MiniPlayer(
     viewModel: PlayerViewModel = hiltViewModel(),
     snackbar: SnackbarHostState,
+    onEditServer: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     val muted by viewModel.isMuted.collectAsState()
@@ -101,13 +106,24 @@ fun MiniPlayer(
             state = effectiveState,
             station = safeStation,
             muted = muted,
-            subtitle = error?.message ?: panelSubtitle(safeStation, castState),
+            subtitle =
+                when (val s = effectiveState) {
+                    is PlayerState.Reconnecting ->
+                        when {
+                            s.applying -> "Aplicando ajuste…"
+                            s.waitingForNetwork -> "Sin conexión. Se reanudará al volver la red."
+                            else -> "Reconectando (${s.attempt}/${s.maxAttempts})…"
+                        }
+                    is PlayerState.Error -> s.message
+                    else -> panelSubtitle(safeStation, castState)
+                },
             actions =
                 MiniPlayerActions(
                     onOpen = { showStationInfo = true },
                     onToggle = viewModel::toggle,
                     onCancelLoad = viewModel::cancelLoad,
                     onRetry = viewModel::retry,
+                    onEditServer = onEditServer,
                     onToggleMute = viewModel::toggleMute,
                 ),
         )
@@ -123,6 +139,7 @@ fun MiniPlayer(
             station = station,
             viewModel = viewModel,
             onDismiss = { viewModel.closeFullPlayer() },
+            onEditServer = onEditServer,
         )
     }
 }
@@ -135,6 +152,7 @@ data class MiniPlayerActions(
     val onToggle: () -> Unit,
     val onCancelLoad: () -> Unit,
     val onRetry: () -> Unit,
+    val onEditServer: () -> Unit,
     val onToggleMute: () -> Unit,
 )
 
@@ -176,6 +194,7 @@ internal fun MiniPlayerContent(
                 onToggle = actions.onToggle,
                 onCancelLoad = actions.onCancelLoad,
                 onRetry = actions.onRetry,
+                onEditServer = actions.onEditServer,
             )
             // En error el silencio se oculta (FR-003b); el enlace se comparte desde la ficha (spec 0039).
             if (error == null) {
@@ -191,6 +210,7 @@ private fun playerStation(state: PlayerState): StationDto? =
         is PlayerState.Buffering -> state.station
         is PlayerState.Playing -> state.station
         is PlayerState.Paused -> state.station
+        is PlayerState.Reconnecting -> state.station
         is PlayerState.Error -> state.station
         PlayerState.Idle -> null
     }
@@ -204,6 +224,12 @@ private fun panelAnnouncement(
         is PlayerState.Playing -> "Sonando: $displayName"
         is PlayerState.Paused -> "Pausado: $displayName"
         is PlayerState.Buffering -> "Cargando: $displayName"
+        is PlayerState.Reconnecting ->
+            when {
+                state.applying -> "Aplicando ajuste: $displayName"
+                state.waitingForNetwork -> "Sin conexión: $displayName"
+                else -> "Reconectando: $displayName"
+            }
         is PlayerState.Error -> "Error de reproducción: $displayName"
         PlayerState.Idle -> ""
     }
@@ -260,13 +286,14 @@ private fun PanelMainAction(
     onToggle: () -> Unit,
     onCancelLoad: () -> Unit,
     onRetry: () -> Unit,
+    onEditServer: () -> Unit,
 ) {
     Crossfade(
-        targetState = state::class,
+        targetState = state,
         label = "panel-action-crossfade",
-    ) { stateClass ->
-        when (stateClass) {
-            PlayerState.Buffering::class -> {
+    ) { current ->
+        when (current) {
+            is PlayerState.Buffering -> {
                 IconButton(
                     onClick = onCancelLoad,
                     modifier = Modifier.semantics { contentDescription = "Cancelar carga" },
@@ -274,22 +301,36 @@ private fun PanelMainAction(
                     CircularProgressIndicator(Modifier.size(24.dp))
                 }
             }
-            PlayerState.Playing::class -> {
+            is PlayerState.Reconnecting -> {
+                CircularProgressIndicator(Modifier.size(24.dp))
+            }
+            is PlayerState.Playing -> {
                 IconButton(onClick = onToggle) {
                     Icon(Icons.Filled.Pause, contentDescription = "Pausar")
                 }
             }
-            PlayerState.Paused::class -> {
+            is PlayerState.Paused -> {
                 IconButton(onClick = onToggle) {
                     Icon(Icons.Filled.PlayArrow, contentDescription = "Reanudar")
                 }
             }
-            PlayerState.Error::class -> {
-                IconButton(onClick = onRetry) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "Reintentar")
+            is PlayerState.Error -> {
+                IconButton(
+                    onClick =
+                        if (current.action == PlayerErrorAction.EDIT_SERVER) {
+                            onEditServer
+                        } else {
+                            onRetry
+                        },
+                ) {
+                    if (current.action == PlayerErrorAction.EDIT_SERVER) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Editar servidor")
+                    } else {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Reintentar")
+                    }
                 }
             }
-            else -> Unit
+            PlayerState.Idle -> Unit
         }
     }
 }
@@ -316,6 +357,7 @@ fun FullPlayerSheet(
     station: StationDto? = null,
     viewModel: PlayerViewModel = hiltViewModel(),
     onDismiss: () -> Unit,
+    onEditServer: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     val castState by viewModel.castState.collectAsState()
@@ -324,62 +366,112 @@ fun FullPlayerSheet(
     var showStationInfo by remember { mutableStateOf(false) }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState()) {
-        Column(Modifier.fillMaxWidth().padding(24.dp)) {
-            // Logo tap opens station info sheet (US2)
-            Row(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .clickable(enabled = station != null) { showStationInfo = true },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (station != null) {
-                    StationArtwork(station = station, modifier = Modifier.size(48.dp))
-                    Spacer(Modifier.width(12.dp))
-                }
-                Column {
-                    Text(stationName, style = MaterialTheme.typography.headlineSmall)
-                    if (isCastConnected) {
-                        val cast =
-                            castState as? com.izquierdojl.tolocharadio.cast.CastPlayerState.Cast
-                        val deviceName = cast?.deviceName ?: "Chromecast"
-                        Text(
-                            deviceName,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-            }
-            if (effectiveState is PlayerState.Buffering) {
-                LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp))
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = viewModel::toggle) {
-                    Icon(
-                        if (effectiveState is PlayerState.Playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = "Play/pausa",
-                    )
-                }
-                IconButton(onClick = {
-                    viewModel.stop()
-                    onDismiss()
-                }) {
-                    Icon(Icons.Filled.Close, contentDescription = "Detener")
-                }
-                if (effectiveState is PlayerState.Error) {
-                    IconButton(onClick = viewModel::retry) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Reintentar")
-                    }
-                }
-            }
-            (effectiveState as? PlayerState.Error)?.let {
-                Text(it.message, color = MaterialTheme.colorScheme.error)
-            }
-        }
+        FullPlayerContent(
+            state = effectiveState,
+            stationName = stationName,
+            station = station,
+            isCastConnected = isCastConnected,
+            castDeviceName = (castState as? CastPlayerState.Cast)?.deviceName ?: "Chromecast",
+            onToggle = viewModel::toggle,
+            onStop = {
+                viewModel.stop()
+                onDismiss()
+            },
+            onRetry = viewModel::retry,
+            onEditServer = onEditServer,
+            onOpenInfo = { showStationInfo = true },
+        )
     }
     if (showStationInfo && station != null) {
         StationInfoSheet(station = station) {
             showStationInfo = false
+        }
+    }
+}
+
+/** Contenido sin estado del reproductor completo (testeable sin Hilt). */
+@Composable
+@Suppress("LongParameterList")
+internal fun FullPlayerContent(
+    state: PlayerState,
+    stationName: String,
+    station: StationDto?,
+    isCastConnected: Boolean,
+    castDeviceName: String,
+    onToggle: () -> Unit,
+    onStop: () -> Unit,
+    onRetry: () -> Unit,
+    onEditServer: () -> Unit,
+    onOpenInfo: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(24.dp)) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = station != null) { onOpenInfo() },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (station != null) {
+                StationArtwork(station = station, modifier = Modifier.size(48.dp))
+                Spacer(Modifier.width(12.dp))
+            }
+            Column {
+                Text(stationName, style = MaterialTheme.typography.headlineSmall)
+                if (isCastConnected) {
+                    Text(
+                        castDeviceName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+        }
+        when (state) {
+            is PlayerState.Buffering -> {
+                LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp))
+            }
+            is PlayerState.Reconnecting -> {
+                LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp))
+                Text(
+                    when {
+                        state.applying -> "Aplicando ajuste…"
+                        state.waitingForNetwork -> "Sin conexión. Se reanudará al volver la red."
+                        else -> "Reconectando (${state.attempt}/${state.maxAttempts})…"
+                    },
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            is PlayerState.Error -> {
+                Text(
+                    state.message,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            else -> Unit
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onToggle) {
+                Icon(
+                    if (state is PlayerState.Playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = "Play/pausa",
+                )
+            }
+            IconButton(onClick = onStop) {
+                Icon(Icons.Filled.Close, contentDescription = "Detener")
+            }
+            if (state is PlayerState.Error) {
+                if (state.action == PlayerErrorAction.EDIT_SERVER) {
+                    TextButton(onClick = onEditServer) {
+                        Text("Editar servidor")
+                    }
+                } else {
+                    IconButton(onClick = onRetry) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Reintentar")
+                    }
+                }
+            }
         }
     }
 }

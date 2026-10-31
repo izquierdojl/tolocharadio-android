@@ -6,7 +6,9 @@ import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.core.util.AppBuildInfo
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
+import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 import com.izquierdojl.tolocharadio.domain.servers.GetServersUseCase
+import com.izquierdojl.tolocharadio.feature.player.PlaybackProfileController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +23,8 @@ import javax.inject.Inject
 data class SettingsUi(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val startScreen: StartScreen = StartScreen.EXPLORE,
+    val bufferProfile: BufferProfile = BufferProfile.DEFAULT,
+    val resumeOnConnectivity: Boolean = true,
     val activeServerAlias: String? = null,
     val message: String? = null,
 )
@@ -55,6 +59,7 @@ class SettingsViewModel
         private val prefs: InstancePrefs,
         private val getServers: GetServersUseCase,
         private val buildInfo: AppBuildInfo,
+        private val profileController: PlaybackProfileController,
     ) : ViewModel() {
         private val _ui = MutableStateFlow(SettingsUi())
         val ui: StateFlow<SettingsUi> = _ui.asStateFlow()
@@ -82,6 +87,16 @@ class SettingsViewModel
                         _ui.value.copy(activeServerAlias = servers.firstOrNull { it.isActive }?.alias)
                 }
             }
+            viewModelScope.launch {
+                prefs.bufferProfile.collect { profile ->
+                    _ui.value = _ui.value.copy(bufferProfile = profile)
+                }
+            }
+            viewModelScope.launch {
+                prefs.resumeOnConnectivity.collect { enabled ->
+                    _ui.value = _ui.value.copy(resumeOnConnectivity = enabled)
+                }
+            }
         }
 
         /** Selector Sistema/Claro/Oscuro (spec 002, FR-010). SYSTEM es solo local. */
@@ -94,6 +109,21 @@ class SettingsViewModel
         fun onStartScreenChange(screen: StartScreen) {
             _ui.value = _ui.value.copy(startScreen = screen)
             viewModelScope.launch { prefs.setStartScreen(screen) }
+        }
+
+        /** Perfil de buffer local; persiste y solicita aplicación inmediata (0042 FR-012/FR-013). */
+        fun onBufferProfileChange(profile: BufferProfile) {
+            _ui.value = _ui.value.copy(bufferProfile = profile)
+            viewModelScope.launch {
+                prefs.setBufferProfile(profile)
+                profileController.request(profile)
+            }
+        }
+
+        /** Reanudación automática al recuperar conexión (0042 FR-023). */
+        fun onResumeOnConnectivityChange(enabled: Boolean) {
+            _ui.value = _ui.value.copy(resumeOnConnectivity = enabled)
+            viewModelScope.launch { prefs.setResumeOnConnectivity(enabled) }
         }
 
         /** Muestra el diálogo con la versión real del build y la configuración vigente (FR-001/FR-002). */

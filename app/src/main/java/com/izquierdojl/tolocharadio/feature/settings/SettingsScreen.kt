@@ -2,22 +2,27 @@ package com.izquierdojl.tolocharadio.feature.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -27,6 +32,7 @@ import com.izquierdojl.tolocharadio.core.ui.components.AppInfoDialog
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
+import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 
 /**
  * Configuración (sustituye a Perfil, FR-005): tema claro/oscuro y
@@ -105,6 +111,14 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
             )
 
+            Spacer(Modifier.height(16.dp))
+            PlaybackSettingsSection(
+                bufferProfile = ui.bufferProfile,
+                resumeOnConnectivity = ui.resumeOnConnectivity,
+                onBufferProfileChange = viewModel::onBufferProfileChange,
+                onResumeOnConnectivityChange = viewModel::onResumeOnConnectivityChange,
+            )
+
             ui.message?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it)
@@ -131,6 +145,68 @@ fun SettingsScreen(
             onCopyResult = viewModel::onCopyResult,
             snackbar = snackbar,
         )
+    }
+}
+
+/**
+ * Sección "Reproducción" sin estado (spec 0042, FR-010/FR-011/FR-023).
+ * Separada para poder probarla sin Hilt.
+ */
+@Composable
+internal fun PlaybackSettingsSection(
+    bufferProfile: BufferProfile,
+    resumeOnConnectivity: Boolean,
+    onBufferProfileChange: (BufferProfile) -> Unit,
+    onResumeOnConnectivityChange: (Boolean) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Text("Reproducción", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(4.dp))
+        Text("Buffer de audio", style = MaterialTheme.typography.bodyMedium)
+        BufferProfile.entries.forEach { profile ->
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "${profile.label()}. ${profile.description()}" }
+                        .clickable { onBufferProfileChange(profile) }
+                        .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = bufferProfile == profile,
+                    onClick = { onBufferProfileChange(profile) },
+                )
+                Column(Modifier.padding(start = 8.dp)) {
+                    Text(profile.label(), style = MaterialTheme.typography.bodyLarge)
+                    Text(profile.description(), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Reanudar al recuperar conexión" }
+                    .padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Reanudar al recuperar conexión", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "Si la emisora estaba sonando, vuelve sola cuando regresa la red.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Switch(
+                checked = resumeOnConnectivity,
+                onCheckedChange = onResumeOnConnectivityChange,
+                modifier = Modifier.semantics { contentDescription = "Cambiar reanudación automática" },
+            )
+        }
     }
 }
 

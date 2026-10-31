@@ -1,6 +1,5 @@
 package com.izquierdojl.tolocharadio.feature.player
 
-import androidx.media3.exoplayer.ExoPlayer
 import com.izquierdojl.tolocharadio.cast.RemoteVolumeDevice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * Hilos: todas las operaciones se invocan desde el hilo principal.
  */
 class PlaybackVolumeController(
-    private val exoPlayer: ExoPlayer,
+    private val engine: PlaybackEngine,
 ) {
     private val _muted = MutableStateFlow(false)
 
@@ -85,7 +84,7 @@ class PlaybackVolumeController(
         if (remote != null) {
             runCatching { remote.writeMuted(_muted.value) }
         } else {
-            exoPlayer.volume = if (_muted.value) 0f else 1f
+            engine.player.volume = if (_muted.value) 0f else 1f
         }
     }
 

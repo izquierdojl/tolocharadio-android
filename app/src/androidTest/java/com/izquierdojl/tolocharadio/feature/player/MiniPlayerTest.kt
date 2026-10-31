@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.izquierdojl.tolocharadio.core.ui.theme.TolochaTheme
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
+import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
 import org.junit.Rule
 import org.junit.Test
 
@@ -31,6 +32,7 @@ class MiniPlayerTest {
         onToggle: () -> Unit = {},
         onCancelLoad: () -> Unit = {},
         onRetry: () -> Unit = {},
+        onEditServer: () -> Unit = {},
         onToggleMute: () -> Unit = {},
     ) {
         compose.setContent {
@@ -46,6 +48,7 @@ class MiniPlayerTest {
                             onToggle = onToggle,
                             onCancelLoad = onCancelLoad,
                             onRetry = onRetry,
+                            onEditServer = onEditServer,
                             onToggleMute = onToggleMute,
                         ),
                 )
@@ -97,5 +100,30 @@ class MiniPlayerTest {
     fun carga_muestraCancelarCarga() {
         panel(PlayerState.Buffering(station))
         compose.onNodeWithContentDescription("Cancelar carga").assertIsDisplayed()
+    }
+
+    @Test
+    fun reconnecting_muestraIndicadorYSubtitulo() {
+        panel(PlayerState.Reconnecting(station, 2, 5), subtitle = "Reconectando (2/5)…")
+        compose.onNodeWithText("Reconectando (2/5)…").assertIsDisplayed()
+    }
+
+    @Test
+    fun aplicandoAjuste_muestraSubtitulo() {
+        panel(PlayerState.Reconnecting(station, 0, 5, applying = true), subtitle = "Aplicando ajuste…")
+        compose.onNodeWithText("Aplicando ajuste…").assertIsDisplayed()
+    }
+
+    @Test
+    fun errorEditServer_muestraEditarServidor() {
+        var edited = false
+        panel(
+            PlayerState.Error(station, "Sesión caducada", PlayerErrorAction.EDIT_SERVER),
+            subtitle = "Sesión caducada",
+            onEditServer = { edited = true },
+        )
+        compose.onNodeWithContentDescription("Editar servidor").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Editar servidor").performClick()
+        assert(edited)
     }
 }

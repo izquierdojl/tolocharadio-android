@@ -3,8 +3,9 @@ package com.izquierdojl.tolocharadio.feature.player
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
+import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
@@ -14,26 +15,34 @@ import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.izquierdojl.tolocharadio.R
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
+import com.izquierdojl.tolocharadio.data.local.InstancePrefs
+import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
+import com.izquierdojl.tolocharadio.domain.playback.RecoveryState
 import com.tolocharadio.ui.notification.NotificationNavigation
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 /**
- * Servicio de reproducción en segundo plano con notificación
- * multimedia y foco de audio (constitución II/IV).
+ * Servicio de reproducción en segundo plano con notificación multimedia y foco
+ * de audio (constitución II/IV).
  *
- * Notificación rica tipo Pocket Casts con:
- * - Nombre de emisora (via MediaMetadata.title)
- * - Botón play/pause (default)
- * - Botón stop (custom command)
- * - Botón silenciar (custom command)
- * - Artwork de la emisora (via MediaMetadata.artworkUri)
+ * Desde la spec 0042 el player lo posee [PlaybackEngine]; el servicio cambia de
+ * player con `MediaSession.setPlayer` al aplicar un perfil de buffer y NO libera
+ * la instancia compartida en `onDestroy`.
  */
 @AndroidEntryPoint
-@UnstableApi
+@OptIn(UnstableApi::class)
 class RadioPlaybackService : MediaSessionService() {
     @Inject
-    lateinit var player: ExoPlayer
+    lateinit var engine: PlaybackEngine
 
     @Inject
     lateinit var castPlayerManager: CastPlayerManager
@@ -41,11 +50,29 @@ class RadioPlaybackService : MediaSessionService() {
     @Inject
     lateinit var volumeController: PlaybackVolumeController
 
+    @Inject
+    lateinit var profileController: PlaybackProfileController
+
+    @Inject
+    lateinit var prefs: InstancePrefs
+
+    @Inject
+    lateinit var localPlaybackStarter: LocalPlaybackStarter
+
+    @Inject
+    lateinit var activeStationHolder: ActiveStationHolder
+
+    @Inject
+    lateinit var recoveryManager: PlaybackRecoveryManager
+
     private var session: MediaSession? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     companion object {
         const val CUSTOM_COMMAND_STOP = "com.izquierdojl.tolocharadio.STOP"
         const val CUSTOM_COMMAND_MUTE = "com.izquierdojl.tolocharadio.MUTE"
+        const val CUSTOM_COMMAND_RETRY = "com.izquierdojl.tolocharadio.RETRY"
+        private const val TAG = "RadioPlaybackService"
     }
 
     private val stopButton by lazy {
@@ -62,6 +89,13 @@ class RadioPlaybackService : MediaSessionService() {
             .build()
     }
 
+    private val retryButton by lazy {
+        CommandButton.Builder(CommandButton.ICON_PLAY)
+            .setDisplayName("Reintentar")
+            .setSessionCommand(SessionCommand(CUSTOM_COMMAND_RETRY, Bundle.EMPTY))
+            .build()
+    }
+
     private val sessionCallback =
         object : MediaSession.Callback {
             override fun onConnect(
@@ -73,6 +107,7 @@ class RadioPlaybackService : MediaSessionService() {
                         .buildUpon()
                         .add(SessionCommand(CUSTOM_COMMAND_STOP, Bundle.EMPTY))
                         .add(SessionCommand(CUSTOM_COMMAND_MUTE, Bundle.EMPTY))
+                        .add(SessionCommand(CUSTOM_COMMAND_RETRY, Bundle.EMPTY))
                         .build()
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                     .setAvailableSessionCommands(sessionCommands)
@@ -94,6 +129,9 @@ class RadioPlaybackService : MediaSessionService() {
                         // Afecta a la salida activa (Cast o local), spec 0035 FR-007.
                         volumeController.toggleMute()
                     }
+                    CUSTOM_COMMAND_RETRY -> {
+                        recoveryManager.manualRetry()
+                    }
                 }
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
             }
@@ -101,6 +139,8 @@ class RadioPlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+
+        engine.ensureProfile(runBlocking { prefs.bufferProfile.first() })
 
         val sessionActivityIntent =
             Intent(this, com.izquierdojl.tolocharadio.MainActivity::class.java).apply {
@@ -118,7 +158,7 @@ class RadioPlaybackService : MediaSessionService() {
             )
 
         session =
-            MediaSession.Builder(this, player)
+            MediaSession.Builder(this, engine.player)
                 .setCallback(sessionCallback)
                 .setCustomLayout(listOf(stopButton, muteButton))
                 .setSessionActivity(sessionActivityPendingIntent)
@@ -130,6 +170,58 @@ class RadioPlaybackService : MediaSessionService() {
                 setSmallIcon(R.drawable.sierra_emblem_mono)
             },
         )
+
+        serviceScope.launch {
+            profileController.requests.collect { applyProfile(it) }
+        }
+        serviceScope.launch {
+            recoveryManager.status.collect { updateCustomLayout(it) }
+        }
+    }
+
+    private suspend fun applyProfile(profile: BufferProfile) {
+        if (profile == engine.currentProfile) return
+        profileController.setApplying(true)
+        var startFailed = false
+        try {
+            val station = activeStationHolder.station
+            val wasPlaying = engine.player.playWhenReady
+            val castConnected = castPlayerManager.isCastConnected
+            val swap = engine.swap(profile)
+            swap.old.stop()
+            swap.old.clearMediaItems()
+            if (!castConnected) {
+                session?.setPlayer(swap.new)
+                if (station != null) {
+                    runCatching {
+                        localPlaybackStarter.start(
+                            station = station,
+                            recordHistory = false,
+                            playWhenReady = wasPlaying,
+                        )
+                    }.onFailure { error ->
+                        startFailed = true
+                        Log.w(TAG, "apply_profile_start_failed", error)
+                    }
+                }
+            }
+            swap.old.release()
+        } finally {
+            profileController.setApplying(false)
+        }
+        if (startFailed) {
+            recoveryManager.onPlaybackStartFailed()
+        }
+    }
+
+    private fun updateCustomLayout(status: RecoveryState) {
+        val layout =
+            if (status is RecoveryState.Failed && status.action == PlayerErrorAction.RETRY) {
+                listOf(retryButton, stopButton, muteButton)
+            } else {
+                listOf(stopButton, muteButton)
+            }
+        session?.setCustomLayout(layout)
     }
 
     /**
@@ -137,6 +229,7 @@ class RadioPlaybackService : MediaSessionService() {
      * La notificación DEBE persistir si el player está pausado (spec 010, FR-002).
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
+        val player = engine.player
         if (player.playWhenReady || player.isPlaying) {
             return
         }
@@ -146,8 +239,11 @@ class RadioPlaybackService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
     override fun onDestroy() {
+        serviceScope.cancel()
+        recoveryManager.cancel()
         session?.release()
-        player.release()
+        engine.player.stop()
+        engine.player.clearMediaItems()
         super.onDestroy()
     }
 }
