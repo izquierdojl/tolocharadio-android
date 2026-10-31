@@ -2,12 +2,19 @@
 
 ## Cómo funciona
 
-- El **versionado** se deriva del **tag Git**: `vX.Y.Z` → `versionName = X.Y.Z`.
-  El `versionCode` lo pone CI con `GITHUB_RUN_NUMBER` (creciente por cada build).
-  En local (sin tag) cae a `versionName = 1.0`, `versionCode = 1`.
-- El workflow **Release APK** (`.github/workflows/release.yml`) se dispara al pushear
-  un tag `v*.*.*`, compila `assembleRelease` firmado con tu keystore y publica el
-  fichero `tolocharadio-vX.Y.Z.apk` en la **GitHub Release** del tag.
+- El **versionado** se deriva del último **tag Git** `vX.Y.Z` y del tipo de PR:
+  - `feat` → sube **MINOR**.
+  - `fix`, `perf`, `refactor` o `revert` → sube **PATCH**.
+  - `release:major`, un título con `!:` o un cuerpo con `BREAKING CHANGE` → sube **MAJOR**.
+  - El resto (por ejemplo `chore`, `docs`, `ci`) **no publica APK** salvo que la PR lleve la etiqueta `release` o `release:*`.
+- El **APK se publica al mergear una PR a `main`**, no al subir un tag manualmente.
+  El workflow **Release APK** (`.github/workflows/release.yml`) compila
+  `assembleRelease` firmado con tu keystore, crea el tag `vX.Y.Z`, publica
+  `tolocharadio-vX.Y.Z.apk` en la GitHub Release y muestra la versión en el
+  título y el cuerpo de la release.
+- La etiqueta `skip-release` cancela la publicación aunque la PR sea `feat`/`fix`.
+- Varias PRs mergeadas generan una release por PR. Si quieres agrupar cambios,
+  mergea una sola PR con todo el contenido publicable.
 
 ## 1. Crear el keystore (una sola vez)
 
@@ -39,16 +46,18 @@ Remove-Item keystore.b64
 
 ## 3. Publicar una release
 
-```powershell
-git tag v1.0.0
-git push origin v1.0.0
-```
+1. Crea una PR a `main` con los cambios publicables.
+2. Usa un título Conventional Commit (`feat: ...`, `fix: ...`) o etiqueta la PR
+   con `release`, `release:minor` o `release:major`.
+3. Mergea la PR. El workflow calcula la versión, crea el tag `vX.Y.Z`, compila
+   el APK firmado y publica la Release con la versión en el título y el cuerpo.
 
-Eso crea automáticamente la Release en GitHub con el APK firmado adjunto
-(`tolocharadio-v1.0.0.apk`) y notas generadas desde los commits.
+No subas tags `vX.Y.Z` manualmente para publicar: ese flujo ya no dispara el
+release. Para evitar una release en una PR concreta, añade la etiqueta
+`skip-release`.
 
-Si el workflow falla por falta de secrets, revísalos en Settings → Actions
-y vuelve a lanzar el tag (borra y recrea el tag, o haz re-run del workflow).
+Si el workflow falla por falta de secrets, revísalos en Settings → Actions y
+relanza el workflow **Release APK** desde la ejecución de la PR.
 
 ## 4. Probar la firma en local (opcional)
 
