@@ -49,9 +49,17 @@ Los tres pasos son **gates obligatorios**: no se debe mergear con ellos en rojo.
 
 ## Versionado y release
 
-El versionado se deriva del **tag Git**: `vX.Y.Z` → `versionName = X.Y.Z`, y `versionCode` lo pone CI con `GITHUB_RUN_NUMBER`. En local (sin tag) cae a `versionName = 1.0`, `versionCode = 1`.
+El versionado se deriva del **último tag Git** `vX.Y.Z` y del tipo de PR que se
+mergea a `main`: `feat` sube MINOR; `fix`/`perf`/`refactor`/`revert` suben PATCH;
+`release:major`, `!:` o `BREAKING CHANGE` suben MAJOR. Las PRs `chore`/`docs`/`ci`
+no publican APK salvo que lleven la etiqueta `release` o `release:*`; la etiqueta
+`skip-release` cancela la publicación.
 
-Al pushear un tag `v*.*.*`, el workflow **Release APK** compila `assembleRelease` firmado y publica `tolocharadio-vX.Y.Z.apk` en la GitHub Release del tag. Los detalles (creación del keystore, secrets y publicación) están en [docs/RELEASE.md](RELEASE.md).
+El workflow **Release APK** se dispara al mergear una PR a `main`, no al subir
+un tag. Compila `assembleRelease` firmado, crea el tag, publica
+`tolocharadio-vX.Y.Z.apk` en la GitHub Release y muestra la versión en la
+release. Los detalles (keystore, secrets y publicación) están en
+[docs/RELEASE.md](RELEASE.md).
 
 ## Entorno
 
