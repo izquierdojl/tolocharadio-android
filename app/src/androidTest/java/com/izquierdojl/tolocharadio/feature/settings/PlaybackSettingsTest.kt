@@ -35,9 +35,37 @@ class PlaybackSettingsTest {
         }
     }
 
+    private fun expandirBuffer() {
+        compose.onNodeWithText("Buffer de audio").performClick()
+    }
+
     @Test
-    fun muestraLosTresPerfilesYElSwitch() {
+    fun opcionesDeBufferPlegadasPorDefecto() {
         section()
+        compose.onNodeWithText("Buffer de audio").assertIsDisplayed()
+        compose.onNodeWithText("Perfil actual: Equilibrado").assertIsDisplayed()
+        compose.onNodeWithText("Ahorro de datos").assertDoesNotExist()
+        compose.onNodeWithText("Equilibrado").assertDoesNotExist()
+        compose.onNodeWithText("Máxima estabilidad").assertDoesNotExist()
+        compose.onNodeWithText("Reanudar al recuperar conexión").assertIsDisplayed()
+    }
+
+    @Test
+    fun pulsarBufferDeAudioDespliegaYOcultaOpciones() {
+        section()
+        expandirBuffer()
+        compose.onNodeWithText("Ahorro de datos").assertIsDisplayed()
+        compose.onNodeWithText("Equilibrado").assertIsDisplayed()
+        compose.onNodeWithText("Máxima estabilidad").assertIsDisplayed()
+
+        expandirBuffer()
+        compose.onNodeWithText("Ahorro de datos").assertDoesNotExist()
+    }
+
+    @Test
+    fun muestraLosTresPerfilesYElSwitchAlDesplegar() {
+        section()
+        expandirBuffer()
         compose.onNodeWithText("Ahorro de datos").assertIsDisplayed()
         compose.onNodeWithText("Equilibrado").assertIsDisplayed()
         compose.onNodeWithText("Máxima estabilidad").assertIsDisplayed()
@@ -48,6 +76,7 @@ class PlaybackSettingsTest {
     fun seleccionarMaximaEstabilidadInvocaCallback() {
         var selected: BufferProfile? = null
         section(onBuffer = { selected = it })
+        expandirBuffer()
         val max = BufferProfile.MAX_STABILITY
         compose.onNodeWithContentDescription("${max.label()}. ${max.description()}").performClick()
         assertEquals(BufferProfile.MAX_STABILITY, selected)
