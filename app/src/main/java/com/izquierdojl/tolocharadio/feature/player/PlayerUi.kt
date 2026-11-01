@@ -114,6 +114,12 @@ fun MiniPlayer(
                             s.waitingForNetwork -> "Sin conexión. Se reanudará al volver la red."
                             else -> "Reconectando (${s.attempt}/${s.maxAttempts})…"
                         }
+                    is PlayerState.Buffering ->
+                        when {
+                            s.waitingForNetwork -> "Sin conexión. Se reanudará al volver la red."
+                            s.retrying -> "Reintentando…"
+                            else -> panelSubtitle(safeStation, castState)
+                        }
                     is PlayerState.Error -> s.message
                     else -> panelSubtitle(safeStation, castState)
                 },
@@ -223,7 +229,12 @@ private fun panelAnnouncement(
     when (state) {
         is PlayerState.Playing -> "Sonando: $displayName"
         is PlayerState.Paused -> "Pausado: $displayName"
-        is PlayerState.Buffering -> "Cargando: $displayName"
+        is PlayerState.Buffering ->
+            when {
+                state.waitingForNetwork -> "Sin conexión: $displayName"
+                state.retrying -> "Reintentando: $displayName"
+                else -> "Cargando: $displayName"
+            }
         is PlayerState.Reconnecting ->
             when {
                 state.applying -> "Aplicando ajuste: $displayName"
@@ -391,7 +402,7 @@ fun FullPlayerSheet(
 
 /** Contenido sin estado del reproductor completo (testeable sin Hilt). */
 @Composable
-@Suppress("LongParameterList")
+@Suppress("LongParameterList", "CyclomaticComplexMethod")
 internal fun FullPlayerContent(
     state: PlayerState,
     stationName: String,
@@ -430,6 +441,14 @@ internal fun FullPlayerContent(
         when (state) {
             is PlayerState.Buffering -> {
                 LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp))
+                Text(
+                    when {
+                        state.waitingForNetwork -> "Sin conexión. Se reanudará al volver la red."
+                        state.retrying -> "Reintentando…"
+                        else -> "Cargando…"
+                    },
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             }
             is PlayerState.Reconnecting -> {
                 LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp))
@@ -455,7 +474,7 @@ internal fun FullPlayerContent(
             IconButton(onClick = onToggle) {
                 Icon(
                     if (state is PlayerState.Playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = "Play/pausa",
+                    contentDescription = if (state is PlayerState.Playing) "Pausar" else "Reanudar",
                 )
             }
             IconButton(onClick = onStop) {

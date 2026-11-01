@@ -1,27 +1,30 @@
 package com.izquierdojl.tolocharadio.domain.playback
 
 /**
- * Política de reintentos de recuperación (spec 0042, FR-003/FR-015).
+ * Política de reintentos y watchdog de la reproducción (spec 0044, FR-007).
  *
- * Los valores son de producto y deben coincidir con `data-model.md` y `research.md`.
+ * El presupuesto de intentos se comparte dentro de [stableWindowMs]; cada
+ * secuencia de reconexión tiene su propio límite [totalTimeoutMs].
  */
 @Suppress("MagicNumber")
 data class RecoveryPolicy(
-    val maxAttempts: Int = 5,
-    val totalTimeoutMs: Long = 60_000,
-    val attemptTimeoutMs: Long = 7_000,
-    val stallThresholdMs: Long = 5_000,
-    val initialBufferTimeoutMs: Long = 10_000,
-    val backoffMs: List<Long> = listOf(0, 1_000, 2_000, 4_000, 8_000),
+    val maxAttempts: Int = 6,
+    val totalTimeoutMs: Long = 120_000,
+    val attemptTimeoutMs: Long = 15_000,
+    val stallThresholdMs: Long = 15_000,
+    val initialBufferTimeoutMs: Long = 15_000,
+    val backoffMs: List<Long> = listOf(0, 1_000, 2_000, 4_000, 8_000, 15_000),
+    val stableWindowMs: Long = 60_000,
 ) {
     init {
-        require(maxAttempts in 1..5) { "maxAttempts debe estar entre 1 y 5" }
-        require(totalTimeoutMs in 1..60_000) { "totalTimeoutMs no debe superar 60 s" }
-        require(attemptTimeoutMs in 1..7_000) { "attemptTimeoutMs no debe superar 7 s" }
-        require(stallThresholdMs == 5_000L) { "stallThresholdMs debe ser 5 s" }
-        require(initialBufferTimeoutMs == 10_000L) { "initialBufferTimeoutMs debe ser 10 s" }
+        require(maxAttempts in 1..6) { "maxAttempts debe estar entre 1 y 6" }
+        require(totalTimeoutMs in 1..120_000) { "totalTimeoutMs no debe superar 120 s" }
+        require(attemptTimeoutMs in 1..15_000) { "attemptTimeoutMs no debe superar 15 s" }
+        require(stallThresholdMs == 15_000L) { "stallThresholdMs debe ser 15 s" }
+        require(initialBufferTimeoutMs == 15_000L) { "initialBufferTimeoutMs debe ser 15 s" }
         require(backoffMs.isNotEmpty()) { "backoffMs no puede estar vacío" }
         require(backoffMs.all { it >= 0 }) { "backoffMs no puede contener negativos" }
+        require(stableWindowMs == 60_000L) { "stableWindowMs debe ser 60 s" }
     }
 
     /** Espera antes del intento [attempt] (1-based). */

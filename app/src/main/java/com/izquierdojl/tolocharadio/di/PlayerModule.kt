@@ -1,15 +1,21 @@
 package com.izquierdojl.tolocharadio.di
 
 import android.content.Context
+import com.izquierdojl.tolocharadio.BuildConfig
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
 import com.izquierdojl.tolocharadio.core.session.SessionManager
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
+import com.izquierdojl.tolocharadio.domain.playback.PlaybackFeatureFlags
 import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
+import com.izquierdojl.tolocharadio.feature.player.PlaybackClock
 import com.izquierdojl.tolocharadio.feature.player.PlaybackEngine
 import com.izquierdojl.tolocharadio.feature.player.PlaybackPlayerFactory
+import com.izquierdojl.tolocharadio.feature.player.PlaybackSessionState
 import com.izquierdojl.tolocharadio.feature.player.PlaybackVolumeController
 import com.izquierdojl.tolocharadio.feature.player.PlayerDataSourceFactory
+import com.izquierdojl.tolocharadio.feature.player.RecoveryAwarePlayer
 import com.izquierdojl.tolocharadio.feature.player.StationMediaItemFactory
+import com.izquierdojl.tolocharadio.feature.player.SystemPlaybackClock
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -37,6 +43,18 @@ object PlayerModule {
 
     @Provides
     @Singleton
+    fun playbackFeatureFlags(): PlaybackFeatureFlags = PlaybackFeatureFlags(BuildConfig.LIVE_PLAYBACK_ENABLED)
+
+    @Provides
+    @Singleton
+    fun playbackClock(): PlaybackClock = SystemPlaybackClock()
+
+    @Provides
+    @Singleton
+    fun recoveryAwarePlayer(engine: PlaybackEngine): RecoveryAwarePlayer = RecoveryAwarePlayer(engine.player)
+
+    @Provides
+    @Singleton
     fun playerDataSource(session: SessionManager): PlayerDataSourceFactory {
         return PlayerDataSourceFactory(session, OkHttpClient())
     }
@@ -51,6 +69,7 @@ object PlayerModule {
 
     @Provides
     @Singleton
+    @Suppress("LongParameterList")
     fun castPlayerManager(
         @ApplicationContext context: Context,
         activeStationHolder: ActiveStationHolder,
@@ -58,5 +77,17 @@ object PlayerModule {
         engine: PlaybackEngine,
         mediaItemFactory: StationMediaItemFactory,
         volume: PlaybackVolumeController,
-    ): CastPlayerManager = CastPlayerManager(context, activeStationHolder, prefs, engine, mediaItemFactory, volume)
+        sessionState: PlaybackSessionState,
+        recoveryAwarePlayer: RecoveryAwarePlayer,
+    ): CastPlayerManager =
+        CastPlayerManager(
+            context = context,
+            activeStationHolder = activeStationHolder,
+            prefs = prefs,
+            engine = engine,
+            mediaItemFactory = mediaItemFactory,
+            volume = volume,
+            sessionState = sessionState,
+            localSessionPlayer = recoveryAwarePlayer,
+        )
 }

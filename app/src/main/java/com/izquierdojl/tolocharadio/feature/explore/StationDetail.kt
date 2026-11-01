@@ -11,7 +11,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -29,6 +32,10 @@ import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.data.repo.FavoritesRepo
 import com.izquierdojl.tolocharadio.data.repo.StationsRepo
 import com.izquierdojl.tolocharadio.domain.ToggleFavoriteUseCase
+import com.izquierdojl.tolocharadio.domain.playback.PlaybackStatusReason
+import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
+import com.izquierdojl.tolocharadio.domain.playback.StationAvailability
+import com.izquierdojl.tolocharadio.feature.player.PlayerState
 import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -104,6 +111,8 @@ fun StationDetailScreen(
     player: PlayerViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsState()
+    val availability by player.availability.collectAsState()
+    val playerState by player.state.collectAsState()
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         when (val s = ui) {
             DetailUiState.Loading -> CircularProgressIndicator()
@@ -112,22 +121,112 @@ fun StationDetailScreen(
                 Button(onClick = onBack) { Text("Volver") }
             }
             is DetailUiState.Content -> {
-                StationArtwork(s.station, Modifier.size(96.dp))
-                Spacer(Modifier.height(12.dp))
-                Text(s.station.name, style = MaterialTheme.typography.headlineSmall)
-                Text(
-                    listOfNotNull(s.station.country, s.station.language).joinToString(" · "),
-                    style = MaterialTheme.typography.bodyMedium,
+                LaunchedEffect(s.station.id) {
+                    player.checkAvailability(s.station)
+                }
+                DisposableEffect(s.station.id) {
+                    onDispose { player.cancelAvailability() }
+                }
+                StationDetailContent(
+                    station = s.station,
+                    isFavorite = s.isFavorite,
+                    availability = availability?.takeIf { it.stationId == s.station.id },
+                    playerState = playerState,
+                    onPlay = { player.play(s.station) },
+                    onRetry = player::retry,
+                    onToggleFavorite = viewModel::toggleFavorite,
+                    onBack = onBack,
                 )
-                if (s.station.tags.isNotEmpty()) {
-                    Text(s.station.tags.joinToString(", "), style = MaterialTheme.typography.bodySmall)
-                }
-                Spacer(Modifier.height(16.dp))
-                Button(onClick = { player.play(s.station) }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Reproducir")
-                }
-                FavoriteButton(isFavorite = s.isFavorite, onToggle = viewModel::toggleFavorite)
             }
         }
+    }
+}
+
+/** Contenido sin estado de la ficha; testeable sin Hilt. */
+@Composable
+@Suppress("LongParameterList", "CyclomaticComplexMethod")
+internal fun StationDetailContent(
+    station: StationDto,
+    isFavorite: Boolean,
+    availability: StationAvailability?,
+    playerState: PlayerState,
+    onPlay: () -> Unit,
+    onRetry: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onBack: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        StationArtwork(station, Modifier.size(96.dp))
+        Spacer(Modifier.height(12.dp))
+        Text(station.name, style = MaterialTheme.typography.headlineSmall)
+        Text(
+            listOfNotNull(station.country, station.language).joinToString(" · "),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        if (station.tags.isNotEmpty()) {
+            Text(station.tags.joinToString(", "), style = MaterialTheme.typography.bodySmall)
+        }
+        Spacer(Modifier.height(12.dp))
+
+        val notPlayable = availability?.playable == false
+        if (notPlayable) {
+            Text(
+                PlaybackStatusReason.reasonToMessage(availability.reason),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+        Button(
+            onClick = onPlay,
+            enabled = !notPlayable,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (notPlayable) "No disponible" else "Reproducir")
+        }
+
+        val current = playerState.stationOrNull()?.takeIf { it.id == station.id }
+        if (current != null) {
+            Spacer(Modifier.height(12.dp))
+            val message =
+                when (playerState) {
+                    is PlayerState.Buffering ->
+                        when {
+                            playerState.waitingForNetwork ->
+                                "Sin conexión. Se reanudará al volver la red."
+                            playerState.retrying -> "Reintentando…"
+                            else -> "Cargando…"
+                        }
+                    is PlayerState.Playing -> "Reproduciendo"
+                    is PlayerState.Paused -> "Pausado"
+                    is PlayerState.Reconnecting ->
+                        if (playerState.waitingForNetwork) {
+                            "Sin conexión. Se reanudará al volver la red."
+                        } else {
+                            "Reconectando (${playerState.attempt}/${playerState.maxAttempts})…"
+                        }
+                    is PlayerState.Error -> playerState.message
+                    PlayerState.Idle -> null
+                }
+            if (message != null) {
+                Text(
+                    message,
+                    color =
+                        if (playerState is PlayerState.Error) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            if (playerState is PlayerState.Error && playerState.action == PlayerErrorAction.RETRY) {
+                TextButton(onClick = onRetry) { Text("Reintentar") }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        FavoriteButton(isFavorite = isFavorite, onToggle = onToggleFavorite)
+        TextButton(onClick = onBack) { Text("Volver") }
     }
 }

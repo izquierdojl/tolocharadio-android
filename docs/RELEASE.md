@@ -59,7 +59,19 @@ release. Para evitar una release en una PR concreta, añade la etiqueta
 Si el workflow falla por falta de secrets, revísalos en Settings → Actions y
 relanza el workflow **Release APK** desde la ejecución de la PR.
 
-## 4. Probar la firma en local (opcional)
+## 4. Bandera de reproducción continua
+
+La compilación release activa `LIVE_PLAYBACK_ENABLED` por defecto en la fase 3.
+Para publicar una release de las fases 1–2 con la ruta legacy:
+
+```powershell
+.\gradlew.bat assembleRelease -PlivePlayback=false
+```
+
+También se puede usar `TOLOCHA_LIVE_PLAYBACK=false`. No es una preferencia de
+usuario: no aparece en Configuración ni se persiste en DataStore.
+
+## 5. Probar la firma en local (opcional)
 
 En `local.properties` (no commiteado):
 

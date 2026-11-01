@@ -2,10 +2,10 @@ package com.izquierdojl.tolocharadio.feature.player
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
@@ -16,14 +16,15 @@ import com.izquierdojl.tolocharadio.cast.CastNotice
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
 import com.izquierdojl.tolocharadio.cast.CastPlayerState
 import com.izquierdojl.tolocharadio.core.network.ApiResult
-import com.izquierdojl.tolocharadio.core.network.userMessage
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.data.repo.PlaybackRepo
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackStatusReason
 import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
+import com.izquierdojl.tolocharadio.domain.playback.RecoveryPolicy
 import com.izquierdojl.tolocharadio.domain.playback.RecoveryState
 import com.izquierdojl.tolocharadio.domain.playback.ResolvePlaybackSourceUseCase
+import com.izquierdojl.tolocharadio.domain.playback.StationAvailability
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -33,13 +34,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /** Estado sellado del player (constitución IV). */
 sealed interface PlayerState {
     data object Idle : PlayerState
 
-    data class Buffering(val station: StationDto) : PlayerState
+    data class Buffering(
+        val station: StationDto,
+        val retrying: Boolean = false,
+        val waitingForNetwork: Boolean = false,
+    ) : PlayerState
 
     data class Playing(val station: StationDto) : PlayerState
 
@@ -102,9 +108,15 @@ class PlayerViewModel
         private val _fullPlayerVisible = MutableStateFlow(false)
         val fullPlayerVisible: StateFlow<Boolean> = _fullPlayerVisible.asStateFlow()
 
+        private val _availability = MutableStateFlow<StationAvailability?>(null)
+        val availability: StateFlow<StationAvailability?> = _availability.asStateFlow()
+
+        private val recoveryPolicy = RecoveryPolicy()
+
         val castState: StateFlow<CastPlayerState> = castPlayerManager.castState
 
         private var loadJob: Job? = null
+        private var availabilityJob: Job? = null
         private var controller: MediaController? = null
         private var attachedPlayer: Player? = null
 
@@ -133,14 +145,6 @@ class PlayerViewModel
                         }
                     syncHolderToState()
                     syncCastState()
-                }
-
-                override fun onPlayerError(error: PlaybackException) {
-                    if (castPlayerManager.isCastConnected) return
-                    if (profileController.applying.value) return
-                    if (recoveryManager.status.value !is RecoveryState.Idle) return
-                    val current = activeStation() ?: return
-                    setError(current, "Se ha interrumpido la reproducción.")
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -184,6 +188,7 @@ class PlayerViewModel
             player.addListener(listener)
         }
 
+        @Suppress("LongMethod")
         private fun observeRecovery() {
             viewModelScope.launch {
                 recoveryManager.status.collect { status ->
@@ -191,20 +196,36 @@ class PlayerViewModel
                     when (status) {
                         is RecoveryState.Reconnecting ->
                             _state.value =
-                                PlayerState.Reconnecting(
-                                    station = station,
-                                    attempt = status.attempt,
-                                    maxAttempts = status.maxAttempts,
-                                    waitingForNetwork = false,
-                                )
+                                if (status.initial) {
+                                    PlayerState.Buffering(
+                                        station = station,
+                                        retrying = true,
+                                        waitingForNetwork = false,
+                                    )
+                                } else {
+                                    PlayerState.Reconnecting(
+                                        station = station,
+                                        attempt = status.attempt,
+                                        maxAttempts = status.maxAttempts,
+                                        waitingForNetwork = false,
+                                    )
+                                }
                         is RecoveryState.WaitingForNetwork ->
                             _state.value =
-                                PlayerState.Reconnecting(
-                                    station = station,
-                                    attempt = 0,
-                                    maxAttempts = DEFAULT_MAX_ATTEMPTS,
-                                    waitingForNetwork = true,
-                                )
+                                if (status.initial) {
+                                    PlayerState.Buffering(
+                                        station = station,
+                                        retrying = true,
+                                        waitingForNetwork = true,
+                                    )
+                                } else {
+                                    PlayerState.Reconnecting(
+                                        station = station,
+                                        attempt = 0,
+                                        maxAttempts = recoveryPolicy.maxAttempts,
+                                        waitingForNetwork = true,
+                                    )
+                                }
                         is RecoveryState.Failed ->
                             _state.value =
                                 PlayerState.Error(
@@ -216,7 +237,9 @@ class PlayerViewModel
                             _state.value = PlayerState.Paused(station)
                         RecoveryState.Idle -> {
                             val current = _state.value
-                            if (current is PlayerState.Reconnecting) {
+                            if (current is PlayerState.Reconnecting ||
+                                (current is PlayerState.Buffering && current.retrying)
+                            ) {
                                 _state.value =
                                     if (engine.player.isPlaying) {
                                         PlayerState.Playing(station)
@@ -241,7 +264,7 @@ class PlayerViewModel
                             PlayerState.Reconnecting(
                                 station = station,
                                 attempt = 0,
-                                maxAttempts = DEFAULT_MAX_ATTEMPTS,
+                                maxAttempts = recoveryPolicy.maxAttempts,
                                 applying = true,
                             )
                     } else {
@@ -328,27 +351,81 @@ class PlayerViewModel
 
         fun play(station: StationDto) {
             loadJob?.cancel()
+            availabilityJob?.cancel()
             lostStation = null
             lostDeviceName = null
-            recoveryManager.cancel()
+            recoveryManager.onStationSelected(station)
             recoveryManager.onPlaybackResumedBySystem()
             resetPlaybackSession()
             _state.value = PlayerState.Buffering(station)
             syncHolderToState()
             syncCastState()
+            val cached =
+                _availability.value?.takeIf {
+                    it.stationId == station.id && it.isFresh(SystemClock.elapsedRealtime())
+                }
+            if (cached != null && !cached.playable) {
+                setError(station, PlaybackStatusReason.reasonToMessage(cached.reason))
+                return
+            }
             loadJob =
                 viewModelScope.launch {
-                    when (val r = playback.status(station.id)) {
-                        is ApiResult.Ok -> {
-                            if (!r.value.playable) {
-                                setError(station, PlaybackStatusReason.reasonToMessage(r.value.reason))
-                            } else {
-                                startSource(station, resolveSource(station))
-                            }
-                        }
-                        is ApiResult.Err -> setError(station, r.error.userMessage())
+                    val availability = cached ?: checkStatus(station)
+                    if (availability != null && !availability.playable) {
+                        setError(station, PlaybackStatusReason.reasonToMessage(availability.reason))
+                    } else {
+                        startSource(station, resolveSource(station))
                     }
                 }
+        }
+
+        /**
+         * Precheck compartido por la ficha y el play.
+         *
+         * No cambia [PlayerState]; la ficha muestra el aviso local y el play
+         * aplica el error si el usuario intenta reproducir.
+         */
+        fun cancelAvailability() {
+            availabilityJob?.cancel()
+            availabilityJob = null
+            _availability.value = null
+        }
+
+        fun checkAvailability(station: StationDto) {
+            val cached =
+                _availability.value?.takeIf {
+                    it.stationId == station.id && it.isFresh(SystemClock.elapsedRealtime())
+                }
+            if (cached != null) return
+            availabilityJob?.cancel()
+            if (_availability.value?.stationId != station.id) {
+                _availability.value = null
+            }
+            availabilityJob =
+                viewModelScope.launch {
+                    checkStatus(station)
+                }
+        }
+
+        private suspend fun checkStatus(station: StationDto): StationAvailability? {
+            val result = withTimeoutOrNull(STATUS_TIMEOUT_MS) { playback.status(station.id) }
+            val availability =
+                if (result is ApiResult.Ok) {
+                    StationAvailability(
+                        stationId = station.id,
+                        playable = result.value.playable,
+                        reason = result.value.reason,
+                        checkedAt = SystemClock.elapsedRealtime(),
+                    )
+                } else {
+                    null
+                }
+            if (availability != null) {
+                _availability.value = availability
+            } else if (_availability.value?.stationId == station.id) {
+                _availability.value = null
+            }
+            return availability
         }
 
         private suspend fun startSource(
@@ -423,6 +500,8 @@ class PlayerViewModel
 
         fun cancelLoad() {
             loadJob?.cancel()
+            availabilityJob?.cancel()
+            _availability.value = null
             recoveryManager.cancel()
             if (effectiveState() is PlayerState.Buffering) {
                 castPlayerManager.activePlayer.stop()
@@ -458,6 +537,8 @@ class PlayerViewModel
 
         fun stop() {
             loadJob?.cancel()
+            availabilityJob?.cancel()
+            _availability.value = null
             recoveryManager.cancel()
             lostStation = null
             lostDeviceName = null
@@ -483,6 +564,7 @@ class PlayerViewModel
 
         override fun onCleared() {
             loadJob?.cancel()
+            availabilityJob?.cancel()
             attachedPlayer?.removeListener(listener)
             attachedPlayer = null
             castPlayerManager.release()
@@ -491,6 +573,6 @@ class PlayerViewModel
         }
 
         private companion object {
-            const val DEFAULT_MAX_ATTEMPTS = 5
+            const val STATUS_TIMEOUT_MS = 2_000L
         }
     }
