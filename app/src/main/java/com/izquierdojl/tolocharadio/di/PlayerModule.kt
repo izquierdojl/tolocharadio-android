@@ -9,6 +9,7 @@ import com.izquierdojl.tolocharadio.domain.playback.PlaybackFeatureFlags
 import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
 import com.izquierdojl.tolocharadio.feature.player.PlaybackClock
 import com.izquierdojl.tolocharadio.feature.player.PlaybackEngine
+import com.izquierdojl.tolocharadio.feature.player.PlaybackHttpClient
 import com.izquierdojl.tolocharadio.feature.player.PlaybackPlayerFactory
 import com.izquierdojl.tolocharadio.feature.player.PlaybackSessionState
 import com.izquierdojl.tolocharadio.feature.player.PlaybackVolumeController
@@ -23,7 +24,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import okhttp3.OkHttpClient
 import javax.inject.Singleton
 
 /** ExoPlayer compartido + datasource del proxy autenticado del servidor. */
@@ -56,7 +56,7 @@ object PlayerModule {
     @Provides
     @Singleton
     fun playerDataSource(session: SessionManager): PlayerDataSourceFactory {
-        return PlayerDataSourceFactory(session, OkHttpClient())
+        return PlayerDataSourceFactory(session, PlaybackHttpClient.create())
     }
 
     @Provides
