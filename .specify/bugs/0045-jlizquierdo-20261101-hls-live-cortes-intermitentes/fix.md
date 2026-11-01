@@ -4,6 +4,7 @@
 - **Fixed**: 2026-11-01
 - **Assessment**: ./assessment.md
 - **Status**: applied
+- **Verified**: 2026-11-01, en dispositivo con el APK `v1.18.1`.
 
 ## Summary
 
@@ -64,8 +65,10 @@ fun playerDataSource(session: SessionManager): PlayerDataSourceFactory {
   - `./gradlew assembleDebug` → BUILD SUCCESSFUL.
 - Manual checks: medición del puente HLS real de Onda Cero contra el backend
   v0.29.1; los segmentos llegan con huecos de 11,1–11,8 s, por encima del
-  `readTimeout` anterior de 10 s. No se pudo probar en dispositivo porque el
-  servidor configurado no está disponible en este entorno.
+  `readTimeout` anterior de 10 s.
+- Prueba en dispositivo: **correcta** (usuario, 2026-11-01). La reproducción de
+  emisoras HLS con el APK `v1.18.1` se mantiene estable, sin los saltos ni los
+  cortes intermitentes anteriores.
 
 ## Deviations from Assessment
 
