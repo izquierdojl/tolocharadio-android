@@ -9,8 +9,10 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import com.izquierdojl.tolocharadio.data.remote.api.liveStreamUrl
 import com.izquierdojl.tolocharadio.data.remote.api.streamUrl
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
+import com.izquierdojl.tolocharadio.domain.playback.PlaybackRoute
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
 import java.net.URI
 import javax.inject.Inject
@@ -18,25 +20,39 @@ import javax.inject.Singleton
 
 /**
  * Único punto de construcción de `MediaItem`/`MediaSource` para reproducción
- * local, Cast y reanudación post-Cast (spec 0019, research R7).
+ * local, Cast y reanudación post-Cast (spec 0019/0044).
  *
- * La reproducción local usa **siempre** el proxy del servidor (spec 0021/0022):
- * HLS con `HlsMediaSource` sobre el manifiesto reescrito y el resto con
- * `ProgressiveMediaSource`. Para **Cast** se usa la URL pública de la emisora
- * ([createForCast]), porque el receptor no puede autenticarse contra el proxy.
+ * La ruta `CONTINUOUS` usa `/playback/{id}/live` y una `ProgressiveMediaSource`
+ * sin MIME local. La ruta `LEGACY` conserva el manifiesto HLS o el progresivo
+ * anterior. Para Cast se usa la URL pública de la emisora.
  */
 @OptIn(UnstableApi::class)
 @Singleton
+@Suppress("TooManyFunctions")
 class StationMediaItemFactory
     @Inject
     constructor(
         private val playerDataSource: PlayerDataSourceFactory,
     ) {
-        /** URL efectiva de la fuente: siempre el proxy del servidor. */
+        /** URL efectiva de la ruta legacy: proxy del servidor. */
         fun uriFor(
             source: PlaybackSource,
             baseUrl: String,
         ): String = streamUrl(baseUrl, source.stationId)
+
+        /** URL de la ruta continua, con marcador anticaché opcional. */
+        fun liveUriFor(
+            stationId: String,
+            baseUrl: String,
+            sequence: Long? = null,
+        ): String = liveStreamUrl(baseUrl, stationId, sequence?.toInt())
+
+        /** URL de la ruta legacy, con marcador anticaché opcional. */
+        fun legacyUriFor(
+            source: PlaybackSource,
+            baseUrl: String,
+            sequence: Long? = null,
+        ): String = streamUrl(baseUrl, source.stationId, sequence?.toInt())
 
         /**
          * URI para Cast: la **URL pública** de la emisora. El receptor descarga
@@ -50,10 +66,9 @@ class StationMediaItemFactory
         ): String = station.url.ifBlank { streamUrl(fallbackBaseUrl, station.id) }
 
         /**
-         * `mimeType` del `MediaItem`. **Nunca `null`**: `CastPlayer` exige que el
-         * item lo especifique (`DefaultMediaItemConverter`); sin él la app se
-         * cierra al enviar a Cast. HLS → `application/x-mpegURL`; progresivo →
-         * según la extensión de la emisora, con `audio/mpeg` por defecto.
+         * `mimeType` del `MediaItem` legacy. **Nunca `null`** para Cast:
+         * `CastPlayer` exige que el item lo especifique. HLS → `application/x-mpegURL`;
+         * progresivo → según la extensión de la emisora, `audio/mpeg` por defecto.
          */
         fun mimeTypeFor(
             station: StationDto,
@@ -78,14 +93,33 @@ class StationMediaItemFactory
             }
         }
 
-        /** Construye el `MediaItem` con metadata y `mimeType` (siempre presente). */
+        /** `MediaItem` de la ruta legacy (compatibilidad/Cast). */
         fun create(
             station: StationDto,
             source: PlaybackSource,
             baseUrl: String,
+        ): MediaItem = createLegacy(station, source, baseUrl)
+
+        /** `MediaItem` de la ruta continua: sin MIME local, extractor por Content-Type. */
+        fun createLive(
+            station: StationDto,
+            baseUrl: String,
+            sequence: Long? = null,
         ): MediaItem =
             MediaItem.Builder()
-                .setUri(uriFor(source, baseUrl))
+                .setUri(liveUriFor(station.id, baseUrl, sequence))
+                .setMediaMetadata(metadataFor(station))
+                .build()
+
+        /** `MediaItem` de la ruta legacy, con MIME explícito. */
+        fun createLegacy(
+            station: StationDto,
+            source: PlaybackSource,
+            baseUrl: String,
+            sequence: Long? = null,
+        ): MediaItem =
+            MediaItem.Builder()
+                .setUri(legacyUriFor(source, baseUrl, sequence))
                 .setMediaMetadata(metadataFor(station))
                 .setMimeType(mimeTypeFor(station, source))
                 .build()
@@ -114,14 +148,26 @@ class StationMediaItemFactory
                 .setAlbumTitle("Tolocha Radio")
                 .build()
 
-        /** Crea la `MediaSource` adecuada: HLS o progresiva, siempre por proxy. */
+        /** Crea la `MediaSource` según la ruta: progresiva continua o legacy. */
         fun createMediaSource(
             item: MediaItem,
             source: PlaybackSource,
+            route: PlaybackRoute,
         ): MediaSource =
-            if (source.hls) {
-                HlsMediaSource.Factory(playerDataSource).createMediaSource(item)
-            } else {
-                ProgressiveMediaSource.Factory(playerDataSource).createMediaSource(item)
+            when (route) {
+                PlaybackRoute.CONTINUOUS ->
+                    ProgressiveMediaSource.Factory(playerDataSource).createMediaSource(item)
+                PlaybackRoute.LEGACY ->
+                    if (source.hls) {
+                        HlsMediaSource.Factory(playerDataSource).createMediaSource(item)
+                    } else {
+                        ProgressiveMediaSource.Factory(playerDataSource).createMediaSource(item)
+                    }
             }
+
+        /** Compatibilidad con llamadas legacy: HLS o progresivo. */
+        fun createMediaSource(
+            item: MediaItem,
+            source: PlaybackSource,
+        ): MediaSource = createMediaSource(item, source, PlaybackRoute.LEGACY)
     }

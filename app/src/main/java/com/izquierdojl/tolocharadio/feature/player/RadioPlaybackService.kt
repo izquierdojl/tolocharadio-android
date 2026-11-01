@@ -19,6 +19,7 @@ import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
 import com.izquierdojl.tolocharadio.domain.playback.RecoveryState
+import com.izquierdojl.tolocharadio.domain.playback.isTransportBuffering
 import com.tolocharadio.ui.notification.NotificationNavigation
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -64,6 +65,9 @@ class RadioPlaybackService : MediaSessionService() {
 
     @Inject
     lateinit var recoveryManager: PlaybackRecoveryManager
+
+    @Inject
+    lateinit var recoveryAwarePlayer: RecoveryAwarePlayer
 
     private var session: MediaSession? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -141,6 +145,7 @@ class RadioPlaybackService : MediaSessionService() {
         super.onCreate()
 
         engine.ensureProfile(runBlocking { prefs.bufferProfile.first() })
+        recoveryAwarePlayer.updateDelegate(engine.player)
 
         val sessionActivityIntent =
             Intent(this, com.izquierdojl.tolocharadio.MainActivity::class.java).apply {
@@ -158,13 +163,14 @@ class RadioPlaybackService : MediaSessionService() {
             )
 
         session =
-            MediaSession.Builder(this, engine.player)
+            MediaSession.Builder(this, recoveryAwarePlayer)
                 .setCallback(sessionCallback)
                 .setCustomLayout(listOf(stopButton, muteButton))
                 .setSessionActivity(sessionActivityPendingIntent)
                 .build()
         // Register MediaSession with CastPlayerManager for dynamic player switching
         castPlayerManager.setMediaSession(session!!)
+        recoveryManager.start()
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider(this).apply {
                 setSmallIcon(R.drawable.sierra_emblem_mono)
@@ -175,7 +181,10 @@ class RadioPlaybackService : MediaSessionService() {
             profileController.requests.collect { applyProfile(it) }
         }
         serviceScope.launch {
-            recoveryManager.status.collect { updateCustomLayout(it) }
+            recoveryManager.status.collect { status ->
+                updateCustomLayout(status)
+                recoveryAwarePlayer.setRecovering(status.isTransportBuffering())
+            }
         }
     }
 
@@ -190,8 +199,9 @@ class RadioPlaybackService : MediaSessionService() {
             val swap = engine.swap(profile)
             swap.old.stop()
             swap.old.clearMediaItems()
+            recoveryAwarePlayer.updateDelegate(swap.new)
             if (!castConnected) {
-                session?.setPlayer(swap.new)
+                session?.setPlayer(recoveryAwarePlayer)
                 if (station != null) {
                     runCatching {
                         localPlaybackStarter.start(
@@ -240,7 +250,7 @@ class RadioPlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         serviceScope.cancel()
-        recoveryManager.cancel()
+        recoveryManager.stop()
         session?.release()
         engine.player.stop()
         engine.player.clearMediaItems()

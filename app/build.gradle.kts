@@ -50,6 +50,13 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "TOLOCHA_BASE_URL", "\"$defaultBaseUrl\"")
+        // Fase 3: activo por defecto; se puede desactivar con -PlivePlayback=false
+        // o TOLOCHA_LIVE_PLAYBACK=false para publicar las fases 1–2.
+        val livePlaybackEnabled =
+            (project.findProperty("livePlayback") as String?)?.toBooleanStrictOrNull()
+                ?: System.getenv("TOLOCHA_LIVE_PLAYBACK")?.toBooleanStrictOrNull()
+                ?: true
+        buildConfigField("boolean", "LIVE_PLAYBACK_ENABLED", "$livePlaybackEnabled")
     }
 
     signingConfigs {

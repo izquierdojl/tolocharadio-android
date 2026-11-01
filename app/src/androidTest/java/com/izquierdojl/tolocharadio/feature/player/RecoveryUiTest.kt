@@ -64,6 +64,24 @@ class RecoveryUiTest {
     }
 
     @Test
+    fun bufferingNormal_muestraCargando() {
+        content(PlayerState.Buffering(station))
+        compose.onNodeWithText("Cargando…").assertIsDisplayed()
+    }
+
+    @Test
+    fun sonando_muestraPausarYReproductorCompleto() {
+        content(PlayerState.Playing(station))
+        compose.onNodeWithContentDescription("Pausar").assertIsDisplayed()
+    }
+
+    @Test
+    fun bufferingRetry_muestraReintentando() {
+        content(PlayerState.Buffering(station, retrying = true))
+        compose.onNodeWithText("Reintentando…").assertIsDisplayed()
+    }
+
+    @Test
     fun waitingForNetwork_muestraSinConexion() {
         content(PlayerState.Reconnecting(station, 0, 5, waitingForNetwork = true))
         compose.onNodeWithText("Sin conexión. Se reanudará al volver la red.").assertIsDisplayed()

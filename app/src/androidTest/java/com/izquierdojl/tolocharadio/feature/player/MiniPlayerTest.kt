@@ -67,6 +67,13 @@ class MiniPlayerTest {
     }
 
     @Test
+    fun bufferingRetry_muestraSubtituloYSpinner() {
+        panel(PlayerState.Buffering(station, retrying = true), subtitle = "Reintentando…")
+        compose.onNodeWithText("Reintentando…").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Cancelar carga").assertIsDisplayed()
+    }
+
+    @Test
     fun pausado_muestraReanudarYSilenciar() {
         panel(PlayerState.Paused(station))
         compose.onNodeWithContentDescription("Reanudar").assertIsDisplayed()

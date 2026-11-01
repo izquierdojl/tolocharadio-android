@@ -5,6 +5,7 @@ import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StationMediaItemFactoryTest {
@@ -49,6 +50,26 @@ class StationMediaItemFactoryTest {
             MimeTypes.APPLICATION_M3U8,
             factory.mimeTypeFor(station("https://host/live.m3u8"), source),
         )
+    }
+
+    @Test
+    fun `live usa la ruta continua y el marcador`() {
+        assertEquals(
+            "https://radio.test/api/v1/playback/s1/live?r=3",
+            factory.liveUriFor("s1", base, sequence = 3),
+        )
+        assertTrue(factory.createLive(station("https://host/live.m3u8"), base, 3) != null)
+    }
+
+    @Test
+    fun `legacy usa el marcador y conserva el mime hls`() {
+        val source = PlaybackSource("s2", hls = true)
+        assertEquals(
+            "https://radio.test/api/v1/playback/s2?r=2",
+            factory.legacyUriFor(source, base, sequence = 2),
+        )
+        assertEquals(MimeTypes.APPLICATION_M3U8, factory.mimeTypeFor(station("https://host/live.m3u8"), source))
+        assertTrue(factory.createLegacy(station("https://host/live.m3u8"), source, base, 2) != null)
     }
 
     @Test

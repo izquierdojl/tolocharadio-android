@@ -6,13 +6,14 @@ enum class PlayerErrorAction {
     EDIT_SERVER,
 }
 
-/** Estado interno del manager de recuperación (spec 0042, data-model §6). */
+/** Estado interno del supervisor de recuperación (spec 0042/0044). */
 sealed interface RecoveryState {
     data object Idle : RecoveryState
 
     data class WaitingForNetwork(
         val stationId: String,
         val cause: InterruptionCause,
+        val initial: Boolean = false,
     ) : RecoveryState
 
     data class Reconnecting(
@@ -20,6 +21,7 @@ sealed interface RecoveryState {
         val attempt: Int,
         val maxAttempts: Int,
         val cause: InterruptionCause,
+        val initial: Boolean = false,
     ) : RecoveryState
 
     data class Failed(
@@ -32,4 +34,9 @@ sealed interface RecoveryState {
     data class PausedAfterLoss(
         val stationId: String,
     ) : RecoveryState
+}
+
+/** `true` mientras la UI debe mostrar transporte en buffering por recuperación. */
+fun RecoveryState.isTransportBuffering(): Boolean {
+    return this is RecoveryState.Reconnecting || this is RecoveryState.WaitingForNetwork
 }

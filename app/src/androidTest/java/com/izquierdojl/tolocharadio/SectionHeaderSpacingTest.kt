@@ -2,7 +2,9 @@ package com.izquierdojl.tolocharadio
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -45,17 +47,20 @@ class SectionHeaderSpacingTest {
     /** Tolerancia de comparación de posiciones (px). */
     private val tolerance = 0.5f
 
+    private companion object {
+        const val REFERENCE_TITLE = "Referencia"
+        const val FIXED_TITLE = "Corregido"
+    }
+
     @Test
     fun scaffoldInternoSinInsets_igualaReferenciaEnLista() {
-        val reference = tituloY("Referencia lista", grid = false, fixed = false)
-        val fixed = tituloY("Referencia lista", grid = false, fixed = true)
+        val (reference, fixed) = tituloY(grid = false)
         assertEquals(reference, fixed, tolerance)
     }
 
     @Test
     fun scaffoldInternoSinInsets_igualaReferenciaEnCuadricula() {
-        val reference = tituloY("Referencia parrilla", grid = true, fixed = false)
-        val fixed = tituloY("Referencia parrilla", grid = true, fixed = true)
+        val (reference, fixed) = tituloY(grid = true)
         assertEquals(reference, fixed, tolerance)
     }
 
@@ -88,30 +93,35 @@ class SectionHeaderSpacingTest {
     }
 
     /**
-     * Compone la referencia (sin `Scaffold` interno, como Configuración) o el
-     * patrón corregido (con `Scaffold` interno sin insets) bajo un `Scaffold`
-     * externo con `TopAppBar`, y devuelve la Y del título.
+     * Compone la referencia y el patrón corregido en dos columnas hermanas de
+     * idéntico ancho y devuelve la Y de cada título. Así se evita llamar a
+     * `setContent` dos veces en el mismo test (la regla solo lo permite una).
      */
-    private fun tituloY(
-        title: String,
-        grid: Boolean,
-        fixed: Boolean,
-    ): Float {
+    private fun tituloY(grid: Boolean): Pair<Float, Float> {
         compose.setContent {
             TolochaTheme {
-                Scaffold(topBar = { TopAppBar(title = { Text("Barra") }) }) { outer ->
-                    Column(Modifier.fillMaxSize().padding(outer)) {
-                        if (!fixed) {
-                            SectionHeader(title = title)
-                            Cuerpo(grid = grid)
-                        } else {
-                            PatronCorregido(title = title, grid = grid)
+                Row(Modifier.fillMaxSize()) {
+                    Column(Modifier.weight(1f).fillMaxHeight()) {
+                        Scaffold(topBar = { TopAppBar(title = { Text("Barra referencia") }) }) { outer ->
+                            Column(Modifier.fillMaxSize().padding(outer)) {
+                                SectionHeader(title = REFERENCE_TITLE)
+                                Cuerpo(grid = grid)
+                            }
+                        }
+                    }
+                    Column(Modifier.weight(1f).fillMaxHeight()) {
+                        Scaffold(topBar = { TopAppBar(title = { Text("Barra corregida") }) }) { outer ->
+                            Column(Modifier.fillMaxSize().padding(outer)) {
+                                PatronCorregido(title = FIXED_TITLE, grid = grid)
+                            }
                         }
                     }
                 }
             }
         }
-        return compose.onNodeWithText(title).fetchSemanticsNode().positionInRoot.y
+        val reference = compose.onNodeWithText(REFERENCE_TITLE).fetchSemanticsNode().positionInRoot.y
+        val fixed = compose.onNodeWithText(FIXED_TITLE).fetchSemanticsNode().positionInRoot.y
+        return reference to fixed
     }
 
     /** Patrón de las pantallas corregidas: `Scaffold` interno solo para el `Snackbar`. */

@@ -19,7 +19,8 @@ import org.junit.Test
 /**
  * Compose Test de Favoritos sobre el contenido sin estado (sin Hilt):
  * lista, vacío, error, deshacer y reorden por arrastre como única vía
- * (US-1–US-3, spec 0039: sin menú de mover).
+ * (US-1–US-3, spec 0039: sin menú de mover). El encabezado «Tus favoritos»
+ * vive en `FavoritesScreen` (con Hilt) y queda fuera de este contenido.
  */
 class FavoritesScreenTest {
     @get:Rule
@@ -196,13 +197,6 @@ class FavoritesScreenTest {
         compose.waitForIdle()
         assert(!moved)
         assert(!committed)
-    }
-
-    @Test
-    fun encabezado_muestraTituloYSubtitulo() {
-        screen(FavoritesUiState.Content(favs))
-        compose.onNodeWithText("Tus favoritos").assertIsDisplayed()
-        compose.onNodeWithText("Tus emisoras guardadas, en tu orden.").assertIsDisplayed()
     }
 
     @Test

@@ -18,9 +18,11 @@ import com.izquierdojl.tolocharadio.core.util.CastPermissions
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.domain.playback.HlsStation
+import com.izquierdojl.tolocharadio.domain.playback.PlaybackRoute
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackSource
 import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
 import com.izquierdojl.tolocharadio.feature.player.PlaybackEngine
+import com.izquierdojl.tolocharadio.feature.player.PlaybackSessionState
 import com.izquierdojl.tolocharadio.feature.player.PlaybackVolumeController
 import com.izquierdojl.tolocharadio.feature.player.PlayerState
 import com.izquierdojl.tolocharadio.feature.player.PlayerStateType
@@ -54,6 +56,8 @@ class CastPlayerManager
         private val engine: PlaybackEngine,
         private val mediaItemFactory: StationMediaItemFactory,
         private val volume: PlaybackVolumeController,
+        private val sessionState: PlaybackSessionState,
+        private val localSessionPlayer: Player,
     ) {
         val exoPlayer: ExoPlayer
             get() = engine.player
@@ -286,7 +290,7 @@ class CastPlayerManager
             // FR-009: Abandon audio focus when disconnecting from Cast
             abandonAudioFocus()
             // Restore MediaSession to ExoPlayer
-            mediaSession?.setPlayer(exoPlayer)
+            mediaSession?.setPlayer(localSessionPlayer)
             updateCastState()
         }
 
@@ -322,8 +326,14 @@ class CastPlayerManager
             if (holderState == PlayerStateType.PLAYING || holderState == PlayerStateType.BUFFERING) {
                 val baseUrl = runBlocking { prefs.baseUrl.first() }
                 val source = PlaybackSource(station.id, HlsStation.isHls(station.url))
-                val item = mediaItemFactory.create(station, source, baseUrl)
-                exoPlayer.setMediaSource(mediaItemFactory.createMediaSource(item, source))
+                val route = sessionState.route
+                val sequence = sessionState.nextSequence()
+                val item =
+                    when (route) {
+                        PlaybackRoute.CONTINUOUS -> mediaItemFactory.createLive(station, baseUrl, sequence)
+                        PlaybackRoute.LEGACY -> mediaItemFactory.createLegacy(station, source, baseUrl, sequence)
+                    }
+                exoPlayer.setMediaSource(mediaItemFactory.createMediaSource(item, source, route))
                 exoPlayer.prepare()
                 exoPlayer.playWhenReady = play
             }

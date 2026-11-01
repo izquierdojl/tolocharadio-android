@@ -14,6 +14,7 @@ Configura **una o varias instancias** propias (URL, alias y credenciales): la ap
 
 - **Catálogo global**: búsqueda de emisoras por nombre, país, idioma y género a través de RadioBrowser.
 - **Reproductor persistente**: la música no se interrumpe al navegar; controles de reproducir/pausar, silenciar y copiar enlace desde la barra flotante.
+- **Reproducción continua**: usa el flujo `/live` del servidor, reconecta solo ante cortes y conserva HLS únicamente como reserva para formatos no concatenables.
 - **Ficha de emisora**: carátula, país, idioma, género, códec, bitrate y estadísticas de cada emisora.
 - **Favoritos**: guarda lo que te gusta y **reordena** la lista arrastrando; quitar una favorita se puede deshacer.
 - **Historial**: consulta lo último que has escuchado y límpialo cuando quieras.

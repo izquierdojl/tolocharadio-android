@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -123,16 +124,15 @@ class PlayerViewModelTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `play con error de red lleva a Error con mensaje en espanol`() =
+    fun `play con error de red intenta la reproduccion`() =
         runTest {
             coEvery { playback.status("u1") } returns
                 ApiResult.Err(DomainError.Unavailable("Servicio no disponible"))
             val viewModel = vm()
             viewModel.play(station)
             advanceUntilIdle()
-            val state = viewModel.state.value
-            assertTrue(state is PlayerState.Error)
-            assertEquals(station, (state as PlayerState.Error).station)
+            assertTrue(viewModel.state.value is PlayerState.Buffering)
+            coVerify(exactly = 1) { localPlaybackStarter.start(station, true, true) }
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -169,7 +169,7 @@ class PlayerViewModelTest {
             val viewModel = vm()
             viewModel.play(station)
             advanceUntilIdle()
-            coVerify(exactly = 0) { localPlaybackStarter.start(any(), any(), any()) }
+            coVerify(exactly = 0) { localPlaybackStarter.start(any<StationDto>(), any<Boolean>(), any<Boolean>()) }
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -182,7 +182,7 @@ class PlayerViewModelTest {
             val viewModel = vm()
             viewModel.play(station)
             advanceUntilIdle()
-            coVerify(exactly = 0) { localPlaybackStarter.start(any(), any(), any()) }
+            coVerify(exactly = 0) { localPlaybackStarter.start(any<StationDto>(), any<Boolean>(), any<Boolean>()) }
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -198,6 +198,50 @@ class PlayerViewModelTest {
             coVerify(exactly = 1) { playback.status("h1") }
             assertTrue(viewModel.state.value is PlayerState.Buffering)
         }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `checkAvailability publica el resultado y play lo reutiliza`() =
+        runTest {
+            coEvery { playback.status("u1") } returns
+                ApiResult.Ok(PlaybackStatusDto("u1", true, null))
+            val viewModel = vm()
+            viewModel.checkAvailability(station)
+            advanceUntilIdle()
+            assertEquals(true, viewModel.availability.value?.playable)
+
+            viewModel.play(station)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { playback.status("u1") }
+            coVerify(exactly = 1) { localPlaybackStarter.start(station, true, true) }
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `checkAvailability no playable bloquea el play sin segunda consulta`() =
+        runTest {
+            coEvery { playback.status("u1") } returns
+                ApiResult.Ok(PlaybackStatusDto("u1", false, PlaybackStatusReason.STREAM_UNAVAILABLE))
+            val viewModel = vm()
+            viewModel.checkAvailability(station)
+            advanceUntilIdle()
+
+            viewModel.play(station)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value is PlayerState.Error)
+            coVerify(exactly = 1) { playback.status("u1") }
+            coVerify(exactly = 0) { localPlaybackStarter.start(any<StationDto>(), any<Boolean>(), any<Boolean>()) }
+        }
+
+    @Test
+    fun `cancelAvailability cancela la consulta y limpia el estado`() {
+        val viewModel = vm()
+        viewModel.checkAvailability(station)
+        viewModel.cancelAvailability()
+        assertNull(viewModel.availability.value)
+    }
 
     @Test
     fun `toggleMute silencia y restaura el volumen`() {
@@ -270,19 +314,17 @@ class PlayerViewModelTest {
     }
 
     @Test
-    fun `onPlayerError durante Buffering preserva la emisora`() {
+    fun `onPlayerError durante Buffering no fija Error, lo hace el manager`() {
         val viewModel = vm()
         val listener = captureListener()
         viewModel.play(station)
         assertTrue(viewModel.state.value is PlayerState.Buffering)
         listener.onPlayerError(mockk<PlaybackException>(relaxed = true))
-        val state = viewModel.state.value
-        assertTrue(state is PlayerState.Error)
-        assertEquals(station, (state as PlayerState.Error).station)
+        assertTrue(viewModel.state.value is PlayerState.Buffering)
     }
 
     @Test
-    fun `onPlayerError durante Playing preserva la emisora`() {
+    fun `onPlayerError durante Playing no fija Error, lo hace el manager`() {
         val viewModel = vm()
         val listener = captureListener()
         viewModel.play(station)
@@ -291,9 +333,7 @@ class PlayerViewModelTest {
         listener.onIsPlayingChanged(true)
         assertTrue(viewModel.state.value is PlayerState.Playing)
         listener.onPlayerError(mockk<PlaybackException>(relaxed = true))
-        val state = viewModel.state.value
-        assertTrue(state is PlayerState.Error)
-        assertEquals(station, (state as PlayerState.Error).station)
+        assertTrue(viewModel.state.value is PlayerState.Playing)
     }
 
     @Test
@@ -402,7 +442,7 @@ class PlayerViewModelTest {
             advanceUntilIdle()
 
             assertTrue(viewModel.state.value is PlayerState.Buffering)
-            coVerify(exactly = 2) { playback.status("u1") }
+            coVerify(exactly = 1) { playback.status("u1") }
             verify(exactly = 0) { castPlayerManager.connectToStation(any(), any()) }
         }
 
@@ -423,7 +463,7 @@ class PlayerViewModelTest {
             advanceUntilIdle()
 
             assertTrue(viewModel.state.value is PlayerState.Buffering)
-            coVerify(exactly = 2) { playback.status("u1") }
+            coVerify(exactly = 1) { playback.status("u1") }
             verify(exactly = 2) { castPlayerManager.connectToStation(station, any()) }
         }
 
@@ -446,7 +486,7 @@ class PlayerViewModelTest {
             viewModel.retry()
             advanceUntilIdle()
 
-            coVerify(exactly = 2) { playback.status("u1") }
+            coVerify(exactly = 1) { playback.status("u1") }
             verify(exactly = 2) { castPlayerManager.connectToStation(station, any()) }
         }
 
@@ -485,6 +525,26 @@ class PlayerViewModelTest {
             val state = viewModel.state.value
             assertTrue(state is PlayerState.Reconnecting)
             assertEquals(2, (state as PlayerState.Reconnecting).attempt)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `recovery inicial se muestra como Buffering retrying`() =
+        runTest {
+            every { activeStationHolder.station } returns station
+            recoveryStatus.value =
+                RecoveryState.Reconnecting(
+                    "u1",
+                    1,
+                    6,
+                    InterruptionCause.NETWORK_ERROR,
+                    initial = true,
+                )
+            val viewModel = vm()
+            advanceUntilIdle()
+            val state = viewModel.state.value
+            assertTrue(state is PlayerState.Buffering)
+            assertTrue((state as PlayerState.Buffering).retrying)
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)

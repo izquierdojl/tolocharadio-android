@@ -13,6 +13,22 @@
 
 En CI (Linux) los mismos con `./gradlew`.
 
+### Reproducción continua (spec 0044)
+
+La ruta principal es `GET /api/v1/playback/{stationId}/live`. Se controla con
+`BuildConfig.LIVE_PLAYBACK_ENABLED`:
+
+```powershell
+# Fase 1/2: forzar la ruta legacy
+.\gradlew.bat assembleDebug -PlivePlayback=false
+
+# Pruebas de la ruta continua (fase 1/2)
+.\gradlew.bat assembleDebug -PlivePlayback=true
+```
+
+La fase 3 deja la bandera activada por defecto; no hay ajuste visible para el
+usuario. El fallback HLS solo se usa para 415 o servidores antiguos.
+
 ## Tests
 
 - **Obligatorios** para `domain`, `data` y `ViewModel` (regla Red-Green; **JUnit + Turbine + MockK**).
