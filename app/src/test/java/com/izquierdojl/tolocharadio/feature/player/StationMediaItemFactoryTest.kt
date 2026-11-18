@@ -9,7 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StationMediaItemFactoryTest {
-    private val factory = StationMediaItemFactory(mockk(relaxed = true))
+    private val factory = StationMediaItemFactory(mockk(relaxed = true), mockk(relaxed = true))
     private val base = "https://radio.test/"
 
     private fun station(url: String) = StationDto(id = "s1", name = "Radio", url = url)

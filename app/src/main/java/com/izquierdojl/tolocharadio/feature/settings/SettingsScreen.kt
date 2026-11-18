@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.izquierdojl.tolocharadio.core.ui.components.AppInfoDialog
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
+import com.izquierdojl.tolocharadio.core.ui.navigation.ContentMode
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
@@ -70,6 +71,7 @@ fun SettingsScreen(
                 SettingsActions(
                     onThemeModeChange = viewModel::onThemeModeChange,
                     onStartScreenChange = viewModel::onStartScreenChange,
+                    onDefaultSectionChange = viewModel::onDefaultSectionChange,
                     onBufferProfileChange = viewModel::onBufferProfileChange,
                     onResumeOnConnectivityChange = viewModel::onResumeOnConnectivityChange,
                     onStats = onStats,
@@ -93,6 +95,7 @@ fun SettingsScreen(
 internal data class SettingsActions(
     val onThemeModeChange: (ThemeMode) -> Unit = {},
     val onStartScreenChange: (StartScreen) -> Unit = {},
+    val onDefaultSectionChange: (ContentMode) -> Unit = {},
     val onBufferProfileChange: (BufferProfile) -> Unit = {},
     val onResumeOnConnectivityChange: (Boolean) -> Unit = {},
     val onStats: () -> Unit = {},
@@ -171,6 +174,29 @@ internal fun SettingsContent(
         Spacer(Modifier.height(4.dp))
         Text(
             "Se abrirá automáticamente al arrancar la app con un servidor configurado.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+
+        Spacer(Modifier.height(16.dp))
+        Text("Sección inicial", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(4.dp))
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            ContentMode.entries.forEachIndexed { index, section ->
+                SegmentedButton(
+                    selected = ui.defaultSection == section,
+                    onClick = { actions.onDefaultSectionChange(section) },
+                    shape =
+                        SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = ContentMode.entries.size,
+                        ),
+                    label = { Text(section.label()) },
+                )
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Modo con el que se abre la app: Radio o Podcasts.",
             style = MaterialTheme.typography.bodySmall,
         )
 

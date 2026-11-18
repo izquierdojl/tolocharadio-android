@@ -8,11 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dns
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Radio
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,7 +32,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -52,12 +46,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.android.gms.cast.framework.CastButtonFactory
+import com.izquierdojl.tolocharadio.core.ui.components.ModeSwitchButton
 import com.izquierdojl.tolocharadio.core.ui.components.TolochaLogo
-import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
 import com.izquierdojl.tolocharadio.core.util.CastPermissions
 import com.izquierdojl.tolocharadio.domain.servers.StartupGate
 import com.izquierdojl.tolocharadio.domain.shortcuts.ShortcutLaunchResolution
-import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 import com.izquierdojl.tolocharadio.feature.customstations.CustomStationsScreen
 import com.izquierdojl.tolocharadio.feature.explore.ExploreScreen
 import com.izquierdojl.tolocharadio.feature.explore.StationDetailScreen
@@ -68,6 +61,17 @@ import com.izquierdojl.tolocharadio.feature.player.MiniPlayer
 import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
 import com.izquierdojl.tolocharadio.feature.player.SleepTimerButton
 import com.izquierdojl.tolocharadio.feature.player.SleepTimerViewModel
+import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerViewModel
+import com.izquierdojl.tolocharadio.feature.podcasts.ModeViewModel
+import com.izquierdojl.tolocharadio.feature.podcasts.discover.DiscoverScreen
+import com.izquierdojl.tolocharadio.feature.podcasts.favorites.PodcastFavoritesScreen
+import com.izquierdojl.tolocharadio.feature.podcasts.home.PodcastHomeScreen
+import com.izquierdojl.tolocharadio.feature.podcasts.player.EpisodeFullPlayerSheet
+import com.izquierdojl.tolocharadio.feature.podcasts.player.EpisodeMiniPlayer
+import com.izquierdojl.tolocharadio.feature.podcasts.queue.QueueScreen
+import com.izquierdojl.tolocharadio.feature.podcasts.show.PodcastShowScreen
+import com.izquierdojl.tolocharadio.feature.podcasts.stats.PodcastStatsScreen
+import com.izquierdojl.tolocharadio.feature.podcasts.subscriptions.SubscriptionsScreen
 import com.izquierdojl.tolocharadio.feature.servers.ServerFormScreen
 import com.izquierdojl.tolocharadio.feature.servers.ServerListScreen
 import com.izquierdojl.tolocharadio.feature.settings.SettingsScreen
@@ -77,21 +81,6 @@ import com.tolocharadio.domain.notification.NotificationAction
 import com.tolocharadio.domain.notification.NotificationLogger
 import com.tolocharadio.ui.notification.NotificationState
 import com.tolocharadio.ui.notification.NotificationViewModel
-
-private data class BottomDest(val route: String, val label: String, val icon: ImageVector)
-
-/** Secciones con listas de emisoras: el alternador de vista es visible (spec 008, FR-001/FR-009). */
-private val VIEW_MODE_ROUTES = setOf(Routes.EXPLORE, Routes.FAVORITES, Routes.HISTORY, Routes.CUSTOM_STATIONS)
-
-/** Explorar, Favoritos, Historial, Mis emisoras + Configuración (FR-005). */
-private val BOTTOM_DESTS =
-    listOf(
-        BottomDest(Routes.EXPLORE, "Explorar", Icons.Filled.Search),
-        BottomDest(Routes.FAVORITES, "Favoritos", Icons.Filled.Favorite),
-        BottomDest(Routes.HISTORY, "Historial", Icons.Filled.History),
-        BottomDest(Routes.CUSTOM_STATIONS, "Mis emisoras", Icons.Filled.Radio),
-        BottomDest(Routes.SETTINGS, "Configuración", Icons.Filled.Settings),
-    )
 
 /**
  * Shell con bottom bar estilo Pocket Casts + mini-player persistente.
@@ -108,6 +97,7 @@ fun TolochaNavGraph(
     startupGate: StartupGate = StartupGate.NoServers,
     startupServerId: String? = null,
     startScreen: StartScreen = StartScreen.EXPLORE,
+    defaultSection: ContentMode = ContentMode.RADIO,
 ) {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
@@ -116,109 +106,50 @@ fun TolochaNavGraph(
     val context = LocalContext.current
     // Un único PlayerViewModel a ámbito de Activity (spec 004, R3).
     val playerVm: PlayerViewModel = hiltViewModel(context as ComponentActivity)
-    // Un único ViewModeViewModel a ámbito de Activity (spec 008).
-    val viewModeVm: ViewModeViewModel = hiltViewModel(context)
-    val viewMode by viewModeVm.mode.collectAsState()
     // SleepTimerViewModel a ámbito de Activity (spec 014).
     val sleepTimerVm: SleepTimerViewModel = hiltViewModel(context)
-    val sleepTimerUiState by sleepTimerVm.uiState.collectAsState()
+    // Modo Radio|Podcasts + reproductor de episodios a ámbito de Activity (spec 0046).
+    val modeVm: ModeViewModel = hiltViewModel(context)
+    val modeUi by modeVm.ui.collectAsState()
+    val episodeVm: EpisodePlayerViewModel = hiltViewModel(context)
+    val episodeUi by episodeVm.ui.collectAsState()
+    val podcastMode = modeUi.podcastsEnabled && modeUi.mode == ContentMode.PODCAST
+    var episodeFullPlayer by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        sleepTimerVm.setStopPlayerCallback { playerVm.stop() }
+        sleepTimerVm.setStopPlayerCallback {
+            playerVm.stop()
+            episodeVm.stop()
+        }
+    }
+    // Keepalive de progreso al pasar a segundo plano (research D4).
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        episodeVm.onAppBackground()
     }
     val snackbar = remember { SnackbarHostState() }
 
-    // Accesos directos del icono (spec 0018).
-    val shortcutVm: ShortcutLaunchViewModel = hiltViewModel(context)
-    val pendingShortcut by shortcutVm.pending.collectAsState()
-    LaunchedEffect(pendingShortcut) {
-        val request = pendingShortcut ?: return@LaunchedEffect
-        when (val resolution = shortcutVm.resolve(request.stationId)) {
-            is ShortcutLaunchResolution.Play -> {
-                playerVm.play(resolution.station)
-                playerVm.openFullPlayer()
-                shortcutVm.consume()
-            }
-            is ShortcutLaunchResolution.Unavailable -> {
-                shortcutVm.consume()
-                snackbar.showSnackbar(resolution.message)
-            }
-        }
-    }
+    ShortcutRouteEffects(
+        playerVm = playerVm,
+        snackbar = snackbar,
+    )
+    NotificationRouteEffects(
+        navController = navController,
+        playerVm = playerVm,
+        snackbar = snackbar,
+    )
 
-    // Tap de notificación: enfoca reproductor, contenido o home (spec 0016, FR-003/FR-004).
-    val notificationVm: NotificationViewModel = hiltViewModel(context)
-    val notificationNav by notificationVm.notificationState.collectAsState()
-    LaunchedEffect(notificationNav) {
-        when (val s = notificationNav) {
-            is NotificationState.Navigate -> {
-                when (s.action) {
-                    NotificationAction.OPEN_PLAYER -> playerVm.openFullPlayer()
-                    NotificationAction.OPEN_CONTENT,
-                    NotificationAction.OPEN_INFO,
-                    ->
-                        if (s.contentId != null) {
-                            navController.navigate(Routes.stationDetail(s.contentId))
-                        } else {
-                            navController.navigate(Routes.HOME) { launchSingleTop = true }
-                        }
-                    NotificationAction.OPEN_MAIN ->
-                        navController.navigate(Routes.HOME) {
-                            popUpTo(Routes.HOME) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                }
-                notificationVm.resetState()
-            }
-            is NotificationState.Error -> {
-                NotificationLogger.logError("Error de navegación por notificación: ${s.message}")
-                snackbar.showSnackbar("No se pudo abrir la notificación")
-                notificationVm.resetState()
-            }
-            else -> Unit
-        }
-    }
+    CastPermissionEffects(chromeVisible = chromeVisible)
 
-    // Cast: descubrir dispositivos es una operación de red local (mDNS).
-    // Android 12 usa ACCESS_FINE_LOCATION, Android 13+ NEARBY_WIFI_DEVICES y
-    // Android 17 (API 37) exige ACCESS_LOCAL_NETWORK o el selector queda vacío.
-    var castPermissionsGranted by remember {
-        mutableStateOf(CastPermissions.areGranted(context))
-    }
-    val castPermissionLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestMultiplePermissions(),
-        ) {
-            // Reevaluar contra el sistema: en API 37 el grupo NEARBY_DEVICES
-            // puede conceder ACCESS_LOCAL_NETWORK de forma implícita.
-            castPermissionsGranted = CastPermissions.areGranted(context)
-        }
-    // Al volver de Ajustes refrescar el estado por si el usuario concedió a mano.
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        castPermissionsGranted = CastPermissions.areGranted(context)
-    }
-    LaunchedEffect(chromeVisible, castPermissionsGranted) {
-        if (chromeVisible && !castPermissionsGranted) {
-            val permissions = CastPermissions.required()
-            if (permissions.isNotEmpty()) {
-                castPermissionLauncher.launch(permissions.toTypedArray())
-            }
-        }
-    }
-
-    // FR-005: con servidor, abrir directamente en la pantalla de arranque.
-    LaunchedEffect(startScreen, startupGate) {
-        if (currentRoute != Routes.HOME) return@LaunchedEffect
-        val target =
-            when (startScreen) {
-                StartScreen.FAVORITES -> Routes.FAVORITES
-                StartScreen.HISTORY -> Routes.HISTORY
-                StartScreen.EXPLORE -> Routes.EXPLORE
-            }
-        navController.navigate(target) {
-            popUpTo(Routes.HOME) { inclusive = true }
-            launchSingleTop = true
-        }
-    }
+    // FR-005: con servidor, abrir directamente en la pantalla de arranque
+    // (spec 0046: sección inicial Radio|Podcasts).
+    PodcastRouteEffects(
+        navController = navController,
+        currentRoute = currentRoute,
+        podcastsEnabled = modeUi.podcastsEnabled,
+        podcastMode = podcastMode,
+        startScreen = startScreen,
+        defaultSection = defaultSection,
+        startupGate = startupGate,
+    )
 
     val editActiveServer = {
         navController.navigate(Routes.serverForm(startupServerId)) {
@@ -231,49 +162,29 @@ fun TolochaNavGraph(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             if (chromeVisible) {
-                TopAppBar(
-                    title = { TolochaLogo() },
-                    actions = {
-                        // Botón Cast (Chromecast) — FR-001, FR-002, FR-003
-                        AndroidView(
-                            factory = { ctx ->
-                                MediaRouteButton(ctx).apply {
-                                    CastButtonFactory.setUpMediaRouteButton(ctx, this)
-                                }
-                            },
-                            modifier = Modifier,
-                        )
-                        if (currentRoute in VIEW_MODE_ROUTES) {
-                            ViewModeToggle(mode = viewMode, onToggle = viewModeVm::toggle)
-                        }
-                        SleepTimerButton(
-                            uiState = sleepTimerUiState,
-                            onStart = sleepTimerVm::start,
-                            onCancel = sleepTimerVm::cancel,
-                        )
-                        IconButton(
-                            onClick = {
-                                navController.navigate(Routes.SERVERS) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                        ) {
-                            Icon(Icons.Filled.Dns, contentDescription = "Servidores")
+                TolochaTopBar(
+                    modeVm = modeVm,
+                    sleepTimerVm = sleepTimerVm,
+                    onServers = {
+                        navController.navigate(Routes.SERVERS) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     },
-                    colors =
-                        TopAppBarDefaults.topAppBarColors(
-                            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer,
-                        ),
                 )
             }
         },
         bottomBar = {
             if (chromeVisible) {
                 Column {
-                    MiniPlayer(viewModel = playerVm, snackbar = snackbar, onEditServer = editActiveServer)
+                    TolochaMiniPlayer(
+                        episodeUi = episodeUi,
+                        playerVm = playerVm,
+                        snackbar = snackbar,
+                        onEditServer = editActiveServer,
+                        onOpenEpisode = { episodeFullPlayer = true },
+                    )
                     TolochaNavigationBar(
                         currentRoute = currentRoute,
                         onNavigate = { route ->
@@ -283,6 +194,7 @@ fun TolochaNavGraph(
                                 restoreState = true
                             }
                         },
+                        dests = if (podcastMode) PODCAST_DESTS else BOTTOM_DESTS,
                     )
                 }
             }
@@ -379,6 +291,259 @@ fun TolochaNavGraph(
                     },
                 )
             }
+            composable(Routes.PODCAST_HOME) {
+                PodcastHomeScreen(
+                    onDiscover = { navController.navigate(Routes.PODCAST_DISCOVER) },
+                    onQueue = { navController.navigate(Routes.PODCAST_QUEUE) },
+                    onSubscriptions = { navController.navigate(Routes.PODCAST_SUBSCRIPTIONS) },
+                    onOpenShow = { navController.navigate(Routes.podcastShow(it)) },
+                    snackbar = snackbar,
+                )
+            }
+            composable(Routes.PODCAST_DISCOVER) {
+                DiscoverScreen(
+                    onBrowseSubscriptions = { navController.navigate(Routes.PODCAST_SUBSCRIPTIONS) },
+                    snackbar = snackbar,
+                )
+            }
+            composable(Routes.PODCAST_SUBSCRIPTIONS) {
+                SubscriptionsScreen(
+                    onDiscover = { navController.navigate(Routes.PODCAST_DISCOVER) },
+                    onOpenShow = { navController.navigate(Routes.podcastShow(it)) },
+                    snackbar = snackbar,
+                )
+            }
+            composable(Routes.PODCAST_QUEUE) {
+                QueueScreen(snackbar = snackbar)
+            }
+            composable(Routes.PODCAST_FAVORITES) {
+                PodcastFavoritesScreen(snackbar = snackbar)
+            }
+            composable(Routes.PODCAST_STATS) {
+                PodcastStatsScreen()
+            }
+            composable(
+                route = Routes.PODCAST_SHOW,
+                arguments = listOf(navArgument("podcastId") { type = NavType.LongType }),
+            ) { entry ->
+                PodcastShowScreen(
+                    podcastId = entry.arguments?.getLong("podcastId") ?: 0L,
+                    onBack = { navController.popBackStack() },
+                    snackbar = snackbar,
+                )
+            }
+        }
+    }
+    if (episodeFullPlayer && episodeUi.episode != null) {
+        EpisodeFullPlayerSheet(onDismiss = { episodeFullPlayer = false })
+    }
+}
+
+/**
+ * Barra superior: logo, Cast, alternador de vista, temporizador,
+ * servidores y selector Radio|Podcasts (spec 0046, US1).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TolochaTopBar(
+    modeVm: ModeViewModel,
+    sleepTimerVm: SleepTimerViewModel,
+    onServers: () -> Unit,
+) {
+    val modeUi by modeVm.ui.collectAsState()
+    val sleepTimerUiState by sleepTimerVm.uiState.collectAsState()
+    TopAppBar(
+        title = { TolochaLogo() },
+        actions = {
+            // Alternador Radio|Podcasts en la propia barra (spec 0046, US1).
+            if (modeUi.podcastsEnabled) {
+                ModeSwitchButton(mode = modeUi.mode, onSelect = modeVm::setMode)
+            }
+            // Botón Cast (Chromecast) — FR-001, FR-002, FR-003
+            AndroidView(
+                factory = { ctx ->
+                    MediaRouteButton(ctx).apply {
+                        CastButtonFactory.setUpMediaRouteButton(ctx, this)
+                    }
+                },
+                modifier = Modifier,
+            )
+            SleepTimerButton(
+                uiState = sleepTimerUiState,
+                onStart = sleepTimerVm::start,
+                onCancel = sleepTimerVm::cancel,
+            )
+            IconButton(onClick = onServers) {
+                Icon(Icons.Filled.Dns, contentDescription = "Servidores")
+            }
+        },
+        colors =
+            TopAppBarDefaults.topAppBarColors(
+                containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer,
+            ),
+    )
+}
+
+/** Mini-player persistente: episodio en curso o radio (spec 0046). */
+@Composable
+private fun TolochaMiniPlayer(
+    episodeUi: com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerUi,
+    playerVm: PlayerViewModel,
+    snackbar: SnackbarHostState,
+    onEditServer: () -> Unit,
+    onOpenEpisode: () -> Unit,
+) {
+    if (episodeUi.episode != null) {
+        EpisodeMiniPlayer(onOpenFullPlayer = onOpenEpisode)
+    } else {
+        MiniPlayer(viewModel = playerVm, snackbar = snackbar, onEditServer = onEditServer)
+    }
+}
+
+/**
+ * Permisos de descubrimiento Cast (mDNS/red local): los pide al mostrar
+ * el chrome y los reevalúa al volver de Ajustes.
+ */
+@Composable
+private fun CastPermissionEffects(chromeVisible: Boolean) {
+    val context = LocalContext.current
+    var castPermissionsGranted by remember {
+        mutableStateOf(CastPermissions.areGranted(context))
+    }
+    val castPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) {
+            // Reevaluar contra el sistema: en API 37 el grupo NEARBY_DEVICES
+            // puede conceder ACCESS_LOCAL_NETWORK de forma implícita.
+            castPermissionsGranted = CastPermissions.areGranted(context)
+        }
+    // Al volver de Ajustes refrescar el estado por si el usuario concedió a mano.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        castPermissionsGranted = CastPermissions.areGranted(context)
+    }
+    LaunchedEffect(chromeVisible, castPermissionsGranted) {
+        if (chromeVisible && !castPermissionsGranted) {
+            val permissions = CastPermissions.required()
+            if (permissions.isNotEmpty()) {
+                castPermissionLauncher.launch(permissions.toTypedArray())
+            }
+        }
+    }
+}
+
+/**
+ * Efectos de atajos del icono (spec 0018) y tap de notificación
+ * (spec 0016): extraídos del shell para contener su complejidad.
+ */
+@Composable
+private fun ShortcutRouteEffects(
+    playerVm: PlayerViewModel,
+    snackbar: SnackbarHostState,
+) {
+    val context = LocalContext.current
+    val shortcutVm: ShortcutLaunchViewModel = hiltViewModel(context as ComponentActivity)
+    val pendingShortcut by shortcutVm.pending.collectAsState()
+    LaunchedEffect(pendingShortcut) {
+        val request = pendingShortcut ?: return@LaunchedEffect
+        when (val resolution = shortcutVm.resolve(request.stationId)) {
+            is ShortcutLaunchResolution.Play -> {
+                playerVm.play(resolution.station)
+                playerVm.openFullPlayer()
+                shortcutVm.consume()
+            }
+            is ShortcutLaunchResolution.Unavailable -> {
+                shortcutVm.consume()
+                snackbar.showSnackbar(resolution.message)
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationRouteEffects(
+    navController: androidx.navigation.NavHostController,
+    playerVm: PlayerViewModel,
+    snackbar: SnackbarHostState,
+) {
+    val context = LocalContext.current
+    val notificationVm: NotificationViewModel = hiltViewModel(context as ComponentActivity)
+    val notificationNav by notificationVm.notificationState.collectAsState()
+    LaunchedEffect(notificationNav) {
+        when (val s = notificationNav) {
+            is NotificationState.Navigate -> {
+                when (s.action) {
+                    NotificationAction.OPEN_PLAYER -> playerVm.openFullPlayer()
+                    NotificationAction.OPEN_CONTENT,
+                    NotificationAction.OPEN_INFO,
+                    ->
+                        if (s.contentId != null) {
+                            navController.navigate(Routes.stationDetail(s.contentId))
+                        } else {
+                            navController.navigate(Routes.HOME) { launchSingleTop = true }
+                        }
+                    NotificationAction.OPEN_MAIN ->
+                        navController.navigate(Routes.HOME) {
+                            popUpTo(Routes.HOME) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                }
+                notificationVm.resetState()
+            }
+            is NotificationState.Error -> {
+                NotificationLogger.logError("Error de navegación por notificación: ${s.message}")
+                snackbar.showSnackbar("No se pudo abrir la notificación")
+                notificationVm.resetState()
+            }
+            else -> Unit
+        }
+    }
+}
+
+/**
+ * Arranque y puerta de modo podcast (spec 0046):
+ * sección inicial Radio|Podcasts y redirección de rutas podcast sin
+ * podcasts o fuera de modo a la pantalla Radio vigente, sin errores.
+ */
+@Composable
+private fun PodcastRouteEffects(
+    navController: androidx.navigation.NavHostController,
+    currentRoute: String?,
+    podcastsEnabled: Boolean,
+    podcastMode: Boolean,
+    startScreen: StartScreen,
+    defaultSection: ContentMode,
+    startupGate: StartupGate,
+) {
+    LaunchedEffect(startScreen, defaultSection, startupGate, podcastsEnabled) {
+        if (currentRoute != Routes.HOME) return@LaunchedEffect
+        val target =
+            if (defaultSection == ContentMode.PODCAST && podcastsEnabled) {
+                Routes.PODCAST_HOME
+            } else {
+                when (startScreen) {
+                    StartScreen.FAVORITES -> Routes.FAVORITES
+                    StartScreen.HISTORY -> Routes.HISTORY
+                    StartScreen.EXPLORE -> Routes.EXPLORE
+                }
+            }
+        navController.navigate(target) {
+            popUpTo(Routes.HOME) { inclusive = true }
+            launchSingleTop = true
+        }
+    }
+    LaunchedEffect(currentRoute, podcastMode, podcastsEnabled) {
+        val route = currentRoute ?: return@LaunchedEffect
+        val target =
+            when {
+                route in PODCAST_ROUTES && (!podcastsEnabled || !podcastMode) -> Routes.EXPLORE
+                podcastMode && route in RADIO_CONTENT_ROUTES -> Routes.PODCAST_HOME
+                else -> return@LaunchedEffect
+            }
+        navController.navigate(target) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
         }
     }
 }
@@ -398,12 +563,13 @@ fun TolochaNavGraph(
 internal fun TolochaNavigationBar(
     currentRoute: String?,
     onNavigate: (String) -> Unit,
+    dests: List<BottomDest> = BOTTOM_DESTS,
 ) {
     NavigationBar {
         // `NavigationBarItem` es una extensión de `RowScope`; al envolverlo en un
         // `Box` (BoxScope) hay que conservar el receptor del `Row` explícitamente.
         val rowScope = this
-        BOTTOM_DESTS.forEach { dest ->
+        dests.forEach { dest ->
             val tooltipState = rememberTooltipState()
             // Tooltip de accesibilidad al mantener pulsado (0012, US1/AC3).
             Box(Modifier.weight(1f)) {
@@ -421,7 +587,8 @@ internal fun TolochaNavigationBar(
                         NavigationBarItem(
                             selected =
                                 currentRoute == dest.route ||
-                                    (dest.route == Routes.EXPLORE && currentRoute == Routes.STATION_DETAIL),
+                                    (dest.route == Routes.EXPLORE && currentRoute == Routes.STATION_DETAIL) ||
+                                    (dest.route == Routes.PODCAST_SUBSCRIPTIONS && currentRoute == Routes.PODCAST_SHOW),
                             onClick = { onNavigate(dest.route) },
                             icon = { Icon(dest.icon, contentDescription = dest.label) },
                         )

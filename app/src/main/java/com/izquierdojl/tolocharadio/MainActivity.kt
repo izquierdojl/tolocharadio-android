@@ -20,6 +20,7 @@ import com.izquierdojl.tolocharadio.core.session.SessionState
 import com.izquierdojl.tolocharadio.core.session.TokenStore
 import com.izquierdojl.tolocharadio.core.shortcuts.PendingShortcutHolder
 import com.izquierdojl.tolocharadio.core.shortcuts.ShortcutIntents
+import com.izquierdojl.tolocharadio.core.ui.navigation.ContentMode
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.navigation.TolochaNavGraph
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
@@ -85,6 +86,7 @@ class MainActivity : FragmentActivity() {
         setContent {
             val mode by instancePrefs.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
             val startScreen by instancePrefs.startScreen.collectAsState(initial = StartScreen.EXPLORE)
+            val defaultSection by instancePrefs.defaultSection.collectAsState(initial = ContentMode.RADIO)
             // `null` mientras Room emite la primera vez: evita mostrar el
             // formulario de servidor antes de saber si ya hay uno guardado.
             val servers by serverRepository.servers.collectAsState(initial = null)
@@ -117,6 +119,7 @@ class MainActivity : FragmentActivity() {
                         startupGate = gate,
                         startupServerId = startupServer?.id,
                         startScreen = startScreen,
+                        defaultSection = defaultSection,
                     )
                 }
             }

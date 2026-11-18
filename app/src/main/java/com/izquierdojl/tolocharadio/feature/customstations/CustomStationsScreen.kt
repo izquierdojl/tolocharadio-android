@@ -59,6 +59,7 @@ import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.ErrorBanner
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
+import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
@@ -106,6 +107,9 @@ fun CustomStationsScreen(
             SectionHeader(
                 title = "Mis emisoras",
                 subtitle = "Añade emisoras que no están en el catálogo para escucharlas desde el reproductor.",
+                actions = {
+                    ViewModeToggle(mode = mode, onToggle = viewModeVm::toggle)
+                },
             )
             CustomStationForm(
                 form = form,

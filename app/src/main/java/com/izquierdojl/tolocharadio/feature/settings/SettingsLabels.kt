@@ -1,5 +1,6 @@
 package com.izquierdojl.tolocharadio.feature.settings
 
+import com.izquierdojl.tolocharadio.core.ui.navigation.ContentMode
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
@@ -18,6 +19,13 @@ fun StartScreen.label(): String =
         StartScreen.EXPLORE -> "Explorar"
         StartScreen.FAVORITES -> "Favoritos"
         StartScreen.HISTORY -> "Historial"
+    }
+
+/** Etiqueta legible de la sección inicial para el diálogo (spec 0046). */
+fun ContentMode.label(): String =
+    when (this) {
+        ContentMode.RADIO -> "Radio"
+        ContentMode.PODCAST -> "Podcasts"
     }
 
 /** Etiqueta del perfil de buffer (spec 0042, FR-011). */

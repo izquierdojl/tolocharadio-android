@@ -19,6 +19,7 @@ import com.izquierdojl.tolocharadio.domain.playback.PlaybackStatusReason
 import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
 import com.izquierdojl.tolocharadio.domain.playback.RecoveryState
 import com.izquierdojl.tolocharadio.domain.playback.ResolvePlaybackSourceUseCase
+import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackController
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -81,6 +82,7 @@ class PlayerViewModelTest {
         }
     private val volumeController = PlaybackVolumeController(engine)
     private val resolveSource = ResolvePlaybackSourceUseCase()
+    private val episodes: EpisodePlaybackController = mockk(relaxed = true)
     private val station = StationDto(id = "u1", name = "Tolocha")
 
     private fun vm() =
@@ -95,6 +97,7 @@ class PlayerViewModelTest {
             localPlaybackStarter,
             recoveryManager,
             profileController,
+            episodes,
         )
 
     @Before

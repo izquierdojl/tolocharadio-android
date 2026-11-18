@@ -2,8 +2,12 @@ package com.izquierdojl.tolocharadio.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.izquierdojl.tolocharadio.data.local.podcasts.DownloadStatusConverter
+import com.izquierdojl.tolocharadio.data.local.podcasts.EpisodeDownloadDao
+import com.izquierdojl.tolocharadio.data.local.podcasts.EpisodeDownloadEntity
 import com.izquierdojl.tolocharadio.data.local.servers.SavedServerEntity
 import com.izquierdojl.tolocharadio.data.local.servers.ServerDao
 
@@ -15,10 +19,12 @@ import com.izquierdojl.tolocharadio.data.local.servers.ServerDao
         CachedHistoryEntry::class,
         CachedCustomStation::class,
         SavedServerEntity::class,
+        EpisodeDownloadEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
+@TypeConverters(DownloadStatusConverter::class)
 abstract class TolochaDb : RoomDatabase() {
     abstract fun stationsCache(): StationsCacheDao
 
@@ -29,6 +35,8 @@ abstract class TolochaDb : RoomDatabase() {
     abstract fun customStationsCache(): CustomStationsCacheDao
 
     abstract fun servers(): ServerDao
+
+    abstract fun episodeDownloads(): EpisodeDownloadDao
 }
 
 /** Migración v5 → v6: isActive (servidor activo) y userEmail (FR-005). */
@@ -37,6 +45,24 @@ val MIGRATION_5_6 =
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE saved_servers ADD COLUMN userEmail TEXT")
             db.execSQL("ALTER TABLE saved_servers ADD COLUMN isActive INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+/** Migración v7 → v8: tabla `episode_downloads` (mapeo episodio→descarga, spec 0046). */
+val MIGRATION_7_8 =
+    object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS episode_downloads (
+                    episodeId INTEGER NOT NULL PRIMARY KEY,
+                    downloadManagerId INTEGER NOT NULL,
+                    status TEXT NOT NULL,
+                    localUri TEXT,
+                    updatedAt INTEGER NOT NULL
+                )
+                """.trimIndent(),
+            )
         }
     }
 
