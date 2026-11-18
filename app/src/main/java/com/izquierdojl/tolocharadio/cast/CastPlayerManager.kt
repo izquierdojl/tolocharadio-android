@@ -332,6 +332,8 @@ class CastPlayerManager
                     when (route) {
                         PlaybackRoute.CONTINUOUS -> mediaItemFactory.createLive(station, baseUrl, sequence)
                         PlaybackRoute.LEGACY -> mediaItemFactory.createLegacy(station, source, baseUrl, sequence)
+                        // Episodios: la reanudación la pilota el controlador VOD (T042), no la emisora.
+                        PlaybackRoute.EPISODE -> return
                     }
                 exoPlayer.setMediaSource(mediaItemFactory.createMediaSource(item, source, route))
                 exoPlayer.prepare()
@@ -408,6 +410,25 @@ class CastPlayerManager
             val baseUrl = runBlocking { prefs.baseUrl.first() }
             val item = mediaItemFactory.createForCast(station, source, baseUrl)
             player.setMediaItem(item)
+            player.prepare()
+            player.playWhenReady = true
+        }
+
+        /**
+         * Episodio al receptor (spec 0046, T042): la URL firmada viaja en
+         * el item y el receptor descarga por su cuenta, misma política
+         * de conexión que la radio.
+         */
+        fun connectToEpisode(
+            uri: String,
+            title: String,
+            artist: String?,
+        ) {
+            if (!isCastConnected) return
+            val player = castPlayer ?: return
+
+            castError = null
+            player.setMediaItem(mediaItemFactory.createEpisodeCastItem(uri, title, artist))
             player.prepare()
             player.playWhenReady = true
         }

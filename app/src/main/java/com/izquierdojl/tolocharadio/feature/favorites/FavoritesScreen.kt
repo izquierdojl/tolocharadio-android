@@ -75,6 +75,7 @@ import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
 import com.izquierdojl.tolocharadio.core.ui.components.StationCard
 import com.izquierdojl.tolocharadio.core.ui.components.TagChip
+import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
 import com.izquierdojl.tolocharadio.data.remote.dto.FavoriteDto
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
@@ -191,7 +192,13 @@ fun FavoritesScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { paddingValues ->
         Column(Modifier.fillMaxSize().padding(paddingValues)) {
-            SectionHeader(title = "Tus favoritos", subtitle = "Tus emisoras guardadas, en tu orden.")
+            SectionHeader(
+                title = "Tus favoritos",
+                subtitle = "Tus emisoras guardadas, en tu orden.",
+                actions = {
+                    ViewModeToggle(mode = mode, onToggle = viewModeVm::toggle)
+                },
+            )
             FavoritesScreenContent(
                 state = ui,
                 mode = mode,

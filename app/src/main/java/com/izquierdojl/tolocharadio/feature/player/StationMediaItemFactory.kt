@@ -6,6 +6,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
@@ -33,6 +34,7 @@ class StationMediaItemFactory
     @Inject
     constructor(
         private val playerDataSource: PlayerDataSourceFactory,
+        private val plainDataSource: DataSource.Factory,
     ) {
         /** URL efectiva de la ruta legacy: proxy del servidor. */
         fun uriFor(
@@ -148,7 +150,36 @@ class StationMediaItemFactory
                 .setAlbumTitle("Tolocha Radio")
                 .build()
 
-        /** Crea la `MediaSource` según la ruta: progresiva continua o legacy. */
+        /** `MediaSource` VOD de episodio (URL firmada o archivo local, research D3). */
+        fun createEpisodeSource(item: MediaItem): MediaSource {
+            val factory = ProgressiveMediaSource.Factory(plainDataSource)
+            return factory.createMediaSource(item)
+        }
+
+        /** `mimeType` para un audio sin extensión conocida (URLs firmadas). */
+        fun audioMimeTypeForUrl(url: String): String = audioMimeTypeFor(url)
+
+        /**
+         * `MediaItem` de episodio para Cast (spec 0046, T042): la URL firmada
+         * viaja en el propio item y el receptor no necesita autenticarse.
+         */
+        fun createEpisodeCastItem(
+            uri: String,
+            title: String,
+            artist: String?,
+        ): MediaItem =
+            MediaItem.Builder()
+                .setUri(uri)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(title)
+                        .setArtist(artist ?: "Tolocha Podcasts")
+                        .build(),
+                )
+                .setMimeType(audioMimeTypeFor(uri))
+                .build()
+
+        /** Crea la `MediaSource` según la ruta: progresiva continua, legacy o episodio VOD. */
         fun createMediaSource(
             item: MediaItem,
             source: PlaybackSource,
@@ -163,6 +194,9 @@ class StationMediaItemFactory
                     } else {
                         ProgressiveMediaSource.Factory(playerDataSource).createMediaSource(item)
                     }
+                // Episodio: fichero finito vía URL firmada, sin Bearer (research D3).
+                PlaybackRoute.EPISODE ->
+                    ProgressiveMediaSource.Factory(plainDataSource).createMediaSource(item)
             }
 
         /** Compatibilidad con llamadas legacy: HLS o progresivo. */

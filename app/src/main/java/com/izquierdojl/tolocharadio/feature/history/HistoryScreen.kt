@@ -60,6 +60,7 @@ import com.izquierdojl.tolocharadio.core.ui.components.ErrorBanner
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
 import com.izquierdojl.tolocharadio.core.ui.components.TagChip
+import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
 import com.izquierdojl.tolocharadio.data.remote.dto.HistoryEntryDto
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 import com.izquierdojl.tolocharadio.feature.favorites.relativeTime
@@ -147,6 +148,7 @@ fun HistoryScreen(
             HistoryScreenContent(
                 state = ui,
                 mode = mode,
+                onToggleView = viewModeVm::toggle,
                 callbacks =
                     HistoryCallbacks(
                         onStation = onStation,
@@ -171,6 +173,7 @@ fun HistoryScreenContent(
     state: HistoryUiState,
     callbacks: HistoryCallbacks,
     mode: ViewMode = ViewMode.LIST,
+    onToggleView: () -> Unit = {},
 ) {
     when (state) {
         HistoryUiState.Loading ->
@@ -197,6 +200,7 @@ fun HistoryScreenContent(
             HistoryList(
                 state = state,
                 mode = mode,
+                onToggleView = onToggleView,
                 callbacks = callbacks,
             )
     }
@@ -206,6 +210,7 @@ fun HistoryScreenContent(
 private fun HistoryList(
     state: HistoryUiState.Content,
     mode: ViewMode,
+    onToggleView: () -> Unit,
     callbacks: HistoryCallbacks,
 ) {
     val items = state.items
@@ -220,6 +225,9 @@ private fun HistoryList(
                 title = "Tu historial",
                 subtitle = "Lo último que has escuchado.",
                 modifier = Modifier.weight(1f),
+                actions = {
+                    ViewModeToggle(mode = mode, onToggle = onToggleView)
+                },
             )
             if (items.isNotEmpty()) {
                 TextButton(

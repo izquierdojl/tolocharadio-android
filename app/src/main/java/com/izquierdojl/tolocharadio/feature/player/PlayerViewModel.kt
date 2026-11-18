@@ -25,6 +25,7 @@ import com.izquierdojl.tolocharadio.domain.playback.RecoveryPolicy
 import com.izquierdojl.tolocharadio.domain.playback.RecoveryState
 import com.izquierdojl.tolocharadio.domain.playback.ResolvePlaybackSourceUseCase
 import com.izquierdojl.tolocharadio.domain.playback.StationAvailability
+import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -99,6 +100,7 @@ class PlayerViewModel
         private val localPlaybackStarter: LocalPlaybackStarter,
         private val recoveryManager: PlaybackRecoveryManager,
         private val profileController: PlaybackProfileController,
+        private val episodes: EpisodePlaybackController,
     ) : ViewModel() {
         private val _state = MutableStateFlow<PlayerState>(PlayerState.Idle)
         val state: StateFlow<PlayerState> = _state.asStateFlow()
@@ -128,6 +130,7 @@ class PlayerViewModel
             object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (castPlayerManager.isCastConnected) return
+                    if (episodes.isEpisodeActive()) return
                     if (profileController.applying.value) return
                     if (recoveryManager.status.value !is RecoveryState.Idle) return
                     val current = activeStation() ?: return
@@ -149,6 +152,7 @@ class PlayerViewModel
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     if (castPlayerManager.isCastConnected) return
+                    if (episodes.isEpisodeActive()) return
                     if (profileController.applying.value) return
                     if (recoveryManager.status.value !is RecoveryState.Idle) return
                     val current = activeStation() ?: return
@@ -352,6 +356,7 @@ class PlayerViewModel
         fun play(station: StationDto) {
             loadJob?.cancel()
             availabilityJob?.cancel()
+            episodes.stop()
             lostStation = null
             lostDeviceName = null
             recoveryManager.onStationSelected(station)
@@ -538,6 +543,7 @@ class PlayerViewModel
         fun stop() {
             loadJob?.cancel()
             availabilityJob?.cancel()
+            episodes.stop()
             _availability.value = null
             recoveryManager.cancel()
             lostStation = null

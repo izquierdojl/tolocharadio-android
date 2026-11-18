@@ -63,6 +63,9 @@ class LocalPlaybackStarter
                         mediaItemFactory.createLive(station, baseUrl, effectiveSequence)
                     PlaybackRoute.LEGACY ->
                         mediaItemFactory.createLegacy(station, source, baseUrl, effectiveSequence)
+                    // Episodios: arranque VOD dedicado (T042); esta ruta solo maneja emisoras.
+                    PlaybackRoute.EPISODE ->
+                        error("Los episodios usan el arranque VOD, no LocalPlaybackStarter")
                 }
             engine.player.setMediaSource(mediaItemFactory.createMediaSource(item, source, route))
             engine.player.prepare()

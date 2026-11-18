@@ -1,6 +1,9 @@
 package com.izquierdojl.tolocharadio.di
 
 import android.content.Context
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import com.izquierdojl.tolocharadio.BuildConfig
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
 import com.izquierdojl.tolocharadio.core.session.SessionManager
@@ -25,6 +28,10 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import javax.inject.Singleton
+
+/** Timeouts del datasource plano de episodios firmados (segundos). */
+private const val PLAIN_CONNECT_TIMEOUT_SEC = 15L
+private const val PLAIN_READ_TIMEOUT_SEC = 20L
 
 /** ExoPlayer compartido + datasource del proxy autenticado del servidor. */
 @Module
@@ -57,6 +64,28 @@ object PlayerModule {
     @Singleton
     fun playerDataSource(session: SessionManager): PlayerDataSourceFactory {
         return PlayerDataSourceFactory(session, PlaybackHttpClient.create())
+    }
+
+    /**
+     * Datasource plano para URLs firmadas de episodios (spec 0046):
+     * la firma HMAC va en la URL y no lleva `Authorization`.
+     * Enviar el Bearer del usuario a un host externo filtraría la sesión.
+     *
+     * `DefaultDataSource` conserva el soporte http(s) y añade `content://`
+     * (descargas del sistema) y `file://` para la reproducción local.
+     */
+    @Provides
+    @Singleton
+    fun plainDataSource(
+        @ApplicationContext context: Context,
+    ): DataSource.Factory {
+        val client =
+            okhttp3.OkHttpClient
+                .Builder()
+                .connectTimeout(PLAIN_CONNECT_TIMEOUT_SEC, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(PLAIN_READ_TIMEOUT_SEC, java.util.concurrent.TimeUnit.SECONDS)
+                .build()
+        return DefaultDataSource.Factory(context, OkHttpDataSource.Factory(client))
     }
 
     @Provides

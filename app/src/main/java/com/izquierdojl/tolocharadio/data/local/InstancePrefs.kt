@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.izquierdojl.tolocharadio.BuildConfig
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
+import com.izquierdojl.tolocharadio.core.ui.navigation.ContentMode
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
@@ -20,6 +21,7 @@ import javax.inject.Singleton
  * (onboarding + ajustes); cambiarla cierra la sesión (FR-002).
  */
 @Singleton
+@Suppress("TooManyFunctions")
 class InstancePrefs
     @Inject
     constructor(private val store: DataStore<Preferences>) {
@@ -41,6 +43,31 @@ class InstancePrefs
                 it[KEY_START_SCREEN]?.let { name ->
                     runCatching { StartScreen.valueOf(name) }.getOrDefault(StartScreen.EXPLORE)
                 } ?: StartScreen.EXPLORE
+            }
+
+        /** Modo global Radio/Podcasts (spec 0046, FR-001). Default RADIO. */
+        val contentMode: Flow<ContentMode> =
+            store.data.map {
+                it[KEY_CONTENT_MODE]?.let { name ->
+                    runCatching { ContentMode.valueOf(name) }.getOrDefault(ContentMode.RADIO)
+                } ?: ContentMode.RADIO
+            }
+
+        /** Sección inicial Radio/Podcasts del arranque (spec 0046, FR-003). Default RADIO. */
+        val defaultSection: Flow<ContentMode> =
+            store.data.map {
+                it[KEY_DEFAULT_SECTION]?.let { name ->
+                    runCatching { ContentMode.valueOf(name) }.getOrDefault(ContentMode.RADIO)
+                } ?: ContentMode.RADIO
+            }
+
+        /** Orden manual de suscripciones de podcast (ids separados por coma). */
+        val podcastSubscriptionOrder: Flow<List<Long>> =
+            store.data.map { prefs ->
+                prefs[KEY_PODCAST_SUBSCRIPTION_ORDER]
+                    ?.split(',')
+                    ?.mapNotNull { it.trim().toLongOrNull() }
+                    ?: emptyList()
             }
 
         /**
@@ -85,6 +112,21 @@ class InstancePrefs
             store.edit { it[KEY_START_SCREEN] = screen.name }
         }
 
+        /** Persiste el modo global Radio/Podcasts (spec 0046, FR-002). */
+        suspend fun setContentMode(mode: ContentMode) {
+            store.edit { it[KEY_CONTENT_MODE] = mode.name }
+        }
+
+        /** Persiste la sección inicial del arranque (spec 0046, FR-003). */
+        suspend fun setDefaultSection(mode: ContentMode) {
+            store.edit { it[KEY_DEFAULT_SECTION] = mode.name }
+        }
+
+        /** Persiste el orden manual de suscripciones (solo en este dispositivo). */
+        suspend fun setPodcastSubscriptionOrder(ids: List<Long>) {
+            store.edit { it[KEY_PODCAST_SUBSCRIPTION_ORDER] = ids.joinToString(",") }
+        }
+
         /** Persiste el modo de vista; cada toggle sobrescribe el valor previo (FR-006). */
         suspend fun setViewMode(mode: ViewMode) {
             store.edit { it[KEY_VIEW_MODE] = mode.name }
@@ -106,6 +148,9 @@ class InstancePrefs
             val KEY_DARK = booleanPreferencesKey("dark_theme")
             val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
             val KEY_START_SCREEN = stringPreferencesKey("start_screen")
+            val KEY_CONTENT_MODE = stringPreferencesKey("content_mode")
+            val KEY_DEFAULT_SECTION = stringPreferencesKey("default_section")
+            val KEY_PODCAST_SUBSCRIPTION_ORDER = stringPreferencesKey("podcast_subscription_order")
             val KEY_VIEW_MODE = stringPreferencesKey("view_mode")
             val KEY_BUFFER_PROFILE = stringPreferencesKey("buffer_profile")
             val KEY_RESUME_ON_CONNECTIVITY = booleanPreferencesKey("resume_on_connectivity")

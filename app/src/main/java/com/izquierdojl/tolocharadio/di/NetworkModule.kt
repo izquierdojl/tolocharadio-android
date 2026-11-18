@@ -12,6 +12,7 @@ import com.izquierdojl.tolocharadio.data.remote.api.CustomStationsApi
 import com.izquierdojl.tolocharadio.data.remote.api.FavoritesApi
 import com.izquierdojl.tolocharadio.data.remote.api.HistoryApi
 import com.izquierdojl.tolocharadio.data.remote.api.PlaybackApi
+import com.izquierdojl.tolocharadio.data.remote.api.PodcastsApi
 import com.izquierdojl.tolocharadio.data.remote.api.StationsApi
 import com.izquierdojl.tolocharadio.data.remote.api.StatsApi
 import com.izquierdojl.tolocharadio.data.remote.api.SystemApi
@@ -32,6 +33,7 @@ import javax.inject.Singleton
  */
 @Module
 @InstallIn(SingletonComponent::class)
+@Suppress("TooManyFunctions")
 object NetworkModule {
     @Provides
     @Singleton
@@ -86,4 +88,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun stats(api: Retrofit): StatsApi = api.create(StatsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun podcasts(api: Retrofit): PodcastsApi = api.create(PodcastsApi::class.java)
 }

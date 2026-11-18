@@ -2,6 +2,7 @@ package com.izquierdojl.tolocharadio.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.izquierdojl.tolocharadio.core.ui.navigation.ContentMode
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.core.util.AppBuildInfo
@@ -23,6 +24,7 @@ import javax.inject.Inject
 data class SettingsUi(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val startScreen: StartScreen = StartScreen.EXPLORE,
+    val defaultSection: ContentMode = ContentMode.RADIO,
     val bufferProfile: BufferProfile = BufferProfile.DEFAULT,
     val resumeOnConnectivity: Boolean = true,
     val activeServerAlias: String? = null,
@@ -82,6 +84,11 @@ class SettingsViewModel
                 }
             }
             viewModelScope.launch {
+                prefs.defaultSection.collect { section ->
+                    _ui.value = _ui.value.copy(defaultSection = section)
+                }
+            }
+            viewModelScope.launch {
                 getServers().collect { servers ->
                     _ui.value =
                         _ui.value.copy(activeServerAlias = servers.firstOrNull { it.isActive }?.alias)
@@ -109,6 +116,12 @@ class SettingsViewModel
         fun onStartScreenChange(screen: StartScreen) {
             _ui.value = _ui.value.copy(startScreen = screen)
             viewModelScope.launch { prefs.setStartScreen(screen) }
+        }
+
+        /** Sección inicial Radio|Podcasts del arranque (spec 0046, FR-003). */
+        fun onDefaultSectionChange(section: ContentMode) {
+            _ui.value = _ui.value.copy(defaultSection = section)
+            viewModelScope.launch { prefs.setDefaultSection(section) }
         }
 
         /** Perfil de buffer local; persiste y solicita aplicación inmediata (0042 FR-012/FR-013). */

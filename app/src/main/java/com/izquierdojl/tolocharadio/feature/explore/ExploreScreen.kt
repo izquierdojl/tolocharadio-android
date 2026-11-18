@@ -48,6 +48,7 @@ import com.izquierdojl.tolocharadio.core.ui.components.ErrorBanner
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.StationCard
 import com.izquierdojl.tolocharadio.core.ui.components.StationListItem
+import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 
 /** Filtro seleccionado para abrir en el bottom sheet. */
@@ -78,7 +79,13 @@ fun ExploreScreen(
     val sheetState = rememberModalBottomSheetState()
 
     Column(Modifier.fillMaxSize()) {
-        SectionHeader(title = "Explorar", subtitle = "Descubre emisoras de todo el mundo.")
+        SectionHeader(
+            title = "Explorar",
+            subtitle = "Descubre emisoras de todo el mundo.",
+            actions = {
+                ViewModeToggle(mode = mode, onToggle = viewModeVm::toggle)
+            },
+        )
         OutlinedTextField(
             value = viewModel.filters.name,
             onValueChange = { viewModel.setFilters(viewModel.filters.copy(name = it)) },
