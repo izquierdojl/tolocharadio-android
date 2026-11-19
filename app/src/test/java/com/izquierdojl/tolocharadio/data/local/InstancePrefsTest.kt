@@ -91,4 +91,24 @@ class InstancePrefsTest {
             prefs.setResumeOnConnectivity(false)
             assertEquals(false, prefs.resumeOnConnectivity.first())
         }
+
+    @Test
+    fun `voiceBoost tiene default false y persiste (US4)`() =
+        runTest {
+            val prefs = InstancePrefs(FakeDataStore())
+            assertEquals(false, prefs.voiceBoost.first())
+            prefs.setVoiceBoost(true)
+            assertEquals(true, prefs.voiceBoost.first())
+        }
+
+    @Test
+    fun `downloadRetentionDays tiene default 30 y persiste`() =
+        runTest {
+            val prefs = InstancePrefs(FakeDataStore())
+            assertEquals(30, prefs.downloadRetentionDays.first())
+            prefs.setDownloadRetentionDays(7)
+            assertEquals(7, prefs.downloadRetentionDays.first())
+            prefs.setDownloadRetentionDays(0)
+            assertEquals(0, prefs.downloadRetentionDays.first())
+        }
 }

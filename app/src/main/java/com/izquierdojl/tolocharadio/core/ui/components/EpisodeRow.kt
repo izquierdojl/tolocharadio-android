@@ -3,6 +3,7 @@ package com.izquierdojl.tolocharadio.core.ui.components
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.OfflinePin
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -76,6 +76,7 @@ fun EpisodeRow(
     podcast: PodcastSummary?,
     isPlaying: Boolean,
     isDownloaded: Boolean = false,
+    downloadState: DownloadUiState = if (isDownloaded) DownloadUiState.Downloaded else DownloadUiState.NotDownloaded,
     onPlayPause: () -> Unit,
     onOpenDetail: () -> Unit,
     onToggleFavorite: () -> Unit,
@@ -92,32 +93,75 @@ fun EpisodeRow(
             }
         }
     val completed = episode.progress?.completed == true
+    val downloaded = isDownloaded || downloadState is DownloadUiState.Downloaded
     ListItem(
         modifier = modifier.clickable(onClick = onOpenDetail),
         headlineContent = {
-            Text(episode.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(episode.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
         },
         supportingContent = {
             Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                podcast?.title?.let {
                     Text(
-                        listOfNotNull(
-                            podcast?.title,
-                            dateText,
-                            formatEpisodeDuration(episode.durationSec),
-                            if (isDownloaded) "Descargado" else null,
-                            if (completed) "Completado" else null,
-                        ).joinToString(" · "),
-                        maxLines = 1,
+                        it,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+                Text(
+                    listOfNotNull(
+                        dateText,
+                        formatEpisodeDuration(episode.durationSec),
+                        if (downloaded) "Descargado" else null,
+                        if (completed) "Completado" else null,
+                    ).joinToString(" · "),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                val progress = episode.progress
+                if (progress != null && !progress.completed && (progress.durationSec ?: 0) > 0) {
+                    LinearProgressIndicator(
+                        progress = { progress.positionSec.toFloat() / progress.durationSec!!.toFloat() },
+                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = onPlayPause) {
+                        Icon(
+                            if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            contentDescription = if (isPlaying) "Pausar" else "Reproducir",
+                        )
+                    }
+                    when {
+                        downloadState is DownloadUiState.Downloading ->
+                            DownloadProgressButton(downloadState, onDownload ?: {})
+                        downloadState is DownloadUiState.Failure && onDownload != null ->
+                            DownloadProgressButton(downloadState, onDownload)
+                        onDownload != null && !downloaded ->
+                            DownloadProgressButton(DownloadUiState.NotDownloaded, onDownload)
+                        downloaded ->
+                            Icon(
+                                Icons.Filled.OfflinePin,
+                                contentDescription = "Descargado",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(24.dp),
+                            )
+                    }
+                    if (onQueueNext != null || onQueueEnd != null) {
+                        QueueAction(onNext = onQueueNext, onEnd = onQueueEnd)
+                    }
+                    FavoriteButton(isFavorite = episode.isFavorite, onToggle = onToggleFavorite)
                     if (onTogglePlayed != null) {
-                        IconButton(
-                            onClick = onTogglePlayed,
-                            modifier = Modifier.size(32.dp),
-                        ) {
+                        IconButton(onClick = onTogglePlayed) {
                             Icon(
                                 if (completed) {
                                     Icons.Filled.CheckCircle
@@ -136,17 +180,10 @@ fun EpisodeRow(
                                     } else {
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     },
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                     }
-                }
-                val progress = episode.progress
-                if (progress != null && !progress.completed && (progress.durationSec ?: 0) > 0) {
-                    LinearProgressIndicator(
-                        progress = { progress.positionSec.toFloat() / progress.durationSec!!.toFloat() },
-                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-                    )
                 }
             }
         },
@@ -160,32 +197,6 @@ fun EpisodeRow(
                         .size(48.dp)
                         .clip(MaterialTheme.shapes.small),
             )
-        },
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPlayPause) {
-                    Icon(
-                        if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (isPlaying) "Pausar" else "Reproducir",
-                    )
-                }
-                if (onDownload != null && !isDownloaded) {
-                    IconButton(onClick = onDownload) {
-                        Icon(Icons.Filled.Download, contentDescription = "Descargar")
-                    }
-                }
-                if (isDownloaded) {
-                    Icon(
-                        Icons.Filled.OfflinePin,
-                        contentDescription = "Descargado",
-                        tint = MaterialTheme.colorScheme.secondary,
-                    )
-                }
-                if (onQueueNext != null || onQueueEnd != null) {
-                    QueueAction(onNext = onQueueNext, onEnd = onQueueEnd)
-                }
-                FavoriteButton(isFavorite = episode.isFavorite, onToggle = onToggleFavorite)
-            }
         },
     )
 }

@@ -51,6 +51,7 @@ import coil.compose.AsyncImage
 import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.EpisodeRow
 import com.izquierdojl.tolocharadio.core.ui.components.SubscribeButton
+import com.izquierdojl.tolocharadio.core.ui.components.downloadUiState
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.data.repo.QueuePosition
@@ -78,6 +79,7 @@ fun PodcastShowScreen(
     val playerUi by player.ui.collectAsState()
     val favorites by actions.favoriteIds.collectAsState()
     val downloads by actions.downloadRecords.collectAsState()
+    val downloadProgress by actions.downloadProgress.collectAsState()
     val downloadsEnabled by actions.downloadsEnabled.collectAsState()
     var sheet by remember { mutableStateOf<Pair<PodcastEpisode, PodcastSummary?>?>(null) }
 
@@ -197,6 +199,7 @@ fun PodcastShowScreen(
                     podcast = podcast,
                     isPlaying = playerUi.episode?.id == episode.id && playerUi.playing,
                     isDownloaded = downloads[episode.id]?.localUri != null,
+                    downloadState = downloadUiState(downloads[episode.id], downloadProgress[episode.id]),
                     onDownload = { actions.download(episode) }.takeIf { downloadsEnabled },
                     onPlayPause = {
                         if (playerUi.episode?.id == episode.id) {

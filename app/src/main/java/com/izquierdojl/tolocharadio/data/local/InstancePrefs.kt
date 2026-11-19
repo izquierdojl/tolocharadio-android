@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.izquierdojl.tolocharadio.BuildConfig
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
@@ -11,6 +12,7 @@ import com.izquierdojl.tolocharadio.core.ui.navigation.ContentMode
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.podcasts.DownloadRetention
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -89,6 +91,14 @@ class InstancePrefs
         val resumeOnConnectivity: Flow<Boolean> =
             store.data.map { it[KEY_RESUME_ON_CONNECTIVITY] ?: true }
 
+        /** Potenciador de voz de episodios (spec 0047, US4). Default false. */
+        val voiceBoost: Flow<Boolean> =
+            store.data.map { it[KEY_VOICE_BOOST] ?: false }
+
+        /** Días de retención de descargas; 0 = nunca (extensión spec 0047). */
+        val downloadRetentionDays: Flow<Int> =
+            store.data.map { it[KEY_DOWNLOAD_RETENTION_DAYS] ?: DownloadRetention.DEFAULT_DAYS }
+
         suspend fun setBaseUrl(url: String) {
             store.edit { it[KEY_BASE_URL] = url }
         }
@@ -142,6 +152,16 @@ class InstancePrefs
             store.edit { it[KEY_RESUME_ON_CONNECTIVITY] = enabled }
         }
 
+        /** Persiste el potenciador de voz de episodios (spec 0047, US4). */
+        suspend fun setVoiceBoost(enabled: Boolean) {
+            store.edit { it[KEY_VOICE_BOOST] = enabled }
+        }
+
+        /** Persiste los días de retención de descargas (0 = nunca). */
+        suspend fun setDownloadRetentionDays(days: Int) {
+            store.edit { it[KEY_DOWNLOAD_RETENTION_DAYS] = days.coerceAtLeast(DownloadRetention.NEVER) }
+        }
+
         private companion object {
             val KEY_BASE_URL = stringPreferencesKey("base_url")
             val KEY_SETUP_DONE = booleanPreferencesKey("setup_done")
@@ -154,5 +174,7 @@ class InstancePrefs
             val KEY_VIEW_MODE = stringPreferencesKey("view_mode")
             val KEY_BUFFER_PROFILE = stringPreferencesKey("buffer_profile")
             val KEY_RESUME_ON_CONNECTIVITY = booleanPreferencesKey("resume_on_connectivity")
+            val KEY_VOICE_BOOST = booleanPreferencesKey("voice_boost")
+            val KEY_DOWNLOAD_RETENTION_DAYS = intPreferencesKey("download_retention_days")
         }
     }

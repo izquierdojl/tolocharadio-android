@@ -6,11 +6,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.PlainTooltip
@@ -21,8 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,9 +30,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -46,9 +50,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.android.gms.cast.framework.CastButtonFactory
-import com.izquierdojl.tolocharadio.core.ui.components.ModeSwitchButton
-import com.izquierdojl.tolocharadio.core.ui.components.TolochaLogo
+import com.izquierdojl.tolocharadio.core.ui.components.TolochaTestTags
 import com.izquierdojl.tolocharadio.core.util.CastPermissions
+import com.izquierdojl.tolocharadio.domain.podcasts.QueueBadge
 import com.izquierdojl.tolocharadio.domain.servers.StartupGate
 import com.izquierdojl.tolocharadio.domain.shortcuts.ShortcutLaunchResolution
 import com.izquierdojl.tolocharadio.feature.customstations.CustomStationsScreen
@@ -59,7 +63,6 @@ import com.izquierdojl.tolocharadio.feature.history.HistoryScreen
 import com.izquierdojl.tolocharadio.feature.home.HomeScreen
 import com.izquierdojl.tolocharadio.feature.player.MiniPlayer
 import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
-import com.izquierdojl.tolocharadio.feature.player.SleepTimerButton
 import com.izquierdojl.tolocharadio.feature.player.SleepTimerViewModel
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerViewModel
 import com.izquierdojl.tolocharadio.feature.podcasts.ModeViewModel
@@ -68,6 +71,7 @@ import com.izquierdojl.tolocharadio.feature.podcasts.favorites.PodcastFavoritesS
 import com.izquierdojl.tolocharadio.feature.podcasts.home.PodcastHomeScreen
 import com.izquierdojl.tolocharadio.feature.podcasts.player.EpisodeFullPlayerSheet
 import com.izquierdojl.tolocharadio.feature.podcasts.player.EpisodeMiniPlayer
+import com.izquierdojl.tolocharadio.feature.podcasts.queue.QueueBadgeViewModel
 import com.izquierdojl.tolocharadio.feature.podcasts.queue.QueueScreen
 import com.izquierdojl.tolocharadio.feature.podcasts.show.PodcastShowScreen
 import com.izquierdojl.tolocharadio.feature.podcasts.stats.PodcastStatsScreen
@@ -81,6 +85,7 @@ import com.tolocharadio.domain.notification.NotificationAction
 import com.tolocharadio.domain.notification.NotificationLogger
 import com.tolocharadio.ui.notification.NotificationState
 import com.tolocharadio.ui.notification.NotificationViewModel
+import kotlinx.coroutines.launch
 
 /**
  * Shell con bottom bar estilo Pocket Casts + mini-player persistente.
@@ -91,6 +96,7 @@ import com.tolocharadio.ui.notification.NotificationViewModel
  * - con credenciales → sesión automática y pantalla de arranque.
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("CyclomaticComplexMethod")
 @Composable
 fun TolochaNavGraph(
     modifier: Modifier = Modifier,
@@ -113,6 +119,8 @@ fun TolochaNavGraph(
     val modeUi by modeVm.ui.collectAsState()
     val episodeVm: EpisodePlayerViewModel = hiltViewModel(context)
     val episodeUi by episodeVm.ui.collectAsState()
+    val queueBadgeVm: QueueBadgeViewModel = hiltViewModel(context)
+    val queueBadge by queueBadgeVm.badge.collectAsState()
     val podcastMode = modeUi.podcastsEnabled && modeUi.mode == ContentMode.PODCAST
     var episodeFullPlayer by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -120,6 +128,15 @@ fun TolochaNavGraph(
             playerVm.stop()
             episodeVm.stop()
         }
+    }
+    LaunchedEffect(podcastMode) {
+        if (podcastMode) queueBadgeVm.refresh()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (podcastMode) queueBadgeVm.refresh()
+    }
+    LaunchedEffect(episodeUi.episode?.id) {
+        queueBadgeVm.setPlayingId(episodeUi.episode?.id)
     }
     // Keepalive de progreso al pasar a segundo plano (research D4).
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
@@ -157,231 +174,221 @@ fun TolochaNavGraph(
         }
     }
 
-    Scaffold(
-        modifier = modifier,
-        snackbarHost = { SnackbarHost(snackbar) },
-        topBar = {
-            if (chromeVisible) {
-                TolochaTopBar(
-                    modeVm = modeVm,
-                    sleepTimerVm = sleepTimerVm,
-                    onServers = {
-                        navController.navigate(Routes.SERVERS) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                )
-            }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val sleepTimerUiState by sleepTimerVm.uiState.collectAsState()
+    val openMenu: () -> Unit = { scope.launch { drawerState.open() } }
+    val closeMenu: () -> Unit = { scope.launch { drawerState.close() } }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = chromeVisible,
+        drawerContent = {
+            TolochaDrawerContent(
+                sleepTimerUiState = sleepTimerUiState,
+                onStartTimer = sleepTimerVm::start,
+                onCancelTimer = sleepTimerVm::cancel,
+                onServers = {
+                    closeMenu()
+                    navController.navigate(Routes.SERVERS) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onSettings = {
+                    closeMenu()
+                    navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
+                },
+            )
         },
-        bottomBar = {
-            if (chromeVisible) {
-                Column {
-                    TolochaMiniPlayer(
-                        episodeUi = episodeUi,
-                        playerVm = playerVm,
-                        snackbar = snackbar,
-                        onEditServer = editActiveServer,
-                        onOpenEpisode = { episodeFullPlayer = true },
-                    )
-                    TolochaNavigationBar(
-                        currentRoute = currentRoute,
-                        onNavigate = { route ->
-                            navController.navigate(route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
+    ) {
+        Scaffold(
+            modifier = modifier,
+            snackbarHost = { SnackbarHost(snackbar) },
+            topBar = {
+                if (chromeVisible) {
+                    TolochaTopBar(
+                        mode = modeUi.mode,
+                        podcastsEnabled = modeUi.podcastsEnabled,
+                        onSelectMode = modeVm::setMode,
+                        onOpenMenu = openMenu,
+                        castAction = {
+                            AndroidView(
+                                factory = { ctx ->
+                                    MediaRouteButton(ctx).apply {
+                                        CastButtonFactory.setUpMediaRouteButton(ctx, this)
+                                    }
+                                },
+                            )
                         },
-                        dests = if (podcastMode) PODCAST_DESTS else BOTTOM_DESTS,
                     )
                 }
-            }
-        },
-    ) { padding ->
-        val startDestination =
-            when (startupGate) {
-                StartupGate.NoServers -> Routes.serverForm(null)
-                StartupGate.NeedsCredentials -> Routes.serverForm(startupServerId)
-                StartupGate.Ready -> Routes.HOME
-            }
-        NavHost(
-            navController = navController,
-            startDestination = startDestination,
-            modifier = Modifier.padding(padding),
-        ) {
-            composable(
-                route = Routes.SERVER_FORM,
-                arguments =
-                    listOf(
-                        navArgument("serverId") {
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
+            },
+            bottomBar = {
+                if (chromeVisible) {
+                    Column {
+                        TolochaMiniPlayer(
+                            episodeUi = episodeUi,
+                            playerVm = playerVm,
+                            snackbar = snackbar,
+                            onEditServer = editActiveServer,
+                            onOpenEpisode = { episodeFullPlayer = true },
+                        )
+                        TolochaNavigationBar(
+                            currentRoute = currentRoute,
+                            onNavigate = { route ->
+                                navController.navigate(route) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            dests = if (podcastMode) PODCAST_DESTS else BOTTOM_DESTS,
+                            queueBadge = queueBadge,
+                        )
+                    }
+                }
+            },
+        ) { padding ->
+            val startDestination =
+                when (startupGate) {
+                    StartupGate.NoServers -> Routes.serverForm(null)
+                    StartupGate.NeedsCredentials -> Routes.serverForm(startupServerId)
+                    StartupGate.Ready -> Routes.HOME
+                }
+            NavHost(
+                navController = navController,
+                startDestination = startDestination,
+                modifier = Modifier.padding(padding),
+            ) {
+                composable(
+                    route = Routes.SERVER_FORM,
+                    arguments =
+                        listOf(
+                            navArgument("serverId") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                        ),
+                ) { entry ->
+                    val serverId = entry.arguments?.getString("serverId")?.takeIf { it.isNotBlank() }
+                    ServerFormScreen(
+                        serverId = serverId,
+                        showCancel = startupGate == StartupGate.Ready,
+                        onDone = {
+                            if (startupGate == StartupGate.Ready) {
+                                navController.popBackStack()
+                            } else {
+                                // Recrea el grafo Hilt/Retrofit contra el servidor nuevo.
+                                com.jakewharton.processphoenix.ProcessPhoenix.triggerRebirth(context)
+                            }
                         },
-                    ),
-            ) { entry ->
-                val serverId = entry.arguments?.getString("serverId")?.takeIf { it.isNotBlank() }
-                ServerFormScreen(
-                    serverId = serverId,
-                    showCancel = startupGate == StartupGate.Ready,
-                    onDone = {
-                        if (startupGate == StartupGate.Ready) {
-                            navController.popBackStack()
-                        } else {
-                            // Recrea el grafo Hilt/Retrofit contra el servidor nuevo.
-                            com.jakewharton.processphoenix.ProcessPhoenix.triggerRebirth(context)
-                        }
-                    },
-                    onCancel = {
-                        if (startupGate == StartupGate.Ready) navController.popBackStack()
-                    },
-                )
-            }
-            composable(Routes.HOME) { HomeScreen(onExplore = { navController.navigate(Routes.EXPLORE) }) }
-            composable(Routes.EXPLORE) {
-                ExploreScreen(onStation = { navController.navigate(Routes.stationDetail(it)) })
-            }
-            composable(Routes.STATION_DETAIL) {
-                StationDetailScreen(
-                    viewModel = hiltViewModel(),
-                    player = playerVm,
-                    onBack = { navController.popBackStack() },
-                )
-            }
-            composable(Routes.FAVORITES) {
-                FavoritesScreen(
-                    onStation = { navController.navigate(Routes.stationDetail(it)) },
-                    onExplore = { navController.navigate(Routes.EXPLORE) },
-                    onEditServer = editActiveServer,
-                    player = playerVm,
-                )
-            }
-            composable(Routes.HISTORY) {
-                HistoryScreen(
-                    onStation = { navController.navigate(Routes.stationDetail(it)) },
-                    onExplore = { navController.navigate(Routes.EXPLORE) },
-                    onEditServer = editActiveServer,
-                    player = playerVm,
-                )
-            }
-            composable(Routes.CUSTOM_STATIONS) {
-                CustomStationsScreen(
-                    onExplore = { navController.navigate(Routes.EXPLORE) },
-                    player = playerVm,
-                )
-            }
-            composable(Routes.SETTINGS) {
-                SettingsScreen(onStats = { navController.navigate(Routes.STATS) })
-            }
-            composable(Routes.STATS) {
-                StatsScreen(onEditServer = editActiveServer)
-            }
-            composable(Routes.SERVERS) {
-                ServerListScreen(
-                    onBack = { navController.popBackStack() },
-                    onAdd = { navController.navigate(Routes.serverForm(null)) },
-                    onEdit = { id -> navController.navigate(Routes.serverForm(id)) },
-                    onNoServers = {
-                        navController.navigate(Routes.serverForm(null)) {
-                            popUpTo(navController.graph.id) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    },
-                )
-            }
-            composable(Routes.PODCAST_HOME) {
-                PodcastHomeScreen(
-                    onDiscover = { navController.navigate(Routes.PODCAST_DISCOVER) },
-                    onQueue = { navController.navigate(Routes.PODCAST_QUEUE) },
-                    onSubscriptions = { navController.navigate(Routes.PODCAST_SUBSCRIPTIONS) },
-                    onOpenShow = { navController.navigate(Routes.podcastShow(it)) },
-                    snackbar = snackbar,
-                )
-            }
-            composable(Routes.PODCAST_DISCOVER) {
-                DiscoverScreen(
-                    onBrowseSubscriptions = { navController.navigate(Routes.PODCAST_SUBSCRIPTIONS) },
-                    snackbar = snackbar,
-                )
-            }
-            composable(Routes.PODCAST_SUBSCRIPTIONS) {
-                SubscriptionsScreen(
-                    onDiscover = { navController.navigate(Routes.PODCAST_DISCOVER) },
-                    onOpenShow = { navController.navigate(Routes.podcastShow(it)) },
-                    snackbar = snackbar,
-                )
-            }
-            composable(Routes.PODCAST_QUEUE) {
-                QueueScreen(snackbar = snackbar)
-            }
-            composable(Routes.PODCAST_FAVORITES) {
-                PodcastFavoritesScreen(snackbar = snackbar)
-            }
-            composable(Routes.PODCAST_STATS) {
-                PodcastStatsScreen()
-            }
-            composable(
-                route = Routes.PODCAST_SHOW,
-                arguments = listOf(navArgument("podcastId") { type = NavType.LongType }),
-            ) { entry ->
-                PodcastShowScreen(
-                    podcastId = entry.arguments?.getLong("podcastId") ?: 0L,
-                    onBack = { navController.popBackStack() },
-                    snackbar = snackbar,
-                )
+                        onCancel = {
+                            if (startupGate == StartupGate.Ready) navController.popBackStack()
+                        },
+                    )
+                }
+                composable(Routes.HOME) { HomeScreen(onExplore = { navController.navigate(Routes.EXPLORE) }) }
+                composable(Routes.EXPLORE) {
+                    ExploreScreen(onStation = { navController.navigate(Routes.stationDetail(it)) })
+                }
+                composable(Routes.STATION_DETAIL) {
+                    StationDetailScreen(
+                        viewModel = hiltViewModel(),
+                        player = playerVm,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+                composable(Routes.FAVORITES) {
+                    FavoritesScreen(
+                        onStation = { navController.navigate(Routes.stationDetail(it)) },
+                        onExplore = { navController.navigate(Routes.EXPLORE) },
+                        onEditServer = editActiveServer,
+                        player = playerVm,
+                    )
+                }
+                composable(Routes.HISTORY) {
+                    HistoryScreen(
+                        onStation = { navController.navigate(Routes.stationDetail(it)) },
+                        onExplore = { navController.navigate(Routes.EXPLORE) },
+                        onEditServer = editActiveServer,
+                        player = playerVm,
+                    )
+                }
+                composable(Routes.CUSTOM_STATIONS) {
+                    CustomStationsScreen(
+                        onExplore = { navController.navigate(Routes.EXPLORE) },
+                        player = playerVm,
+                    )
+                }
+                composable(Routes.SETTINGS) {
+                    SettingsScreen(onStats = { navController.navigate(Routes.STATS) })
+                }
+                composable(Routes.STATS) {
+                    StatsScreen(onEditServer = editActiveServer)
+                }
+                composable(Routes.SERVERS) {
+                    ServerListScreen(
+                        onBack = { navController.popBackStack() },
+                        onAdd = { navController.navigate(Routes.serverForm(null)) },
+                        onEdit = { id -> navController.navigate(Routes.serverForm(id)) },
+                        onNoServers = {
+                            navController.navigate(Routes.serverForm(null)) {
+                                popUpTo(navController.graph.id) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+                }
+                composable(Routes.PODCAST_HOME) {
+                    PodcastHomeScreen(
+                        onDiscover = { navController.navigate(Routes.PODCAST_DISCOVER) },
+                        onQueue = { navController.navigate(Routes.PODCAST_QUEUE) },
+                        onSubscriptions = { navController.navigate(Routes.PODCAST_SUBSCRIPTIONS) },
+                        onOpenShow = { navController.navigate(Routes.podcastShow(it)) },
+                        snackbar = snackbar,
+                    )
+                }
+                composable(Routes.PODCAST_DISCOVER) {
+                    DiscoverScreen(
+                        onBrowseSubscriptions = { navController.navigate(Routes.PODCAST_SUBSCRIPTIONS) },
+                        snackbar = snackbar,
+                    )
+                }
+                composable(Routes.PODCAST_SUBSCRIPTIONS) {
+                    SubscriptionsScreen(
+                        onDiscover = { navController.navigate(Routes.PODCAST_DISCOVER) },
+                        onOpenShow = { navController.navigate(Routes.podcastShow(it)) },
+                        snackbar = snackbar,
+                    )
+                }
+                composable(Routes.PODCAST_QUEUE) {
+                    QueueScreen(snackbar = snackbar)
+                }
+                composable(Routes.PODCAST_FAVORITES) {
+                    PodcastFavoritesScreen(snackbar = snackbar)
+                }
+                composable(Routes.PODCAST_STATS) {
+                    PodcastStatsScreen()
+                }
+                composable(
+                    route = Routes.PODCAST_SHOW,
+                    arguments = listOf(navArgument("podcastId") { type = NavType.LongType }),
+                ) { entry ->
+                    PodcastShowScreen(
+                        podcastId = entry.arguments?.getLong("podcastId") ?: 0L,
+                        onBack = { navController.popBackStack() },
+                        snackbar = snackbar,
+                    )
+                }
             }
         }
     }
     if (episodeFullPlayer && episodeUi.episode != null) {
         EpisodeFullPlayerSheet(onDismiss = { episodeFullPlayer = false })
     }
-}
-
-/**
- * Barra superior: logo, Cast, alternador de vista, temporizador,
- * servidores y selector Radio|Podcasts (spec 0046, US1).
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TolochaTopBar(
-    modeVm: ModeViewModel,
-    sleepTimerVm: SleepTimerViewModel,
-    onServers: () -> Unit,
-) {
-    val modeUi by modeVm.ui.collectAsState()
-    val sleepTimerUiState by sleepTimerVm.uiState.collectAsState()
-    TopAppBar(
-        title = { TolochaLogo() },
-        actions = {
-            // Alternador Radio|Podcasts en la propia barra (spec 0046, US1).
-            if (modeUi.podcastsEnabled) {
-                ModeSwitchButton(mode = modeUi.mode, onSelect = modeVm::setMode)
-            }
-            // Botón Cast (Chromecast) — FR-001, FR-002, FR-003
-            AndroidView(
-                factory = { ctx ->
-                    MediaRouteButton(ctx).apply {
-                        CastButtonFactory.setUpMediaRouteButton(ctx, this)
-                    }
-                },
-                modifier = Modifier,
-            )
-            SleepTimerButton(
-                uiState = sleepTimerUiState,
-                onStart = sleepTimerVm::start,
-                onCancel = sleepTimerVm::cancel,
-            )
-            IconButton(onClick = onServers) {
-                Icon(Icons.Filled.Dns, contentDescription = "Servidores")
-            }
-        },
-        colors =
-            TopAppBarDefaults.topAppBarColors(
-                containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer,
-            ),
-    )
 }
 
 /** Mini-player persistente: episodio en curso o radio (spec 0046). */
@@ -550,7 +557,7 @@ private fun PodcastRouteEffects(
 
 /**
  * Barra de navegación inferior (spec 012). Extraída para poder fijar con un test
- * de UI el ancho de los 5 destinos (regresión del bug 0040).
+ * de UI el ancho de los destinos del modo vigente (regresión del bug 0040).
  *
  * `TooltipBox` no es `RowScope` y su `content` es `@Composable () -> Unit`: si
  * envuelve directamente un [NavigationBarItem], el `Modifier.weight(1f)` del item
@@ -564,12 +571,14 @@ internal fun TolochaNavigationBar(
     currentRoute: String?,
     onNavigate: (String) -> Unit,
     dests: List<BottomDest> = BOTTOM_DESTS,
+    queueBadge: QueueBadge = QueueBadge(0),
 ) {
     NavigationBar {
         // `NavigationBarItem` es una extensión de `RowScope`; al envolverlo en un
         // `Box` (BoxScope) hay que conservar el receptor del `Row` explícitamente.
         val rowScope = this
         dests.forEach { dest ->
+            val badgeText = if (dest.route == Routes.PODCAST_QUEUE) queueBadge.displayText else null
             val tooltipState = rememberTooltipState()
             // Tooltip de accesibilidad al mantener pulsado (0012, US1/AC3).
             Box(Modifier.weight(1f)) {
@@ -590,7 +599,28 @@ internal fun TolochaNavigationBar(
                                     (dest.route == Routes.EXPLORE && currentRoute == Routes.STATION_DETAIL) ||
                                     (dest.route == Routes.PODCAST_SUBSCRIPTIONS && currentRoute == Routes.PODCAST_SHOW),
                             onClick = { onNavigate(dest.route) },
-                            icon = { Icon(dest.icon, contentDescription = dest.label) },
+                            icon = {
+                                if (badgeText != null) {
+                                    BadgedBox(
+                                        badge = {
+                                            Badge(
+                                                modifier =
+                                                    Modifier
+                                                        .testTag(TolochaTestTags.QUEUE_BADGE)
+                                                        .clearAndSetSemantics {
+                                                            contentDescription = queueBadge.contentDescription
+                                                        },
+                                            ) {
+                                                Text(badgeText)
+                                            }
+                                        },
+                                    ) {
+                                        Icon(dest.icon, contentDescription = dest.label)
+                                    }
+                                } else {
+                                    Icon(dest.icon, contentDescription = dest.label)
+                                }
+                            },
                         )
                     }
                 }

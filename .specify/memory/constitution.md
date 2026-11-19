@@ -1,49 +1,28 @@
 <!---
 ## Sync Impact Report
 
-- Version change: 2.0.0 → 3.0.0
-- Razón del bump (MAJOR/MINOR/PATCH): MAJOR — se reintroduce la
-  autenticación por servidor (credenciales cifradas + login
-  automático JWT/refresh + `Bearer`) y se redefinen los
-  Principios II y IV. Cambio incompatible con la 2.0.0, que
-  prohibía credenciales: la prueba en entorno real demostró que la
-  instancia exige sesión. Se mantiene "sin pantallas de login".
-- Principios modificados:
-  - II. Stack Kotlin-First, Compose M3 y Media3 → cada servidor
-    guarda email y contraseña cifrada; la app hace login
-    automático (`POST /auth/login`) y renueva con refresh
-    rotatorio; `Authorization: Bearer` en todas las peticiones,
-    incluida la reproducción (proxy y subrecursos HLS) y
-    Chromecast; sin pantallas de login/registro.
-  - IV. Streaming Robusto y Manejo de Errores → 401/403 vuelve a
-    "renovar token y, si falla, re-login con credenciales
-    guardadas"; el error de credenciales ofrece editar el servidor
-    activo y el de red reintentar.
-  - I. MVVM + Clean por capas → la capa de sesión vuelve a
-    `core/session`/`core/network`/`domain/auth` (patrón de la
-    spec 007); la lista de features retira `onboarding/` (lo
-    sustituye la pantalla unificada en `servers/`).
-  - III. Calidad Test-First → flujos críticos de UI incluyen la
-    pantalla unificada de servidor (alta/edición con
-    credenciales).
+- Version change: 3.0.0 → 3.1.0
+- Razón del bump (MAJOR/MINOR/PATCH): MINOR — se amplía y precisa
+  la guía de navegación. La barra inferior queda reservada a
+  destinos de contenido; Configuración y Servidores pasan al menú
+  de hamburguesa de la cabecera; se documentan las secciones de
+  podcast y el comportamiento de la cabecera en pantallas
+  estrechas.
+- Principios modificados: ninguno (I–V intactos).
 - Secciones modificadas:
-  - Technology Stack, Constraints & Security → restaurados los
-    endpoints `auth/login|refresh` (sin registro/recuperación/
-    logout ni `/users/me`), el almacenamiento cifrado de
-    credenciales y la exclusión de `tolocha_tokens` del backup;
-    favoritos/historial/personalizadas/sugerencias/playback vuelven
-    a ser del usuario autenticado.
-  - Development Workflow & Quality Gates → paridad de navegación
-    sin Login/Registro/Perfil; las credenciales se configuran en el
-    formulario de servidor; ADRs con auth por servidor.
+  - Development Workflow & Quality Gates → Paridad de secciones:
+    se enumeran las secciones de radio y podcast y se fija que
+    Configuración/Servidores se alcanzan desde el menú de
+    hamburguesa, no desde la barra inferior.
+  - Development Workflow & Quality Gates → Dirección UX: barra
+    inferior solo de contenido; cabecera con logotipo, selector
+    Radio | Podcasts, Cast y hamburguesa; temporizador, servidores
+    y configuración dentro del menú; logotipo adaptable a emblema.
 - Secciones añadidas: ninguna (estructura de 5 principios intacta).
 - Secciones eliminadas: ninguna.
-- Impacto de migración: los servidores guardados por la 0022 se
-  conservan sin credenciales; si el servidor activo/por defecto no
-  las tiene, el arranque abre la pantalla unificada de forma
-  bloqueante. La spec 0022 queda parcialmente superseded por la
-  0024. Room no cambia de esquema (credenciales en
-  `EncryptedSharedPreferences`).
+- Impacto de migración: las rutas de Configuración y Servidores se
+  conservan; cambia únicamente su punto de acceso. Sin migración
+  de datos, contrato ni credenciales.
 - TODOs diferidos: ninguno.
 --->
 
@@ -279,24 +258,40 @@ Stack canónico (verificado contra `izquierdojl/tolocharadio`):
   1 aprobación. CI (GitHub Actions) MUST ejecutar estos 4 gates.
 - Paridad de secciones con la app web (fuente: `apps/web/src/
   App.tsx` + `pages/`): la navegación Android MUST ofrecer las
-  mismas secciones de contenido (`Explorar`, `Favoritos`,
-  `Historial`, `Mis emisoras`) más `Configuración` y
-  `Servidores`. NO existen `Login`/`Registro`/`Perfil`: las
-  credenciales se configuran en el formulario de servidor y la
-  sesión es automática. El acceso al contenido requiere al menos un
-  servidor con credenciales; sin servidores se muestra la
+  mismas secciones de contenido. En radio: `Explorar`, `Favoritos`,
+  `Historial` y `Mis emisoras`. En podcast: `Inicio`, `Descubrir`,
+  `Suscripciones`, `Cola` y `Favoritos`. `Configuración` y
+  `Servidores` MUST seguir accesibles, pero desde el menú de
+  hamburguesa de la cabecera, no desde la barra inferior. NO
+  existen `Login`/`Registro`/`Perfil`: las credenciales se
+  configuran en el formulario de servidor y la sesión es
+  automática. El acceso al contenido requiere al menos un servidor
+  con credenciales; sin servidores se muestra la
   bienvenida/formulario. Nombres de ruta y orden del menú SHOULD
   espejar la web en las secciones de contenido (`/explorar,
   /favoritos, /historial, /mis-emisoras`).
 - Dirección UX estilo Pocket Casts con M3: `NavigationBar`
-  inferior con los destinos de contenido (Explorar, Favoritos,
-  Historial, Mis emisoras, Configuración/Servidores),
-  `StationCard`/`StationListItem` con favicon (Coil) +
-  país/idioma/tags, toggle vista lista/grid, `EmptyState`
-  dedicados, `FavoriteButton` omnipresente, y reproductor flotante
-  persistente (mini-player sobre la bottom bar + full-player en
-  bottom sheet) que no se interrumpe al navegar — equivalente al
-  `PlayerBar`+Zustand de la web llevado a `MediaSessionService`.
+  inferior reservada a destinos de contenido (radio: Explorar,
+  Favoritos, Historial, Mis emisoras; podcast: Inicio, Descubrir,
+  Suscripciones, Cola, Favoritos), `StationCard`/`StationListItem`
+  con favicon (Coil) + país/idioma/tags, toggle vista lista/grid,
+  `EmptyState` dedicados, `FavoriteButton` omnipresente, y
+  reproductor flotante persistente (mini-player sobre la bottom bar
+  + full-player en bottom sheet) que no se interrumpe al navegar —
+  equivalente al `PlayerBar`+Zustand de la web llevado a
+  `MediaSessionService`.
+- Cabecera superior: MUST mostrar como acciones directas solo el
+  selector `Radio | Podcasts` (si el servidor ofrece podcasts) y
+  `Cast`, además del logotipo y el acceso al menú de hamburguesa.
+  El temporizador de apagado, `Servidores` y `Configuración` MUST
+  agruparse en ese menú. La cabecera MUST adaptarse a anchos
+  estrechos y tamaños de letra grandes sin solapar ni recortar
+  elementos; si el logotipo completo no cabe, MUST reducirse al
+  emblema sin perder el acceso a las acciones.
+- El menú de hamburguesa MUST estar disponible en las pantallas con
+  cabecera compartida, cerrarse al elegir una opción y no
+  interrumpir la reproducción. `Configuración` y `Servidores` MUST
+  NOT ocupar un destino de la barra inferior.
 - Versionado: SemVer para releases (`versionName`), `versionCode`
   incremental. Migraciones Room probadas. Versionado del
   contrato: si el OpenAPI sube minor breaking, la app MUST
@@ -327,4 +322,4 @@ los 5 principios y de los Quality Gates.
   contrato OpenAPI del backend (`/api/v1/openapi.json`) es la
   fuente de verdad para DTOs y códigos de error.
 
-**Version**: 3.0.0 | **Ratified**: 2026-09-04 | **Last Amended**: 2026-09-12
+**Version**: 3.1.0 | **Ratified**: 2026-09-04 | **Last Amended**: 2026-11-19

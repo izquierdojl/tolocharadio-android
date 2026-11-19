@@ -39,9 +39,9 @@ import coil.compose.AsyncImage
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerViewModel
 
 /**
- * Mini-player de episodio (US3): visible sobre la barra inferior cuando
- * hay un episodio cargado. Tocar la barra abre el "now playing" completo;
- * el play central va flanqueado por atrás/adelante y la X detiene.
+ * Mini-player de episodio (US3/spec 0047): tres filas —podcast, episodio
+ * y acciones—. Tocar la barra abre el "now playing" completo; las acciones
+ * no propagan el toque.
  */
 @Composable
 fun EpisodeMiniPlayer(
@@ -59,8 +59,8 @@ fun EpisodeMiniPlayer(
     ) {
         Column {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 8.dp),
+                verticalAlignment = Alignment.Top,
             ) {
                 AsyncImage(
                     model = episode.imageUrl ?: ui.podcast?.imageUrl,
@@ -68,17 +68,11 @@ fun EpisodeMiniPlayer(
                     contentScale = ContentScale.Crop,
                     modifier =
                         Modifier
-                            .size(40.dp)
+                            .size(48.dp)
                             .clip(MaterialTheme.shapes.small),
                 )
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        episode.title,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (ui.downloaded) {
                             Icon(
@@ -90,28 +84,38 @@ fun EpisodeMiniPlayer(
                             Spacer(Modifier.width(4.dp))
                         }
                         Text(
-                            (ui.podcast?.title ?: "") +
-                                if (ui.downloaded) " · Descargado" else "",
+                            ui.podcast?.title ?: "Podcast",
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
                         )
                     }
+                    Text(
+                        episode.title,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
                 }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 IconButton(
                     onClick = viewModel::skipBack,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(40.dp),
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Undo,
                         contentDescription = "Atrás 15 segundos",
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
                 FilledIconButton(
                     onClick = viewModel::toggle,
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier.size(44.dp),
                     colors =
                         IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -125,22 +129,23 @@ fun EpisodeMiniPlayer(
                 }
                 IconButton(
                     onClick = viewModel::skipForward,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(40.dp),
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Redo,
                         contentDescription = "Adelante 30 segundos",
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
+                Spacer(Modifier.weight(1f))
                 IconButton(
                     onClick = viewModel::stop,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(40.dp),
                 ) {
                     Icon(
                         Icons.Filled.Close,
                         contentDescription = "Detener",
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }

@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import com.izquierdojl.tolocharadio.core.ui.theme.TolochaTheme
+import com.izquierdojl.tolocharadio.domain.podcasts.QueueBadge
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -12,16 +13,16 @@ import org.junit.Test
 /**
  * Regresión del bug 0040: al envolver `NavigationBarItem` en `TooltipBox` se
  * perdía el `Modifier.weight(1f)` del item, el primer destino ocupaba todo el
- * ancho y los otros cuatro quedaban a ancho 0 (invisibles).
+ * ancho y los otros quedaban a ancho 0 (invisibles).
  *
- * El test compone la barra real [TolochaNavigationBar] y exige que los cinco
- * destinos sean visibles, tengan ancho > 0 y se repartan horizontalmente.
+ * El test compone la barra real [TolochaNavigationBar] y exige que los cuatro
+ * destinos de radio sean visibles, tengan ancho > 0 y se repartan.
  */
 class TolochaNavigationBarTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val labels = listOf("Explorar", "Favoritos", "Historial", "Mis emisoras", "Configuración")
+    private val labels = listOf("Explorar", "Favoritos", "Historial", "Mis emisoras")
 
     @Test
     fun todosLosDestinosSonVisiblesYRepartenElAncho() {
@@ -51,5 +52,21 @@ class TolochaNavigationBarTest {
             "Los destinos no ocupan el ancho de la barra (${centers.last() - centers.first()} de $rootWidth)",
             centers.last() - centers.first() > rootWidth * 0.5f,
         )
+    }
+
+    @Test
+    fun laInsigniaDeColaMuestraLosPendientes() {
+        compose.setContent {
+            TolochaTheme {
+                TolochaNavigationBar(
+                    currentRoute = Routes.PODCAST_QUEUE,
+                    onNavigate = {},
+                    dests = PODCAST_DESTS,
+                    queueBadge = QueueBadge(3),
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("3 episodios en cola").assertExists()
     }
 }

@@ -34,6 +34,7 @@ import com.izquierdojl.tolocharadio.core.ui.components.EpisodeCardUi
 import com.izquierdojl.tolocharadio.core.ui.components.EpisodeRow
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
+import com.izquierdojl.tolocharadio.core.ui.components.downloadUiState
 import com.izquierdojl.tolocharadio.data.local.podcasts.DownloadRecord
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
@@ -58,6 +59,7 @@ fun PodcastFavoritesScreen(
     val playerUi by player.ui.collectAsState()
     val actionMessage by actions.message.collectAsState()
     val downloads by actions.downloadRecords.collectAsState()
+    val downloadProgress by actions.downloadProgress.collectAsState()
     val downloadsEnabled by actions.downloadsEnabled.collectAsState()
     var sheet by remember { mutableStateOf<Pair<PodcastEpisode, PodcastSummary?>?>(null) }
     var viewMode by rememberSaveable { mutableStateOf(ViewMode.LIST) }
@@ -129,6 +131,7 @@ fun PodcastFavoritesScreen(
                                 podcast = null,
                                 isPlaying = playerUi.episode?.id == episode.id && playerUi.playing,
                                 isDownloaded = downloads[episode.id]?.localUri != null,
+                                downloadState = downloadUiState(downloads[episode.id], downloadProgress[episode.id]),
                                 onDownload = { actions.download(episode) }.takeIf { downloadsEnabled },
                                 onPlayPause = {
                                     if (playerUi.episode?.id == episode.id) {

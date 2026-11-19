@@ -58,6 +58,7 @@ fun EpisodeFullPlayerSheet(
     onDismiss: () -> Unit,
 ) {
     val ui by viewModel.ui.collectAsState()
+    val voiceBoost by viewModel.voiceBoostEnabled.collectAsState()
     val episode = ui.episode
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -140,6 +141,10 @@ fun EpisodeFullPlayerSheet(
                 onSkipBack = viewModel::skipBack,
                 onSkipForward = viewModel::skipForward,
                 onCycleRate = viewModel::cycleRate,
+            )
+            VoiceBoostToggle(
+                enabled = voiceBoost,
+                onToggle = viewModel::setVoiceBoost,
             )
             ui.message?.let {
                 Text(it, color = MaterialTheme.colorScheme.error)

@@ -19,6 +19,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
+import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.test.runTest
@@ -69,6 +70,8 @@ class DownloadsRepoTest {
             val cursor: Cursor = mockk()
             every { cursor.moveToFirst() } returns true
             every { cursor.getColumnIndex(DownloadManager.COLUMN_STATUS) } returns 0
+            every { cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR) } returns -1
+            every { cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES) } returns -1
             every { cursor.getInt(0) } returns DownloadManager.STATUS_SUCCESSFUL
             every { cursor.close() } just runs
             every { manager.query(any()) } returns cursor
@@ -98,6 +101,8 @@ class DownloadsRepoTest {
             val cursor: Cursor = mockk()
             every { cursor.moveToFirst() } returns true
             every { cursor.getColumnIndex(DownloadManager.COLUMN_STATUS) } returns 0
+            every { cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR) } returns -1
+            every { cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES) } returns -1
             every { cursor.getInt(0) } returns DownloadManager.STATUS_SUCCESSFUL
             every { cursor.close() } just runs
             every { manager.query(any()) } returns cursor
@@ -121,4 +126,77 @@ class DownloadsRepoTest {
         assertEquals(DownloadStatus.FAILED, mapDownloadStatus(DownloadManager.STATUS_FAILED))
         assertEquals(DownloadStatus.RUNNING, mapDownloadStatus(DownloadManager.STATUS_RUNNING))
     }
+
+    @Test
+    fun `downloadProgress calcula la fraccion y tolera total desconocido`() {
+        assertEquals(0.25f, DownloadProgress(11L, 50L, 200L).fraction)
+        assertEquals(null, DownloadProgress(11L, 50L, null).fraction)
+        assertEquals(null, DownloadProgress(11L, 50L, 0L).fraction)
+    }
+
+    @Test
+    fun `download no duplica una transferencia running`() =
+        runTest {
+            val cursor: Cursor = mockk()
+            every { cursor.moveToFirst() } returns true
+            every { cursor.getColumnIndex(DownloadManager.COLUMN_STATUS) } returns 0
+            every { cursor.getInt(0) } returns DownloadManager.STATUS_RUNNING
+            every { cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR) } returns 1
+            every { cursor.getLong(1) } returns 10L
+            every { cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES) } returns 2
+            every { cursor.getLong(2) } returns 100L
+            every { cursor.close() } just runs
+            every { manager.query(any()) } returns cursor
+            coEvery { dao.loadAll() } returns
+                listOf(EpisodeDownloadEntity(11L, 42L, DownloadStatus.RUNNING, null, 0))
+
+            repo.refresh()
+            val r = repo.download(episode)
+
+            assertTrue(r is ApiResult.Ok)
+            assertEquals(42L, (r as ApiResult.Ok).value)
+            assertEquals(10L, repo.progress.value[11L]?.bytesDownloaded)
+            coVerify(exactly = 0) { api.issueDownload(11L) }
+        }
+
+    @Test
+    fun `cleanupExpired borra solo las descargas antiguas`() =
+        runTest {
+            val now = System.currentTimeMillis()
+            val day = 24L * 60L * 60L * 1_000L
+            val old =
+                EpisodeDownloadEntity(11L, 42L, DownloadStatus.COMPLETE, "content://d/11", now - 31 * day)
+            val recent =
+                EpisodeDownloadEntity(12L, 43L, DownloadStatus.COMPLETE, "content://d/12", now)
+            coEvery { dao.loadAll() } returns listOf(old, recent)
+            every { manager.remove(42L) } returns 1
+            coEvery { dao.deleteByEpisode(11L) } just runs
+
+            repo.cleanupExpired(30)
+
+            coVerify { dao.deleteByEpisode(11L) }
+            coVerify(exactly = 0) { dao.deleteByEpisode(12L) }
+            verify { manager.remove(42L) }
+        }
+
+    @Test
+    fun `cleanupExpired respeta el episodio en curso y Nunca`() =
+        runTest {
+            val now = System.currentTimeMillis()
+            val old =
+                EpisodeDownloadEntity(
+                    11L,
+                    42L,
+                    DownloadStatus.COMPLETE,
+                    "content://d/11",
+                    now - 31L * 24L * 60L * 60L * 1_000L,
+                )
+            coEvery { dao.loadAll() } returns listOf(old)
+
+            repo.cleanupExpired(30, keepEpisodeId = 11L)
+            repo.cleanupExpired(0)
+
+            coVerify(exactly = 0) { dao.deleteByEpisode(11L) }
+            verify(exactly = 0) { manager.remove(42L) }
+        }
 }

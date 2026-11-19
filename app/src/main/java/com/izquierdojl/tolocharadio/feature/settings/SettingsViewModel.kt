@@ -8,6 +8,8 @@ import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.core.util.AppBuildInfo
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.podcasts.CleanupDownloadsUseCase
+import com.izquierdojl.tolocharadio.domain.podcasts.DownloadRetention
 import com.izquierdojl.tolocharadio.domain.servers.GetServersUseCase
 import com.izquierdojl.tolocharadio.feature.player.PlaybackProfileController
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +29,7 @@ data class SettingsUi(
     val defaultSection: ContentMode = ContentMode.RADIO,
     val bufferProfile: BufferProfile = BufferProfile.DEFAULT,
     val resumeOnConnectivity: Boolean = true,
+    val downloadRetentionDays: Int = DownloadRetention.DEFAULT_DAYS,
     val activeServerAlias: String? = null,
     val message: String? = null,
 )
@@ -62,6 +65,7 @@ class SettingsViewModel
         private val getServers: GetServersUseCase,
         private val buildInfo: AppBuildInfo,
         private val profileController: PlaybackProfileController,
+        private val cleanupDownloads: CleanupDownloadsUseCase,
     ) : ViewModel() {
         private val _ui = MutableStateFlow(SettingsUi())
         val ui: StateFlow<SettingsUi> = _ui.asStateFlow()
@@ -104,6 +108,11 @@ class SettingsViewModel
                     _ui.value = _ui.value.copy(resumeOnConnectivity = enabled)
                 }
             }
+            viewModelScope.launch {
+                prefs.downloadRetentionDays.collect { days ->
+                    _ui.value = _ui.value.copy(downloadRetentionDays = days)
+                }
+            }
         }
 
         /** Selector Sistema/Claro/Oscuro (spec 002, FR-010). SYSTEM es solo local. */
@@ -137,6 +146,15 @@ class SettingsViewModel
         fun onResumeOnConnectivityChange(enabled: Boolean) {
             _ui.value = _ui.value.copy(resumeOnConnectivity = enabled)
             viewModelScope.launch { prefs.setResumeOnConnectivity(enabled) }
+        }
+
+        /** Retención de descargas; al cambiarla se limpian las caducadas. */
+        fun onDownloadRetentionChange(days: Int) {
+            _ui.value = _ui.value.copy(downloadRetentionDays = days)
+            viewModelScope.launch {
+                prefs.setDownloadRetentionDays(days)
+                cleanupDownloads()
+            }
         }
 
         /** Muestra el diálogo con la versión real del build y la configuración vigente (FR-001/FR-002). */

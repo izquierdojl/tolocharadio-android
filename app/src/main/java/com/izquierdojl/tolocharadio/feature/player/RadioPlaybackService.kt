@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
@@ -20,6 +21,7 @@ import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
 import com.izquierdojl.tolocharadio.domain.playback.RecoveryState
 import com.izquierdojl.tolocharadio.domain.playback.isTransportBuffering
+import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackController
 import com.tolocharadio.ui.notification.NotificationNavigation
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -69,7 +71,12 @@ class RadioPlaybackService : MediaSessionService() {
     @Inject
     lateinit var recoveryAwarePlayer: RecoveryAwarePlayer
 
+    @Inject
+    lateinit var episodeController: EpisodePlaybackController
+
     private var session: MediaSession? = null
+    private var episodeActive = false
+    private var lastRecovery: RecoveryState = RecoveryState.Idle
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     companion object {
@@ -82,6 +89,7 @@ class RadioPlaybackService : MediaSessionService() {
     private val stopButton by lazy {
         CommandButton.Builder(CommandButton.ICON_STOP)
             .setDisplayName("Stop")
+            .setSlots(CommandButton.SLOT_OVERFLOW)
             .setSessionCommand(SessionCommand(CUSTOM_COMMAND_STOP, Bundle.EMPTY))
             .build()
     }
@@ -89,6 +97,7 @@ class RadioPlaybackService : MediaSessionService() {
     private val muteButton by lazy {
         CommandButton.Builder(CommandButton.ICON_VOLUME_OFF)
             .setDisplayName("Mute")
+            .setSlots(CommandButton.SLOT_OVERFLOW)
             .setSessionCommand(SessionCommand(CUSTOM_COMMAND_MUTE, Bundle.EMPTY))
             .build()
     }
@@ -96,7 +105,22 @@ class RadioPlaybackService : MediaSessionService() {
     private val retryButton by lazy {
         CommandButton.Builder(CommandButton.ICON_PLAY)
             .setDisplayName("Reintentar")
+            .setSlots(CommandButton.SLOT_OVERFLOW)
             .setSessionCommand(SessionCommand(CUSTOM_COMMAND_RETRY, Bundle.EMPTY))
+            .build()
+    }
+
+    private val seekBackButton by lazy {
+        CommandButton.Builder(CommandButton.ICON_SKIP_BACK_15)
+            .setPlayerCommand(Player.COMMAND_SEEK_BACK)
+            .setDisplayName(getString(R.string.media_seek_back_15))
+            .build()
+    }
+
+    private val seekForwardButton by lazy {
+        CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD_30)
+            .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
+            .setDisplayName(getString(R.string.media_seek_forward_30))
             .build()
     }
 
@@ -165,11 +189,12 @@ class RadioPlaybackService : MediaSessionService() {
         session =
             MediaSession.Builder(this, recoveryAwarePlayer)
                 .setCallback(sessionCallback)
-                .setCustomLayout(listOf(stopButton, muteButton))
+                .setMediaButtonPreferences(listOf(stopButton, muteButton))
                 .setSessionActivity(sessionActivityPendingIntent)
                 .build()
         // Register MediaSession with CastPlayerManager for dynamic player switching
         castPlayerManager.setMediaSession(session!!)
+        updateMediaButtons()
         recoveryManager.start()
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider(this).apply {
@@ -182,8 +207,15 @@ class RadioPlaybackService : MediaSessionService() {
         }
         serviceScope.launch {
             recoveryManager.status.collect { status ->
-                updateCustomLayout(status)
+                lastRecovery = status
+                updateMediaButtons()
                 recoveryAwarePlayer.setRecovering(status.isTransportBuffering())
+            }
+        }
+        serviceScope.launch {
+            episodeController.state.collect { state ->
+                episodeActive = state is EpisodePlaybackController.State.Active
+                updateMediaButtons()
             }
         }
     }
@@ -224,14 +256,16 @@ class RadioPlaybackService : MediaSessionService() {
         }
     }
 
-    private fun updateCustomLayout(status: RecoveryState) {
+    private fun updateMediaButtons() {
+        val retry = (lastRecovery as? RecoveryState.Failed)?.action == PlayerErrorAction.RETRY
         val layout =
-            if (status is RecoveryState.Failed && status.action == PlayerErrorAction.RETRY) {
-                listOf(retryButton, stopButton, muteButton)
-            } else {
-                listOf(stopButton, muteButton)
+            when (MediaButtonPolicy.layout(episodeActive = episodeActive, radioRetry = retry)) {
+                MediaButtonLayout.EPISODE ->
+                    listOf(seekBackButton, seekForwardButton, stopButton, muteButton)
+                MediaButtonLayout.RADIO_RETRY -> listOf(retryButton, stopButton, muteButton)
+                MediaButtonLayout.RADIO -> listOf(stopButton, muteButton)
             }
-        session?.setCustomLayout(layout)
+        session?.setMediaButtonPreferences(layout)
     }
 
     /**

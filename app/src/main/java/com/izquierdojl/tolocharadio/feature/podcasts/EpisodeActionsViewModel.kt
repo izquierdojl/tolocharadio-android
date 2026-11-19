@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.userMessage
+import com.izquierdojl.tolocharadio.data.local.podcasts.DownloadRecord
+import com.izquierdojl.tolocharadio.data.local.podcasts.DownloadStatus
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
 import com.izquierdojl.tolocharadio.data.repo.DownloadsRepo
 import com.izquierdojl.tolocharadio.data.repo.EpisodeFavoritesRepo
@@ -11,6 +13,7 @@ import com.izquierdojl.tolocharadio.data.repo.ProgressRepo
 import com.izquierdojl.tolocharadio.data.repo.QueuePosition
 import com.izquierdojl.tolocharadio.data.repo.QueueRepo
 import com.izquierdojl.tolocharadio.data.repo.SystemRepo
+import com.izquierdojl.tolocharadio.domain.podcasts.CleanupDownloadsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,9 +42,11 @@ class EpisodeActionsViewModel
         private val downloads: DownloadsRepo,
         private val progress: ProgressRepo,
         private val system: SystemRepo,
+        private val cleanupDownloads: CleanupDownloadsUseCase,
     ) : ViewModel() {
         val favoriteIds: StateFlow<Set<Long>> = favorites.favoriteIds
         val downloadRecords = downloads.records
+        val downloadProgress = downloads.progress
 
         private val _downloadsEnabled = MutableStateFlow(false)
         val downloadsEnabled: StateFlow<Boolean> = _downloadsEnabled.asStateFlow()
@@ -56,13 +61,29 @@ class EpisodeActionsViewModel
 
         init {
             viewModelScope.launch { favorites.list() }
-            viewModelScope.launch { downloads.refresh() }
+            viewModelScope.launch {
+                downloads.refresh()
+                cleanupDownloads()
+            }
             viewModelScope.launch {
                 _downloadsEnabled.value =
                     when (val r = system.podcastCapabilities()) {
                         is ApiResult.Ok -> r.value.downloads
                         is ApiResult.Err -> false
                     }
+            }
+            viewModelScope.launch {
+                var previous = emptyMap<Long, DownloadRecord>()
+                downloads.records.collect { records ->
+                    records.values
+                        .filter {
+                            it.status == DownloadStatus.FAILED &&
+                                previous[it.episodeId]?.status == DownloadStatus.RUNNING
+                        }.forEach {
+                            _message.value = "No se pudo completar la descarga. Puedes reintentarla."
+                        }
+                    previous = records
+                }
             }
         }
 
