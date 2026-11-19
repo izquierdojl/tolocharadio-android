@@ -1,6 +1,7 @@
 package com.izquierdojl.tolocharadio.feature.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +15,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -44,6 +47,7 @@ import com.izquierdojl.tolocharadio.core.ui.navigation.ContentMode
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.podcasts.DownloadRetention
 
 /**
  * Configuración (sustituye a Perfil, FR-005): tema claro/oscuro y
@@ -74,6 +78,7 @@ fun SettingsScreen(
                     onDefaultSectionChange = viewModel::onDefaultSectionChange,
                     onBufferProfileChange = viewModel::onBufferProfileChange,
                     onResumeOnConnectivityChange = viewModel::onResumeOnConnectivityChange,
+                    onDownloadRetentionChange = viewModel::onDownloadRetentionChange,
                     onStats = onStats,
                     onAbout = viewModel::showAppInfoDialog,
                 ),
@@ -98,6 +103,7 @@ internal data class SettingsActions(
     val onDefaultSectionChange: (ContentMode) -> Unit = {},
     val onBufferProfileChange: (BufferProfile) -> Unit = {},
     val onResumeOnConnectivityChange: (Boolean) -> Unit = {},
+    val onDownloadRetentionChange: (Int) -> Unit = {},
     val onStats: () -> Unit = {},
     val onAbout: () -> Unit = {},
 )
@@ -208,6 +214,12 @@ internal fun SettingsContent(
             onResumeOnConnectivityChange = actions.onResumeOnConnectivityChange,
         )
 
+        Spacer(Modifier.height(16.dp))
+        DownloadSettingsSection(
+            retentionDays = ui.downloadRetentionDays,
+            onRetentionChange = actions.onDownloadRetentionChange,
+        )
+
         ui.message?.let {
             Spacer(Modifier.height(8.dp))
             Text(it)
@@ -225,6 +237,60 @@ internal fun SettingsContent(
             onClick = actions.onAbout,
         )
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+/**
+ * Sección de retención de descargas (extensión spec 0047, 2026-11-19).
+ * Separa el texto de la fila para que el nombre de la opción siempre se lea.
+ */
+@Composable
+internal fun DownloadSettingsSection(
+    retentionDays: Int,
+    onRetentionChange: (Int) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth()) {
+        Text("Descargas", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(4.dp))
+        Box {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { expanded = true }
+                        .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Retención de descargas", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Se borran automáticamente los episodios descargados más antiguos.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Text(
+                    DownloadRetention.label(retentionDays),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DownloadRetention.OPTIONS.forEach { days ->
+                    DropdownMenuItem(
+                        text = { Text(DownloadRetention.label(days)) },
+                        onClick = {
+                            expanded = false
+                            onRetentionChange(days)
+                        },
+                    )
+                }
+            }
+        }
+        Text(
+            "Con «Nunca» no se borrarán automáticamente.",
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 

@@ -71,3 +71,13 @@ class DismissEpisodeUseCase
     constructor(private val progress: ProgressRepo) {
         suspend operator fun invoke(episodeId: Long) = progress.dismiss(episodeId)
     }
+
+/**
+ * Carga el progreso más reciente de un episodio cuando la lista no lo
+ * trae (FR-004/FR-006). Un 404 se reconcilia como "sin progreso".
+ */
+class LoadEpisodeProgressUseCase
+    @Inject
+    constructor(private val progress: ProgressRepo) {
+        suspend operator fun invoke(episodeId: Long) = progress.load(episodeId)
+    }

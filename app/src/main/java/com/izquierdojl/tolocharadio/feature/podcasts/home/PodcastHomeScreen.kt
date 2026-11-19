@@ -41,9 +41,11 @@ import com.izquierdojl.tolocharadio.core.ui.components.PodcastCard
 import com.izquierdojl.tolocharadio.core.ui.components.PodcastRow
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
+import com.izquierdojl.tolocharadio.core.ui.components.downloadUiState
 import com.izquierdojl.tolocharadio.data.local.podcasts.DownloadRecord
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
+import com.izquierdojl.tolocharadio.data.repo.DownloadProgress
 import com.izquierdojl.tolocharadio.data.repo.QueuePosition
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodeActionsViewModel
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerViewModel
@@ -95,6 +97,7 @@ fun PodcastHomeScreen(
 
     val favorites by actions.favoriteIds.collectAsState()
     val downloads by actions.downloadRecords.collectAsState()
+    val downloadProgress by actions.downloadProgress.collectAsState()
     val downloadsEnabled by actions.downloadsEnabled.collectAsState()
 
     val homeActions =
@@ -159,6 +162,7 @@ fun PodcastHomeScreen(
                         latestEpisodes = home.latestEpisodes,
                         favorites = favorites,
                         downloads = downloads,
+                        downloadProgress = downloadProgress,
                         playingId = playerUi.episode?.id,
                         playing = playerUi.playing,
                         queueCount = home.queue.count,
@@ -190,6 +194,7 @@ private data class HomeSectionsState(
     val latestEpisodes: List<PodcastEpisode>,
     val favorites: Set<Long>,
     val downloads: Map<Long, DownloadRecord?>,
+    val downloadProgress: Map<Long, DownloadProgress>,
     val playingId: Long?,
     val playing: Boolean,
     val queueCount: Int,
@@ -357,6 +362,11 @@ private fun LazyListScope.homeEpisodeSection(
             podcast = podcast,
             isPlaying = sections.playingId == episode.id && sections.playing,
             isDownloaded = sections.downloads[episode.id]?.localUri != null,
+            downloadState =
+                downloadUiState(
+                    sections.downloads[episode.id],
+                    sections.downloadProgress[episode.id],
+                ),
             onDownload = actions.onDownload?.let { download -> { download(episode) } },
             onPlayPause = { actions.onPlay(episode, podcast) },
             onOpenDetail = { actions.onDetail(episode, podcast) },

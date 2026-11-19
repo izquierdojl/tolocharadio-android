@@ -12,6 +12,7 @@ import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.di.ApplicationScope
 import com.izquierdojl.tolocharadio.feature.player.PlaybackEngine
 import com.izquierdojl.tolocharadio.feature.player.StationMediaItemFactory
+import com.izquierdojl.tolocharadio.feature.player.VoiceBoostController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -56,6 +57,7 @@ class EpisodePlaybackController
         private val engine: PlaybackEngine,
         private val cast: CastPlayerManager,
         private val mediaItems: StationMediaItemFactory,
+        private val voiceBoost: VoiceBoostController,
         @ApplicationScope private val scope: CoroutineScope,
     ) {
         /** Estado observable del VOD. */
@@ -107,6 +109,7 @@ class EpisodePlaybackController
                     )
                     _state.value = State.Error(current, "No se pudo reproducir el episodio.")
                     _events.tryEmit(EpisodePlayerEvent.Failed(current.id, ""))
+                    voiceBoost.setEpisodeActive(false)
                     stopTicker()
                 }
             }
@@ -138,6 +141,8 @@ class EpisodePlaybackController
             lastSource = source
             _state.value = State.Loading(episode)
             val casting = cast.isCastConnected
+            voiceBoost.setEpisodeActive(true)
+            voiceBoost.setCastConnected(casting)
             if (casting) {
                 cast.connectToEpisode(source.uri, episode.title, podcast?.title)
                 attach(activePlayer())
@@ -215,6 +220,7 @@ class EpisodePlaybackController
             detach()
             _state.value = State.Idle
             lastSource = null
+            voiceBoost.setEpisodeActive(false)
             return position
         }
 
@@ -265,6 +271,7 @@ class EpisodePlaybackController
             engine.player.setPlaybackSpeed(current.rate)
             engine.player.playWhenReady = current.playing
             attach(engine.player)
+            voiceBoost.setCastConnected(false)
             _state.value = current.copy(casting = false)
         }
 
@@ -278,6 +285,7 @@ class EpisodePlaybackController
             detach()
             _state.value = State.Idle
             lastSource = null
+            voiceBoost.setEpisodeActive(false)
         }
 
         private fun durationOf(): Long {

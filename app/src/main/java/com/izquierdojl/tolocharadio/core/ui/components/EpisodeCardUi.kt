@@ -1,16 +1,19 @@
 package com.izquierdojl.tolocharadio.core.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.OfflinePin
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
@@ -25,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -55,7 +59,7 @@ fun EpisodeCard(
     val episode = ui.episode
     Card(
         onClick = onOpenDetail,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().testTag(TolochaTestTags.EPISODE_CARD),
         shape = RoundedCornerShape(16.dp),
         colors =
             CardDefaults.cardColors(
@@ -77,50 +81,67 @@ fun EpisodeCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f),
                 )
-                FavoriteButton(
-                    isFavorite = episode.isFavorite,
-                    onToggle = onToggleFavorite,
-                    modifier = Modifier.align(Alignment.TopEnd),
-                )
-                FilledIconButton(
-                    onClick = onPlayPause,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).size(40.dp),
-                    colors =
-                        IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        ),
-                ) {
-                    Icon(
-                        if (ui.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (ui.isPlaying) "Pausar" else "Reproducir",
-                    )
-                }
             }
-            Column(Modifier.padding(12.dp)) {
+            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                Text(
+                    ui.podcast?.title ?: "Podcast",
+                    minLines = 2,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
                 Text(
                     episode.title,
+                    minLines = 2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleSmall,
                 )
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    FilledIconButton(
+                        onClick = onPlayPause,
+                        modifier = Modifier.size(40.dp),
+                        colors =
+                            IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            ),
+                    ) {
+                        Icon(
+                            if (ui.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            contentDescription = if (ui.isPlaying) "Pausar" else "Reproducir",
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    if (ui.isDownloaded) {
+                        Icon(
+                            Icons.Filled.OfflinePin,
+                            contentDescription = "Episodio descargado",
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    if (episode.progress?.completed == true) {
+                        Icon(
+                            Icons.Filled.CheckCircle,
+                            contentDescription = "Completado",
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
                     Text(
-                        listOfNotNull(
-                            ui.podcast?.title,
-                            formatEpisodeDuration(episode.durationSec),
-                            if (ui.isDownloaded) "Descargado" else null,
-                            if (episode.progress?.completed == true) "Completado" else null,
-                        ).joinToString(" · "),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodySmall,
+                        formatEpisodeDuration(episode.durationSec),
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
                     )
+                    Spacer(Modifier.width(4.dp))
+                    FavoriteButton(isFavorite = episode.isFavorite, onToggle = onToggleFavorite)
                 }
             }
         }

@@ -9,10 +9,16 @@ import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.data.repo.ProgressRepo
 import com.izquierdojl.tolocharadio.data.repo.QueueRepo
 import com.izquierdojl.tolocharadio.domain.podcasts.DismissEpisodeUseCase
+import com.izquierdojl.tolocharadio.domain.podcasts.EPISODE_SKIP_BACK_MS
+import com.izquierdojl.tolocharadio.domain.podcasts.EPISODE_SKIP_FORWARD_MS
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackController
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlayerEvent
+import com.izquierdojl.tolocharadio.domain.podcasts.LoadEpisodeProgressUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.NextEpisodeUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.ResolveEpisodePlaybackUseCase
+import com.izquierdojl.tolocharadio.domain.podcasts.ResumeSource
+import com.izquierdojl.tolocharadio.domain.podcasts.resumePoint
+import com.izquierdojl.tolocharadio.feature.player.VoiceBoostController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -22,12 +28,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
-
-/** Salto atrás del episodio (s). */
-const val EPISODE_SKIP_BACK_SEC = 15L
-
-/** Salto adelante del episodio (s). */
-const val EPISODE_SKIP_FORWARD_SEC = 30L
 
 /** Velocidades del reproductor de podcast (paridad web). */
 val EPISODE_RATES = listOf(1f, 1.25f, 1.5f, 2f)
@@ -66,9 +66,14 @@ class EpisodePlayerViewModel
         private val resolve: ResolveEpisodePlaybackUseCase,
         private val next: NextEpisodeUseCase,
         private val dismiss: DismissEpisodeUseCase,
+        private val loadProgress: LoadEpisodeProgressUseCase,
+        private val voiceBoost: VoiceBoostController,
     ) : ViewModel() {
         private val _ui = MutableStateFlow(EpisodePlayerUi())
         val ui: StateFlow<EpisodePlayerUi> = _ui.asStateFlow()
+
+        /** Preferencia del potenciador de voz (spec 0047, US4). */
+        val voiceBoostEnabled: StateFlow<Boolean> = voiceBoost.enabled
 
         private var sessionId: String? = null
         private var sequence: Long = 0
@@ -115,10 +120,23 @@ class EpisodePlayerViewModel
             podcast: PodcastSummary?,
         ) {
             viewModelScope.launch {
-                val resumeMs = (episode.progress?.takeUnless { it.completed }?.positionSec ?: 0) * MS_PER_SEC
                 _ui.value =
                     EpisodePlayerUi(episode = episode, podcast = podcast, loading = true, rate = _ui.value.rate)
-                startPlayback(episode, podcast, startMs = resumeMs)
+                val embedded = episode.progress
+                val remote =
+                    when (val r = loadProgress(episode.id)) {
+                        is ApiResult.Ok -> r.value
+                        is ApiResult.Err -> null
+                    }
+                val fresh = remote ?: embedded
+                val source =
+                    when {
+                        remote != null -> ResumeSource.REMOTE
+                        embedded != null -> ResumeSource.EMBEDDED
+                        else -> ResumeSource.NONE
+                    }
+                val resume = resumePoint(episode.id, fresh, episode.durationSec, source)
+                startPlayback(episode, podcast, startMs = resume.positionMs)
             }
         }
 
@@ -139,14 +157,17 @@ class EpisodePlayerViewModel
             report(_ui.value.episode?.id ?: return)
         }
 
-        fun skipBack() = seekTo((_ui.value.positionMs - EPISODE_SKIP_BACK_SEC * MS_PER_SEC).coerceAtLeast(0))
+        fun skipBack() = seekTo((_ui.value.positionMs - EPISODE_SKIP_BACK_MS).coerceAtLeast(0))
 
-        fun skipForward() = seekTo(_ui.value.positionMs + EPISODE_SKIP_FORWARD_SEC * MS_PER_SEC)
+        fun skipForward() = seekTo(_ui.value.positionMs + EPISODE_SKIP_FORWARD_MS)
 
         fun cycleRate() {
             val nextRate = EPISODE_RATES.firstOrNull { it > _ui.value.rate } ?: EPISODE_RATES.first()
             controller.setRate(nextRate)
         }
+
+        /** Activa/desactiva el potenciador de voz y lo persiste (US4). */
+        fun setVoiceBoost(enabled: Boolean) = voiceBoost.setEnabled(enabled)
 
         /** Parada del usuario con reporte final. */
         fun stop() {
@@ -218,7 +239,7 @@ class EpisodePlayerViewModel
                 }
                 val item = queue.queue.value.items.firstOrNull { it.id == nextId } ?: return@launch
                 val sameShow = _ui.value.podcast?.takeIf { it.id == item.podcastId }
-                startPlayback(item, sameShow, startMs = 0)
+                play(item, sameShow)
             }
         }
 

@@ -6,4 +6,21 @@
     <string name="sleep_timer_badge_minutes">%d min</string>
     <string name="sleep_timer_remaining_minutes">Quedan %d minutos</string>
     <string name="sleep_timer_cancel">Cancelar temporizador</string>
+    <string name="media_seek_back_15">Retroceder 15 segundos</string>
+    <string name="media_seek_forward_30">Avanzar 30 segundos</string>
+    <string name="menu_open">Abrir menú</string>
+    <string name="menu_timer">Temporizador</string>
+    <string name="menu_servers">Servidores</string>
+    <string name="menu_settings">Configuración</string>
+    <string name="voice_boost">Potenciador de voz</string>
+    <string name="voice_boost_on">Activado</string>
+    <string name="voice_boost_off">Desactivado</string>
+    <string name="download_action">Descargar</string>
+    <string name="downloading">Descargando…</string>
+    <string name="downloading_percent">Descargando %1$d %%</string>
+    <string name="downloaded">Descargado</string>
+    <string name="download_retry">Reintentar descarga</string>
+    <string name="queue_badge_description">%1$d episodios en cola</string>
+    <string name="queue_badge_description_one">1 episodio en cola</string>
+    <string name="queue_badge_overflow">99+</string>
 </resources>

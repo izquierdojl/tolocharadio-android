@@ -2,101 +2,181 @@ package com.izquierdojl.tolocharadio.feature.podcasts
 
 import com.izquierdojl.tolocharadio.MainDispatcherRule
 import com.izquierdojl.tolocharadio.core.network.ApiResult
-import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
-import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisodeProgress
-import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.data.repo.ProgressRepo
 import com.izquierdojl.tolocharadio.data.repo.QueueRepo
+import com.izquierdojl.tolocharadio.data.repo.QueueState
 import com.izquierdojl.tolocharadio.domain.podcasts.DismissEpisodeUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackController
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackSource
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlayerEvent
+import com.izquierdojl.tolocharadio.domain.podcasts.LoadEpisodeProgressUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.NextEpisodeUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.ResolveEpisodePlaybackUseCase
+import com.izquierdojl.tolocharadio.feature.player.VoiceBoostController
+import com.izquierdojl.tolocharadio.support.testEpisode
+import com.izquierdojl.tolocharadio.support.testProgress
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-/** Orquestación VOD: reproducir, pausar, completar y auto-avance (T038, Red→Green). */
+/** Reanudación desde la cola y auto-avance (US1, FR-001–FR-006). */
 class EpisodePlayerViewModelTest {
     @get:Rule
-    val main = MainDispatcherRule()
+    val mainDispatcher = MainDispatcherRule()
 
-    private val controller: EpisodePlaybackController = mockk(relaxed = true)
-    private val progress: ProgressRepo = mockk()
-    private val queue: QueueRepo = mockk()
-    private val resolve: ResolveEpisodePlaybackUseCase = mockk()
-    private val next: NextEpisodeUseCase = mockk()
-    private val dismiss: DismissEpisodeUseCase = mockk()
-
-    private val episode = PodcastEpisode(11L, 7L, "E1", durationSec = 600)
-    private val episodeNext = PodcastEpisode(12L, 7L, "E2", durationSec = 300)
-    private val show = PodcastSummary(7L, "https://a.example/f.xml", "Tolocha")
+    private val state = MutableStateFlow<EpisodePlaybackController.State>(EpisodePlaybackController.State.Idle)
     private val events = MutableSharedFlow<EpisodePlayerEvent>(extraBufferCapacity = 1)
-    private val controllerState =
-        MutableStateFlow<EpisodePlaybackController.State>(EpisodePlaybackController.State.Idle)
+    private val controller = mockk<EpisodePlaybackController>(relaxed = true)
+    private val progress = mockk<ProgressRepo>(relaxed = true)
+    private val queue = mockk<QueueRepo>(relaxed = true)
+    private val resolve = mockk<ResolveEpisodePlaybackUseCase>()
+    private val next = mockk<NextEpisodeUseCase>(relaxed = true)
+    private val dismiss = mockk<DismissEpisodeUseCase>(relaxed = true)
+    private val loadProgress = mockk<LoadEpisodeProgressUseCase>(relaxed = true)
+    private val voiceBoost = mockk<VoiceBoostController>(relaxed = true)
 
-    private fun vm(): EpisodePlayerViewModel {
-        every { controller.state } returns controllerState
+    init {
+        every { controller.state } returns state
         every { controller.events } returns events
-        every { queue.queue } returns
-            MutableStateFlow(com.izquierdojl.tolocharadio.data.repo.QueueState(items = listOf(episodeNext)))
-        return EpisodePlayerViewModel(controller, progress, queue, resolve, next, dismiss)
+        every { controller.positionMs() } returns 0L
+        every { voiceBoost.enabled } returns MutableStateFlow(false)
+    }
+
+    private val viewModel by lazy {
+        EpisodePlayerViewModel(
+            controller = controller,
+            progress = progress,
+            queue = queue,
+            resolve = resolve,
+            next = next,
+            dismiss = dismiss,
+            loadProgress = loadProgress,
+            voiceBoost = voiceBoost,
+        )
+    }
+
+    private fun source() = EpisodePlaybackSource(uri = "https://cdn/e.mp3", local = false, expiresAt = 0L)
+
+    private fun prepareResolve() {
+        coEvery { resolve(any()) } returns ApiResult.Ok(source())
+        coEvery { loadProgress(any()) } returns ApiResult.Ok(null)
+    }
+
+    private fun prepareQueue(vararg episodes: com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode) {
+        every { queue.queue } returns MutableStateFlow(QueueState(revision = 1, items = episodes.toList(), limit = 200))
     }
 
     @Test
-    fun `play resuelve fuente y arranca el controlador`() =
+    fun `play usa el progreso embebido`() =
         runTest {
-            val v = vm()
-            coEvery { resolve(episode) } returns
-                ApiResult.Ok(EpisodePlaybackSource("https://cdn.example/e", false, 9_999_999_999L))
-            coEvery { progress.report(any(), any(), any(), any(), any(), any(), any()) } returns
-                ApiResult.Ok(PodcastEpisodeProgress())
-            v.play(episode, show)
-            coVerify { controller.play(any(), episode, show, 0L, 1f) }
-            assertEquals(11L, v.ui.first().episode?.id)
+            prepareResolve()
+            val episode = testEpisode(progress = testProgress(120L, 1_800L))
+
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+
+            verify(exactly = 1) { controller.play(any(), episode, null, 120_000L, any()) }
         }
 
     @Test
-    fun `toggle en reproduccion pausa e informa`() =
+    fun `play prefiere el progreso remoto mas reciente`() =
         runTest {
-            val v = vm()
-            coEvery { resolve(episode) } returns
-                ApiResult.Ok(EpisodePlaybackSource("https://cdn.example/e", false, 9_999_999_999L))
-            coEvery { progress.report(any(), any(), any(), any(), any(), any(), any()) } returns
-                ApiResult.Ok(PodcastEpisodeProgress())
-            v.play(episode, show)
-            controllerState.value =
-                EpisodePlaybackController.State.Active(episode, show, true, 60_000L, 600_000L, 1f, false, false)
-            v.toggle()
-            coVerify { controller.pause() }
-            coVerify { progress.report(11L, any(), any(), any(), any(), any(), any()) }
+            prepareResolve()
+            val episode = testEpisode(progress = testProgress(120L, 1_800L))
+            coEvery { loadProgress(1L) } returns ApiResult.Ok(testProgress(200L, 1_800L))
+
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+
+            verify(exactly = 1) { controller.play(any(), episode, null, 200_000L, any()) }
         }
 
     @Test
-    fun `fin natural completa y avanza al siguiente`() =
+    fun `play consulta el progreso remoto cuando falta`() =
         runTest {
-            val v = vm()
-            coEvery { resolve(episode) } returns
-                ApiResult.Ok(EpisodePlaybackSource("https://cdn.example/e", false, 9_999_999_999L))
-            coEvery { progress.report(any(), any(), any(), any(), any(), any(), any()) } returns
-                ApiResult.Ok(PodcastEpisodeProgress())
-            coEvery { next(11L) } returns 12L
-            coEvery { resolve(match { it.id == 12L }) } returns
-                ApiResult.Ok(EpisodePlaybackSource("https://cdn.example/e2", false, 9_999_999_999L))
-            v.play(episode, show)
-            events.emit(EpisodePlayerEvent.Ended(11L, 600L))
-            coVerify { progress.report(11L, any(), any(), 600L, any(), any(), any()) }
-            coVerify { controller.play(any(), match { it.id == 12L }, any(), 0L, 1f) }
-            assertTrue(v.ui.value.message == null)
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            coEvery { loadProgress(1L) } returns ApiResult.Ok(testProgress(90L, 1_800L))
+
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+
+            verify(exactly = 1) { controller.play(any(), episode, null, 90_000L, any()) }
+        }
+
+    @Test
+    fun `play empieza en cero si el episodio esta completado`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = testProgress(1_800L, 1_800L, completed = true))
+
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+
+            verify(exactly = 1) { controller.play(any(), episode, null, 0L, any()) }
+        }
+
+    @Test
+    fun `play empieza en cero si el progreso remoto falla`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            coEvery { loadProgress(1L) } returns
+                ApiResult.Err(com.izquierdojl.tolocharadio.core.network.DomainError.Unavailable("offline"))
+
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+
+            verify(exactly = 1) { controller.play(any(), episode, null, 0L, any()) }
+        }
+
+    @Test
+    fun `el auto-avance reanuda el siguiente episodio`() =
+        runTest {
+            prepareResolve()
+            val first = testEpisode(id = 1L, progress = null)
+            val second = testEpisode(id = 2L, progress = testProgress(300L, 1_800L))
+            prepareQueue(first, second)
+            coEvery { next(1L) } returns 2L
+
+            viewModel.play(first, null)
+            advanceUntilIdle()
+            events.tryEmit(EpisodePlayerEvent.Ended(episodeId = 1L, durationSec = 1_800L))
+            advanceUntilIdle()
+
+            verify(exactly = 1) { controller.play(any(), second, null, 300_000L, any()) }
+        }
+
+    @Test
+    fun `retroceder en el inicio se queda en cero`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            state.value =
+                EpisodePlaybackController.State.Active(
+                    episode = episode,
+                    podcast = null,
+                    playing = true,
+                    positionMs = 5_000L,
+                    durationMs = 1_800_000L,
+                    rate = 1f,
+                    local = false,
+                    casting = false,
+                )
+            advanceUntilIdle()
+
+            viewModel.skipBack()
+            advanceUntilIdle()
+
+            verify { controller.seekTo(0L) }
         }
 }

@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -156,7 +157,7 @@ fun PodcastCard(
 ) {
     Card(
         onClick = onOpen,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().testTag(TolochaTestTags.PODCAST_CARD),
         shape = RoundedCornerShape(16.dp),
         colors =
             CardDefaults.cardColors(
@@ -178,40 +179,40 @@ fun PodcastCard(
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f),
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 10.dp, bottom = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        summary.title,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    Text(
-                        listOfNotNull(
-                            summary.author,
-                            if (summary.episodeCount > 0) "${summary.episodeCount} episodios" else null,
-                        ).joinToString(" · "),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                Text(
+                    summary.title,
+                    minLines = 2,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    listOfNotNull(
+                        summary.author,
+                        if (summary.episodeCount > 0) "${summary.episodeCount} episodios" else null,
+                    ).joinToString(" · "),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 if (onUnsubscribe != null) {
-                    IconButton(
-                        onClick = onUnsubscribe,
-                        modifier = Modifier.size(36.dp),
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.End,
                     ) {
-                        Icon(
-                            Icons.Filled.Delete,
-                            contentDescription = "Cancelar suscripción",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp),
-                        )
+                        IconButton(
+                            onClick = onUnsubscribe,
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = "Cancelar suscripción",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                     }
                 }
             }
