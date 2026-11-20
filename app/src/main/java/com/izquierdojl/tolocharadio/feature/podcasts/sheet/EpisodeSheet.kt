@@ -55,6 +55,7 @@ import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.data.repo.QueuePosition
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodeActionsViewModel
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerViewModel
+import com.izquierdojl.tolocharadio.feature.podcasts.FavoriteFailureBanner
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -82,6 +83,7 @@ fun EpisodeSheet(
     val playingThis = playerUi.episode?.id == episode.id && playerUi.playing
     val favoritesLoaded by actions.favoritesLoaded.collectAsState()
     val favoriteIds by actions.favoriteIds.collectAsState()
+    val favoriteFailure by actions.favoriteFailure.collectAsState()
     val isFavorite = if (favoritesLoaded) episode.id in favoriteIds else episode.isFavorite
     val downloadRecords by actions.downloadRecords.collectAsState()
     val downloadProgress by actions.downloadProgress.collectAsState()
@@ -92,7 +94,14 @@ fun EpisodeSheet(
                 SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(it))
             }
         }
-    ModalBottomSheet(onDismissRequest = onClose, sheetState = rememberModalBottomSheetState()) {
+    val closeSheet: () -> Unit = {
+        actions.clearFavoriteFailure()
+        onClose()
+    }
+    ModalBottomSheet(
+        onDismissRequest = closeSheet,
+        sheetState = rememberModalBottomSheetState(),
+    ) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -126,6 +135,10 @@ fun EpisodeSheet(
                 Text(it, style = MaterialTheme.typography.bodyMedium)
             }
             Spacer(Modifier.height(12.dp))
+            FavoriteFailureBanner(
+                message = favoriteFailure?.takeIf { it.episodeId == episode.id }?.message,
+                onRetry = actions::retryFavorite,
+            )
             val completed = episode.progress?.completed == true
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -172,7 +185,7 @@ fun EpisodeSheet(
                 IconButton(
                     onClick = {
                         actions.togglePlayed(episode)
-                        onClose()
+                        closeSheet()
                     },
                     modifier = Modifier.size(38.dp),
                 ) {
@@ -200,7 +213,7 @@ fun EpisodeSheet(
                     IconButton(
                         onClick = {
                             actions.dismiss(episode.id)
-                            onClose()
+                            closeSheet()
                         },
                         modifier = Modifier.size(38.dp),
                     ) {

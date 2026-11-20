@@ -5,8 +5,10 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.izquierdojl.tolocharadio.core.ui.theme.TolochaTheme
+import com.izquierdojl.tolocharadio.feature.podcasts.FavoriteFailureBanner
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -62,5 +64,22 @@ class EpisodeFullPlayerSheetTest {
 
         compose.onNodeWithContentDescription("Detener").performClick()
         assertTrue(stopped)
+    }
+
+    @Test
+    fun falloDeFavoritoMuestraAvisoYReintento() {
+        var retried = false
+        compose.setContent {
+            TolochaTheme {
+                FavoriteFailureBanner(
+                    message = "No se pudo guardar el favorito.",
+                    onRetry = { retried = true },
+                )
+            }
+        }
+
+        compose.onNodeWithText("No se pudo guardar el favorito.").assertIsDisplayed()
+        compose.onNodeWithText("Reintentar").performClick()
+        assertTrue(retried)
     }
 }
