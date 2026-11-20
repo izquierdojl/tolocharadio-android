@@ -62,7 +62,7 @@ class EpisodeMiniPlayerTest {
 
         compose.onNodeWithText("1:00").assertIsDisplayed()
         compose.onNodeWithText("-29:00").assertIsDisplayed()
-        compose.onNodeWithContentDescription("Transcurrido 1:00. Quedan 29:00").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Transcurrido 1:00 de 30:00. Quedan 29:00").assertIsDisplayed()
     }
 
     @Test
@@ -71,6 +71,7 @@ class EpisodeMiniPlayerTest {
 
         compose.onNodeWithText("1:00").assertIsDisplayed()
         compose.onNodeWithText("-", substring = true).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Transcurrido 1:00").assertIsDisplayed()
     }
 
     @Test

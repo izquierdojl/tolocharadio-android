@@ -28,6 +28,13 @@ import javax.inject.Inject
 /** Milisegundos por segundo para reportar tiempo escuchado. */
 private const val MS_PER_SEC = 1_000L
 
+/** Fallo de favorito que la UI puede reintentar con el estado original. */
+data class EpisodeFavoriteFailure(
+    val episodeId: Long,
+    val isFavorite: Boolean,
+    val message: String,
+)
+
 /**
  * Acciones compartidas sobre episodios (filas, ficha y portada):
  * favorito, cola, descarga y descarte. Un ViewModel por pantalla
@@ -54,6 +61,11 @@ class EpisodeActionsViewModel
 
         private val _message = MutableStateFlow<String?>(null)
         val message: StateFlow<String?> = _message.asStateFlow()
+
+        private val _favoriteFailure = MutableStateFlow<EpisodeFavoriteFailure?>(null)
+
+        /** Último fallo de favorito, con el estado necesario para reintentarlo. */
+        val favoriteFailure: StateFlow<EpisodeFavoriteFailure?> = _favoriteFailure.asStateFlow()
 
         private val _progressChanged = MutableSharedFlow<Long>(extraBufferCapacity = 1)
 
@@ -105,10 +117,30 @@ class EpisodeActionsViewModel
         ) {
             viewModelScope.launch {
                 when (val r = favorites.toggle(episodeId, isFavorite)) {
-                    is ApiResult.Ok -> Unit
-                    is ApiResult.Err -> _message.value = r.error.userMessage()
+                    is ApiResult.Ok -> _favoriteFailure.value = null
+                    is ApiResult.Err -> {
+                        _favoriteFailure.value =
+                            EpisodeFavoriteFailure(
+                                episodeId = episodeId,
+                                isFavorite = isFavorite,
+                                message = r.error.userMessage(),
+                            )
+                    }
                 }
             }
+        }
+
+        /** Reintenta el último cambio de favorito fallido con el estado original. */
+        fun retryFavorite() {
+            val failure = _favoriteFailure.value ?: return
+            // Se limpia antes de reintentar para que un nuevo fallo vuelva a emitir.
+            _favoriteFailure.value = null
+            toggleFavorite(failure.episodeId, failure.isFavorite)
+        }
+
+        /** Limpia el aviso al cerrar la ficha o el reproductor. */
+        fun clearFavoriteFailure() {
+            _favoriteFailure.value = null
         }
 
         fun addToQueue(

@@ -41,6 +41,7 @@ import com.izquierdojl.tolocharadio.core.ui.components.formatEpisodeDuration
 import com.izquierdojl.tolocharadio.feature.player.EpisodePlayerControls
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodeActionsViewModel
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerViewModel
+import com.izquierdojl.tolocharadio.feature.podcasts.FavoriteFailureBanner
 
 /**
  * Reproductor completo del episodio (US3, FR-014/FR-017): se abre como
@@ -58,9 +59,14 @@ fun EpisodeFullPlayerSheet(
     val voiceBoost by viewModel.voiceBoostEnabled.collectAsState()
     val favoritesLoaded by actions.favoritesLoaded.collectAsState()
     val favoriteIds by actions.favoriteIds.collectAsState()
+    val favoriteFailure by actions.favoriteFailure.collectAsState()
     val episode = ui.episode
+    val closePlayer: () -> Unit = {
+        actions.clearFavoriteFailure()
+        onDismiss()
+    }
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = closePlayer,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         if (episode == null) return@ModalBottomSheet
@@ -152,12 +158,16 @@ fun EpisodeFullPlayerSheet(
                     Text("Cerrar aviso")
                 }
             }
+            FavoriteFailureBanner(
+                message = favoriteFailure?.takeIf { it.episodeId == episode.id }?.message,
+                onRetry = actions::retryFavorite,
+            )
             EpisodeFullPlayerActions(
                 isFavorite = isFavorite,
                 onToggleFavorite = { actions.toggleFavorite(episode.id, isFavorite) },
                 onStop = {
                     viewModel.stop()
-                    onDismiss()
+                    closePlayer()
                 },
             )
         }

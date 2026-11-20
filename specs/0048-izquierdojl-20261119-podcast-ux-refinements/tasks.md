@@ -343,7 +343,7 @@ Task: "Update StatsEntryFlowTest for the radio header"
 
 ## Task Summary
 
-- **Total tasks**: 58.
+- **Total tasks**: 60.
 - **Setup**: 3 (T001–T003).
 - **Foundational**: 4 (T004–T007).
 - **US1**: 4 (T008–T011).
@@ -353,14 +353,23 @@ Task: "Update StatsEntryFlowTest for the radio header"
 - **US5**: 12 (T025–T036).
 - **US6**: 13 (T037–T049).
 - **Polish**: 9 (T050–T058).
+- **Convergence**: 2 (T059–T060).
 - **MVP**: Setup + Foundational + US1 (T001–T011).
 
 ---
 
 ## Estado de ejecución (2026-11-20)
 
-- **Completadas**: T001–T051 y T054–T058.
-- **Gates verdes**: `assembleDebug`, `testDebugUnitTest`, `detekt`, `ktlintCheck`, `lintDebug`.
+- **Completadas**: T001–T060.
+- **Gates verdes**: `assembleDebug`, `testDebugUnitTest`, `detekt`, `ktlintCheck`, `lintDebug`, `connectedDebugAndroidTest`.
 - **Compose tests**: `connectedDebugAndroidTest` en `Medium_Phone_API_37.0` — BUILD SUCCESSFUL.
 - **Corrección del bug reportado**: el X de la tarjeta inferior llama a `EpisodePlayerViewModel.stop()`, que limpia el episodio y oculta la tarjeta; el detener del detalle principal es un icono (`EpisodeFullPlayerActions`) y el controlador conserva la última posición antes de parar.
 - **Verificación manual**: T052 (escenarios 3.1–3.7) y T053 (TalkBack/200 %) completadas por el usuario en emulador (2026-11-20).
+- **Convergencia (2026-11-20)**: T059 y T060 implementadas; fallo de favorito con aviso y reintento, y descripción accesible de la tarjeta inferior con duración total.
+
+---
+
+## Phase 10: Convergence
+
+- [X] T059 Unificar el fallo de favorito en un aviso accionable con "Reintentar" visible en el reproductor completo y en la ficha del episodio, conservando el estado anterior y reintentando la misma operación, en `EpisodeFullPlayerSheet.kt`, `EpisodeSheet.kt`/`PodcastShowScreen.kt`, `EpisodeActionsViewModel.kt` y sus tests Compose, per FR-027 (partial).
+- [X] T060 Incluir la duración total conocida en la descripción accesible de la tarjeta inferior ("Transcurrido X de Y. Quedan Z") y actualizar `EpisodeMiniPlayerTest.kt`, en `EpisodeMiniPlayer.kt`, per FR-036 (partial).

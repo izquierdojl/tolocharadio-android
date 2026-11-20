@@ -83,7 +83,8 @@ internal fun EpisodeMiniPlayerContent(
     val remaining = remainingMs(ui.positionMs, ui.durationMs)
     val timeDescription =
         remaining?.let {
-            "Transcurrido ${formatPlaybackTime(ui.positionMs)}. Quedan ${formatPlaybackTime(it)}"
+            "Transcurrido ${formatPlaybackTime(ui.positionMs)} de " +
+                "${formatPlaybackTime(ui.durationMs)}. Quedan ${formatPlaybackTime(it)}"
         } ?: "Transcurrido ${formatPlaybackTime(ui.positionMs)}"
     Surface(
         tonalElevation = 3.dp,

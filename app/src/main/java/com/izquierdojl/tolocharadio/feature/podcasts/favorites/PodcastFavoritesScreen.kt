@@ -42,6 +42,7 @@ import com.izquierdojl.tolocharadio.data.repo.QueuePosition
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodeActionsViewModel
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerUi
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerViewModel
+import com.izquierdojl.tolocharadio.feature.podcasts.FavoriteFailureEffect
 import com.izquierdojl.tolocharadio.feature.podcasts.sheet.EpisodeSheet
 
 /**
@@ -58,6 +59,7 @@ fun PodcastFavoritesScreen(
     val ui by viewModel.ui.collectAsState()
     val playerUi by player.ui.collectAsState()
     val actionMessage by actions.message.collectAsState()
+    val favoriteFailure by actions.favoriteFailure.collectAsState()
     val downloads by actions.downloadRecords.collectAsState()
     val downloadProgress by actions.downloadProgress.collectAsState()
     val downloadsEnabled by actions.downloadsEnabled.collectAsState()
@@ -77,6 +79,13 @@ fun PodcastFavoritesScreen(
             actions.clearMessage()
         }
     }
+
+    FavoriteFailureEffect(
+        failure = favoriteFailure,
+        snackbar = snackbar,
+        onRetry = actions::retryFavorite,
+        onDismiss = actions::clearFavoriteFailure,
+    )
 
     LaunchedEffect(Unit) {
         actions.progressChanged.collect { viewModel.refreshSilently() }

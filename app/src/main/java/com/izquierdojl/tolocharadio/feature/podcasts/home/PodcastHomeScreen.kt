@@ -49,6 +49,7 @@ import com.izquierdojl.tolocharadio.data.repo.DownloadProgress
 import com.izquierdojl.tolocharadio.data.repo.QueuePosition
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodeActionsViewModel
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerViewModel
+import com.izquierdojl.tolocharadio.feature.podcasts.FavoriteFailureEffect
 import com.izquierdojl.tolocharadio.feature.podcasts.sheet.EpisodeSheet
 import androidx.compose.foundation.lazy.grid.items as gridItems
 
@@ -74,6 +75,7 @@ fun PodcastHomeScreen(
     val ui by viewModel.ui.collectAsState()
     val playerUi by player.ui.collectAsState()
     val actionMessage by actions.message.collectAsState()
+    val favoriteFailure by actions.favoriteFailure.collectAsState()
     var sheet by remember { mutableStateOf<Pair<PodcastEpisode, PodcastSummary?>?>(null) }
     var viewMode by rememberSaveable { mutableStateOf(ViewMode.LIST) }
 
@@ -90,6 +92,13 @@ fun PodcastHomeScreen(
             actions.clearMessage()
         }
     }
+
+    FavoriteFailureEffect(
+        failure = favoriteFailure,
+        snackbar = snackbar,
+        onRetry = actions::retryFavorite,
+        onDismiss = actions::clearFavoriteFailure,
+    )
 
     LaunchedEffect(Unit) {
         actions.progressChanged.collect { viewModel.refreshSilently() }

@@ -22,7 +22,9 @@ import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -85,15 +87,52 @@ class EpisodeActionsViewModelTest {
         }
 
     @Test
-    fun `un fallo de favorito informa sin romper`() =
+    fun `un fallo de favorito expone el reintento y conserva el estado`() =
+        runTest {
+            val viewModel = vm(ids = setOf(1L))
+            coEvery { favorites.toggle(any(), any()) } returns
+                ApiResult.Err(DomainError.Unavailable("offline"))
+
+            viewModel.toggleFavorite(episodeId = 1L, isFavorite = true)
+            advanceUntilIdle()
+
+            val failure = viewModel.favoriteFailure.value
+            assertNotNull(failure)
+            assertEquals(1L, failure?.episodeId)
+            assertTrue(failure?.isFavorite == true)
+            assertTrue(viewModel.favoriteIds.value.contains(1L))
+        }
+
+    @Test
+    fun `reintentar el favorito repite la operacion y limpia el aviso`() =
+        runTest {
+            val viewModel = vm(ids = setOf(1L))
+            coEvery { favorites.toggle(any(), any()) } returns
+                ApiResult.Err(DomainError.Unavailable("offline"))
+
+            viewModel.toggleFavorite(episodeId = 1L, isFavorite = true)
+            advanceUntilIdle()
+            assertNotNull(viewModel.favoriteFailure.value)
+
+            coEvery { favorites.toggle(1L, true) } returns ApiResult.Ok(Unit)
+            viewModel.retryFavorite()
+            advanceUntilIdle()
+
+            assertNull(viewModel.favoriteFailure.value)
+            coVerify(exactly = 2) { favorites.toggle(1L, true) }
+        }
+
+    @Test
+    fun `clearFavoriteFailure descarta el aviso`() =
         runTest {
             val viewModel = vm()
             coEvery { favorites.toggle(any(), any()) } returns
                 ApiResult.Err(DomainError.Unavailable("offline"))
-
             viewModel.toggleFavorite(episodeId = 1L, isFavorite = false)
             advanceUntilIdle()
 
-            assertNotNull(viewModel.message.value)
+            viewModel.clearFavoriteFailure()
+
+            assertNull(viewModel.favoriteFailure.value)
         }
 }
