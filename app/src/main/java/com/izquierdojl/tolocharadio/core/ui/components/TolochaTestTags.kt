@@ -29,4 +29,19 @@ object TolochaTestTags {
 
     /** Control del potenciador de voz. */
     const val VOICE_BOOST = "tolocha_voice_boost"
+
+    /** Bloque superior de la cola con el episodio en curso. */
+    const val QUEUE_NOW_PLAYING = "tolocha_queue_now_playing"
+
+    /** Línea secundaria de duración/restante de una fila de cola. */
+    const val QUEUE_EPISODE_META = "tolocha_queue_episode_meta"
+
+    /** Lista desplazable de pendientes de la cola. */
+    const val QUEUE_LIST = "tolocha_queue_list"
+
+    /** Fila de tiempo transcurrido/restante de la tarjeta inferior. */
+    const val EPISODE_TIME_ROW = "tolocha_episode_time_row"
+
+    /** Selector de pantalla de arranque de podcast en Configuración. */
+    const val PODCAST_START_SCREEN = "tolocha_podcast_start_screen"
 }

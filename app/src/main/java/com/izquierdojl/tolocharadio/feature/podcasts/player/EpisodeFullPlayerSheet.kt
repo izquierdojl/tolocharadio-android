@@ -1,6 +1,7 @@
 package com.izquierdojl.tolocharadio.feature.podcasts.player
 
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,9 +13,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.OfflinePin
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
@@ -33,18 +36,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.izquierdojl.tolocharadio.core.ui.components.FavoriteButton
 import com.izquierdojl.tolocharadio.core.ui.components.formatEpisodeDuration
 import com.izquierdojl.tolocharadio.feature.player.EpisodePlayerControls
+import com.izquierdojl.tolocharadio.feature.podcasts.EpisodeActionsViewModel
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerViewModel
-
-/** Milisegundos por segundo. */
-private const val MS_PER_SEC = 1_000L
-
-/** Segundos por minuto. */
-private const val SECONDS_PER_MINUTE = 60L
-
-/** Segundos por hora. */
-private const val SECONDS_PER_HOUR = 3_600L
 
 /**
  * Reproductor completo del episodio (US3, FR-014/FR-017): se abre como
@@ -55,16 +51,20 @@ private const val SECONDS_PER_HOUR = 3_600L
 @Composable
 fun EpisodeFullPlayerSheet(
     viewModel: EpisodePlayerViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
+    actions: EpisodeActionsViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
     onDismiss: () -> Unit,
 ) {
     val ui by viewModel.ui.collectAsState()
     val voiceBoost by viewModel.voiceBoostEnabled.collectAsState()
+    val favoritesLoaded by actions.favoritesLoaded.collectAsState()
+    val favoriteIds by actions.favoriteIds.collectAsState()
     val episode = ui.episode
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         if (episode == null) return@ModalBottomSheet
+        val isFavorite = if (favoritesLoaded) episode.id in favoriteIds else episode.isFavorite
         Column(
             Modifier
                 .fillMaxWidth()
@@ -122,13 +122,13 @@ fun EpisodeFullPlayerSheet(
             )
             Row(Modifier.fillMaxWidth()) {
                 Text(
-                    formatMillis(ui.positionMs),
+                    formatPlaybackTime(ui.positionMs),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.weight(1f))
                 Text(
-                    formatMillis(ui.durationMs),
+                    formatPlaybackTime(ui.durationMs),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -152,25 +152,47 @@ fun EpisodeFullPlayerSheet(
                     Text("Cerrar aviso")
                 }
             }
-            TextButton(onClick = {
-                viewModel.stop()
-                onDismiss()
-            }) {
-                Text("Detener")
-            }
+            EpisodeFullPlayerActions(
+                isFavorite = isFavorite,
+                onToggleFavorite = { actions.toggleFavorite(episode.id, isFavorite) },
+                onStop = {
+                    viewModel.stop()
+                    onDismiss()
+                },
+            )
         }
     }
 }
 
-/** Formatea una posición en ms como `m:ss` o `h:mm:ss`. */
-private fun formatMillis(positionMs: Long): String {
-    val totalSec = (positionMs / MS_PER_SEC).coerceAtLeast(0)
-    val hours = totalSec / SECONDS_PER_HOUR
-    val minutes = (totalSec % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE
-    val seconds = totalSec % SECONDS_PER_MINUTE
-    return if (hours > 0) {
-        "%d:%02d:%02d".format(hours, minutes, seconds)
-    } else {
-        "%d:%02d".format(minutes, seconds)
+/** Acciones secundarias del detalle: favorito y detener con icono. */
+@Composable
+internal fun EpisodeFullPlayerActions(
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    onStop: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FavoriteButton(
+            isFavorite = isFavorite,
+            onToggle = onToggleFavorite,
+            modifier = Modifier.size(44.dp),
+        )
+        IconButton(
+            onClick = onStop,
+            modifier = Modifier.size(44.dp),
+        ) {
+            Icon(
+                Icons.Filled.Close,
+                contentDescription = "Detener",
+                modifier = Modifier.size(22.dp),
+            )
+        }
     }
 }

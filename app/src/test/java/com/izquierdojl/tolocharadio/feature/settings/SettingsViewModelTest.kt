@@ -2,6 +2,7 @@ package com.izquierdojl.tolocharadio.feature.settings
 
 import app.cash.turbine.test
 import com.izquierdojl.tolocharadio.MainDispatcherRule
+import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.core.util.AppBuildInfo
@@ -62,6 +63,7 @@ class SettingsViewModelTest {
     ): SettingsViewModel {
         every { prefs.themeMode } returns flowOf(ThemeMode.DARK)
         every { prefs.startScreen } returns flowOf(StartScreen.FAVORITES)
+        every { prefs.podcastStartScreen } returns flowOf(PodcastStartScreen.HOME)
         every { prefs.bufferProfile } returns flowOf(BufferProfile.BALANCED)
         every { prefs.resumeOnConnectivity } returns flowOf(true)
         every { prefs.downloadRetentionDays } returns flowOf(30)
@@ -84,6 +86,22 @@ class SettingsViewModelTest {
             v.onStartScreenChange(StartScreen.HISTORY)
             coVerify { prefs.setStartScreen(StartScreen.HISTORY) }
             assertEquals(StartScreen.HISTORY, v.ui.value.startScreen)
+        }
+
+    @Test
+    fun `ui refleja la pantalla de arranque de podcast`() =
+        runTest {
+            val v = vm()
+            assertEquals(PodcastStartScreen.HOME, v.ui.value.podcastStartScreen)
+        }
+
+    @Test
+    fun `cambio de pantalla de arranque de podcast persiste`() =
+        runTest {
+            val v = vm()
+            v.onPodcastStartScreenChange(PodcastStartScreen.QUEUE)
+            coVerify { prefs.setPodcastStartScreen(PodcastStartScreen.QUEUE) }
+            assertEquals(PodcastStartScreen.QUEUE, v.ui.value.podcastStartScreen)
         }
 
     @Test

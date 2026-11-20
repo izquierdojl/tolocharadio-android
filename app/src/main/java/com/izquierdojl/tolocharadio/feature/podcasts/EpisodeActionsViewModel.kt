@@ -45,6 +45,7 @@ class EpisodeActionsViewModel
         private val cleanupDownloads: CleanupDownloadsUseCase,
     ) : ViewModel() {
         val favoriteIds: StateFlow<Set<Long>> = favorites.favoriteIds
+        val favoritesLoaded: StateFlow<Boolean> = favorites.loaded
         val downloadRecords = downloads.records
         val downloadProgress = downloads.progress
 
@@ -88,8 +89,22 @@ class EpisodeActionsViewModel
         }
 
         fun toggleFavorite(episode: PodcastEpisode) {
+            val current =
+                if (favorites.loaded.value) {
+                    episode.id in favorites.favoriteIds.value
+                } else {
+                    episode.isFavorite
+                }
+            toggleFavorite(episode.id, current)
+        }
+
+        /** Alterna el favorito con el estado explícito que muestra la UI. */
+        fun toggleFavorite(
+            episodeId: Long,
+            isFavorite: Boolean,
+        ) {
             viewModelScope.launch {
-                when (val r = favorites.toggle(episode.id, episode.isFavorite)) {
+                when (val r = favorites.toggle(episodeId, isFavorite)) {
                     is ApiResult.Ok -> Unit
                     is ApiResult.Err -> _message.value = r.error.userMessage()
                 }

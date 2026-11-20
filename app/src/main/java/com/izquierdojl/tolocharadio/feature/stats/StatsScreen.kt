@@ -68,7 +68,7 @@ fun StatsScreenContent(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxSize()) {
-        SectionHeader(title = "Tus estadísticas")
+        SectionHeader(title = "Tus estadísticas de radio")
         Column(Modifier.padding(horizontal = 16.dp)) {
             Text(
                 "Lo que escuchas, resumido en privado: solo tú puedes ver estos datos.",

@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.izquierdojl.tolocharadio.BuildConfig
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.navigation.ContentMode
+import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
@@ -45,6 +46,14 @@ class InstancePrefs
                 it[KEY_START_SCREEN]?.let { name ->
                     runCatching { StartScreen.valueOf(name) }.getOrDefault(StartScreen.EXPLORE)
                 } ?: StartScreen.EXPLORE
+            }
+
+        /** Pantalla de arranque de podcast (spec 0048, US5). Default HOME. */
+        val podcastStartScreen: Flow<PodcastStartScreen> =
+            store.data.map {
+                it[KEY_PODCAST_START_SCREEN]?.let { name ->
+                    runCatching { PodcastStartScreen.valueOf(name) }.getOrDefault(PodcastStartScreen.HOME)
+                } ?: PodcastStartScreen.HOME
             }
 
         /** Modo global Radio/Podcasts (spec 0046, FR-001). Default RADIO. */
@@ -122,6 +131,11 @@ class InstancePrefs
             store.edit { it[KEY_START_SCREEN] = screen.name }
         }
 
+        /** Persiste la pantalla de arranque de podcast (spec 0048, US5). */
+        suspend fun setPodcastStartScreen(screen: PodcastStartScreen) {
+            store.edit { it[KEY_PODCAST_START_SCREEN] = screen.name }
+        }
+
         /** Persiste el modo global Radio/Podcasts (spec 0046, FR-002). */
         suspend fun setContentMode(mode: ContentMode) {
             store.edit { it[KEY_CONTENT_MODE] = mode.name }
@@ -168,6 +182,7 @@ class InstancePrefs
             val KEY_DARK = booleanPreferencesKey("dark_theme")
             val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
             val KEY_START_SCREEN = stringPreferencesKey("start_screen")
+            val KEY_PODCAST_START_SCREEN = stringPreferencesKey("podcast_start_screen")
             val KEY_CONTENT_MODE = stringPreferencesKey("content_mode")
             val KEY_DEFAULT_SECTION = stringPreferencesKey("default_section")
             val KEY_PODCAST_SUBSCRIPTION_ORDER = stringPreferencesKey("podcast_subscription_order")

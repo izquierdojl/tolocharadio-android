@@ -169,13 +169,14 @@ class EpisodePlayerViewModel
         /** Activa/desactiva el potenciador de voz y lo persiste (US4). */
         fun setVoiceBoost(enabled: Boolean) = voiceBoost.setEnabled(enabled)
 
-        /** Parada del usuario con reporte final. */
+        /** Parada del usuario con reporte final; limpia la tarjeta inferior. */
         fun stop() {
             val id = _ui.value.episode?.id
+            val durationMs = _ui.value.durationMs
             val position = controller.stop()
             ticker?.cancel()
-            if (id != null) report(id, position)
-            _ui.value = _ui.value.copy(playing = false, loading = false)
+            if (id != null) report(id, position, durationMs = durationMs)
+            _ui.value = EpisodePlayerUi(rate = _ui.value.rate)
         }
 
         /** Descarta de "continuar escuchando" sin completar (FR-016). */
@@ -234,7 +235,7 @@ class EpisodePlayerViewModel
                 complete(episodeId, durationSec)
                 val nextId = next(episodeId)
                 if (nextId == null) {
-                    _ui.value = _ui.value.copy(playing = false)
+                    _ui.value = EpisodePlayerUi(rate = _ui.value.rate)
                     return@launch
                 }
                 val item = queue.queue.value.items.firstOrNull { it.id == nextId } ?: return@launch
@@ -259,17 +260,18 @@ class EpisodePlayerViewModel
             episodeId: Long,
             positionMs: Long = controller.positionMs(),
             completed: Boolean = false,
+            durationMs: Long = _ui.value.durationMs,
         ) {
             val session = sessionId ?: return
             viewModelScope.launch {
                 sequence += 1
-                val positionSec = (if (completed) _ui.value.durationMs else positionMs) / MS_PER_SEC
+                val positionSec = (if (completed) durationMs else positionMs) / MS_PER_SEC
                 progress.report(
                     episodeId = episodeId,
                     sessionId = session,
                     sequence = sequence,
                     positionSec = positionSec,
-                    durationSec = durationSec(),
+                    durationSec = durationMs.takeIf { it > 0L }?.div(MS_PER_SEC),
                     listenedMs = positionSec * MS_PER_SEC,
                     completed = if (completed) true else null,
                 )

@@ -52,14 +52,21 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
 import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
+import com.izquierdojl.tolocharadio.core.ui.components.TolochaTestTags
+import com.izquierdojl.tolocharadio.core.ui.components.formatEpisodeDuration
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
+import com.izquierdojl.tolocharadio.domain.podcasts.remainingLabel
+import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerUi
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -87,12 +94,14 @@ private const val QUEUE_DRAG_LIFT_ELEVATION = 8
 @Composable
 fun QueueScreen(
     snackbar: SnackbarHostState,
+    onOpenFullPlayer: () -> Unit,
     viewModel: QueueViewModel = hiltViewModel(),
     player: EpisodePlayerViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
 ) {
     val ui by viewModel.ui.collectAsState()
     val message by viewModel.message.collectAsState()
     val playerUi by player.ui.collectAsState()
+    val playingId = playerUi.episode?.id
 
     LaunchedEffect(message) {
         message?.let {
@@ -100,42 +109,82 @@ fun QueueScreen(
             viewModel.clearMessage()
         }
     }
+    LaunchedEffect(playingId) {
+        viewModel.setPlayingId(playingId)
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.refreshSilently()
+    }
 
+    QueueScreenContent(
+        state = ui,
+        playerUi = playerUi,
+        onPlay = { player.play(it, viewModel.podcastFor(it)) },
+        onRemove = viewModel::remove,
+        onMove = viewModel::moveItem,
+        onCommit = viewModel::commitOrder,
+        onClear = { viewModel.clear(playingId) },
+        onRetry = viewModel::refresh,
+        onOpenFullPlayer = onOpenFullPlayer,
+    )
+}
+
+/**
+ * Contenido sin Hilt de la cola: cabecera fija con el episodio en
+ * curso y, debajo, los pendientes. Separado para los tests Compose.
+ */
+@Composable
+@Suppress("LongParameterList")
+internal fun QueueScreenContent(
+    state: QueueUiState,
+    playerUi: EpisodePlayerUi,
+    onPlay: (PodcastEpisode) -> Unit,
+    onRemove: (Long) -> Unit,
+    onMove: (Int, Int) -> Unit,
+    onCommit: () -> Unit,
+    onClear: () -> Unit,
+    onRetry: () -> Unit,
+    onOpenFullPlayer: () -> Unit,
+) {
     Column(Modifier.fillMaxSize()) {
         SectionHeader(title = "Cola", subtitle = "Arrastra las tarjetas para reordenar.")
-        val playingId = playerUi.episode?.id
-        LaunchedEffect(playingId) {
-            viewModel.setPlayingId(playingId)
+        playerUi.episode?.let { episode ->
+            QueueNowPlayingCard(
+                episode = episode,
+                podcast = playerUi.podcast,
+                playing = playerUi.playing,
+                positionMs = playerUi.positionMs,
+                durationMs = playerUi.durationMs,
+                onOpen = onOpenFullPlayer,
+            )
         }
-        when (val state = ui) {
+        when (state) {
             is QueueUiState.Loading ->
                 CircularProgressIndicator(modifier = Modifier.padding(32.dp))
             is QueueUiState.Empty ->
-                EmptyState(title = "Cola vacía", actionLabel = null, onAction = null)
+                EmptyState(
+                    title = if (playerUi.episode == null) "Cola vacía" else "No hay más episodios en cola",
+                    actionLabel = null,
+                    onAction = null,
+                )
             is QueueUiState.Error ->
                 Column {
                     Text(state.message, modifier = Modifier.padding(16.dp))
-                    TextButton(onClick = viewModel::refresh) {
+                    TextButton(onClick = onRetry) {
                         Text("Reintentar")
                     }
                 }
             is QueueUiState.Content -> {
-                TextButton(onClick = { viewModel.clear(playingId) }) {
+                TextButton(onClick = onClear) {
                     Text("Vaciar cola")
-                }
-                playerUi.episode?.let { current ->
-                    Text(
-                        "Suena: ${current.title}",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
                 }
                 QueueList(
                     state = state,
-                    onPlay = { player.play(it, viewModel.podcastFor(it)) },
-                    onRemove = viewModel::remove,
-                    onMove = viewModel::moveItem,
-                    onCommit = viewModel::commitOrder,
+                    onPlay = onPlay,
+                    onRemove = onRemove,
+                    onMove = onMove,
+                    onCommit = onCommit,
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
@@ -149,6 +198,7 @@ private fun QueueList(
     onRemove: (Long) -> Unit,
     onMove: (Int, Int) -> Unit,
     onCommit: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -157,7 +207,10 @@ private fun QueueList(
     var draggingId by remember { mutableStateOf<Long?>(null) }
     LazyColumn(
         state = listState,
-        modifier = Modifier.onGloballyPositioned { columnTop = it.positionInWindow().y },
+        modifier =
+            modifier
+                .testTag(TolochaTestTags.QUEUE_LIST)
+                .onGloballyPositioned { columnTop = it.positionInWindow().y },
     ) {
         itemsIndexed(state.items, key = { _, item -> item.id }) { _, item ->
             val dragging = draggingId == item.id
@@ -217,6 +270,28 @@ private fun QueueCard(
                 ).clickable(onClick = onPlay),
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         headlineContent = { Text(episode.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = {
+            val duration =
+                episode.durationSec?.takeIf { it > 0L }
+                    ?: episode.progress?.durationSec?.takeIf { it > 0L }
+            val remaining =
+                if (episode.progress?.completed == true) {
+                    null
+                } else {
+                    remainingLabel(episode.progress?.positionSec ?: 0L, duration)
+                }
+            val line = listOfNotNull(duration?.let { formatEpisodeDuration(it) }, remaining).joinToString(" · ")
+            if (line.isNotBlank()) {
+                Text(
+                    line,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag(TolochaTestTags.QUEUE_EPISODE_META),
+                )
+            }
+        },
         leadingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(

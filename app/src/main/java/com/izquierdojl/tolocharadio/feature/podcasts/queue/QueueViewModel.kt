@@ -71,6 +71,13 @@ class QueueViewModel
             }
         }
 
+        /** Recarga sin tapar la lista mientras se mantiene el contenido visible. */
+        fun refreshSilently() {
+            viewModelScope.launch {
+                repo.load()
+            }
+        }
+
         /** Episodio en curso para ocultarlo de pendientes (lo informa la pantalla). */
         fun setPlayingId(id: Long?) {
             playingId = id
