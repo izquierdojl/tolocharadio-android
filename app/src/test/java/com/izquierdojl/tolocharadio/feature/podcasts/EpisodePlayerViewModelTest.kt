@@ -2,6 +2,8 @@ package com.izquierdojl.tolocharadio.feature.podcasts
 
 import com.izquierdojl.tolocharadio.MainDispatcherRule
 import com.izquierdojl.tolocharadio.core.network.ApiResult
+import com.izquierdojl.tolocharadio.core.network.DomainError
+import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
 import com.izquierdojl.tolocharadio.data.repo.ProgressRepo
 import com.izquierdojl.tolocharadio.data.repo.QueueRepo
 import com.izquierdojl.tolocharadio.data.repo.QueueState
@@ -17,6 +19,7 @@ import com.izquierdojl.tolocharadio.support.testEpisode
 import com.izquierdojl.tolocharadio.support.testProgress
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -74,6 +77,20 @@ class EpisodePlayerViewModelTest {
     private fun prepareQueue(vararg episodes: com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode) {
         every { queue.queue } returns MutableStateFlow(QueueState(revision = 1, items = episodes.toList(), limit = 200))
     }
+
+    private fun activeState(
+        episode: PodcastEpisode,
+        positionMs: Long,
+    ) = EpisodePlaybackController.State.Active(
+        episode = episode,
+        podcast = null,
+        playing = true,
+        positionMs = positionMs,
+        durationMs = 1_800_000L,
+        rate = 1f,
+        local = false,
+        casting = false,
+    )
 
     @Test
     fun `play usa el progreso embebido`() =
@@ -153,7 +170,46 @@ class EpisodePlayerViewModelTest {
             events.tryEmit(EpisodePlayerEvent.Ended(episodeId = 1L, durationSec = 1_800L))
             advanceUntilIdle()
 
+            coVerifyOrder {
+                queue.remove(1L)
+                next(1L)
+            }
             verify(exactly = 1) { controller.play(any(), second, null, 300_000L, any()) }
+        }
+
+    @Test
+    fun `al terminar sin siguiente retira el episodio y limpia la tarjeta`() =
+        runTest {
+            prepareResolve()
+            val only = testEpisode(id = 1L, progress = null)
+            prepareQueue(only)
+            coEvery { next(1L) } returns null
+
+            viewModel.play(only, null)
+            advanceUntilIdle()
+            events.tryEmit(EpisodePlayerEvent.Ended(episodeId = 1L, durationSec = 1_800L))
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { queue.remove(1L) }
+            assertNull(viewModel.ui.value.episode)
+        }
+
+    @Test
+    fun `un fallo al retirar de la cola no impide el auto-avance`() =
+        runTest {
+            prepareResolve()
+            val first = testEpisode(id = 1L, progress = null)
+            val second = testEpisode(id = 2L, progress = null)
+            prepareQueue(first, second)
+            coEvery { next(1L) } returns 2L
+            coEvery { queue.remove(1L) } returns ApiResult.Err(DomainError.Unavailable("offline"))
+
+            viewModel.play(first, null)
+            advanceUntilIdle()
+            events.tryEmit(EpisodePlayerEvent.Ended(episodeId = 1L, durationSec = 1_800L))
+            advanceUntilIdle()
+
+            verify(exactly = 1) { controller.play(any(), second, null, 0L, any()) }
         }
 
     @Test
@@ -218,5 +274,88 @@ class EpisodePlayerViewModelTest {
                     completed = null,
                 )
             }
+        }
+
+    @Test
+    fun `parar cerca del final retira el episodio si el servidor lo completa`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            state.value = activeState(episode, positionMs = 1_764_000L)
+            advanceUntilIdle()
+            every { controller.stop() } returns 1_764_000L
+            coEvery {
+                progress.report(
+                    episodeId = 1L,
+                    sessionId = any(),
+                    sequence = any(),
+                    positionSec = 1_764L,
+                    durationSec = 1_800L,
+                    listenedMs = 1_764_000L,
+                    completed = null,
+                )
+            } returns ApiResult.Ok(testProgress(1_764L, 1_800L, completed = true))
+
+            viewModel.stop()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { queue.remove(1L) }
+        }
+
+    @Test
+    fun `parar a mitad no retira el episodio de la cola`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            state.value = activeState(episode, positionMs = 600_000L)
+            advanceUntilIdle()
+            every { controller.stop() } returns 600_000L
+            coEvery {
+                progress.report(
+                    episodeId = 1L,
+                    sessionId = any(),
+                    sequence = any(),
+                    positionSec = 600L,
+                    durationSec = 1_800L,
+                    listenedMs = 600_000L,
+                    completed = null,
+                )
+            } returns ApiResult.Ok(testProgress(600L, 1_800L, completed = false))
+
+            viewModel.stop()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { queue.remove(any()) }
+        }
+
+    @Test
+    fun `un reporte periodico de un completado no lo retira de la cola`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            state.value = activeState(episode, positionMs = 60_000L)
+            advanceUntilIdle()
+            coEvery {
+                progress.report(
+                    episodeId = 1L,
+                    sessionId = any(),
+                    sequence = any(),
+                    positionSec = any(),
+                    durationSec = 1_800L,
+                    listenedMs = any(),
+                    completed = null,
+                )
+            } returns ApiResult.Ok(testProgress(60L, 1_800L, completed = true))
+
+            viewModel.toggle()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { queue.remove(any()) }
         }
 }
