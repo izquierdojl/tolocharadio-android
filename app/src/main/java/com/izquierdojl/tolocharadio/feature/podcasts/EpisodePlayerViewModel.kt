@@ -14,6 +14,7 @@ import com.izquierdojl.tolocharadio.domain.podcasts.EPISODE_SKIP_BACK_MS
 import com.izquierdojl.tolocharadio.domain.podcasts.EPISODE_SKIP_FORWARD_MS
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackController
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlayerEvent
+import com.izquierdojl.tolocharadio.domain.podcasts.ListeningTimeTracker
 import com.izquierdojl.tolocharadio.domain.podcasts.LoadEpisodeProgressUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.NextEpisodeUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.ResolveEpisodePlaybackUseCase
@@ -79,6 +80,7 @@ class EpisodePlayerViewModel
         private var sessionId: String? = null
         private var sequence: Long = 0
         private var ticker: Job? = null
+        private val listening = ListeningTimeTracker()
 
         init {
             viewModelScope.launch {
@@ -90,7 +92,8 @@ class EpisodePlayerViewModel
                                 if (current.episode == null) current else current.copy(playing = false, loading = false)
                             is EpisodePlaybackController.State.Loading ->
                                 current.copy(loading = true)
-                            is EpisodePlaybackController.State.Active ->
+                            is EpisodePlaybackController.State.Active -> {
+                                listening.onProgress(state.positionMs, state.playing)
                                 current.copy(
                                     playing = state.playing,
                                     loading = false,
@@ -99,6 +102,7 @@ class EpisodePlayerViewModel
                                     rate = state.rate,
                                     downloaded = state.local,
                                 )
+                            }
                             is EpisodePlaybackController.State.Error ->
                                 current.copy(loading = false, playing = false, message = state.message)
                         }
@@ -199,14 +203,18 @@ class EpisodePlayerViewModel
         fun onAppBackground() {
             val id = _ui.value.episode?.id ?: return
             viewModelScope.launch {
-                val positionSec = controller.positionMs() / MS_PER_SEC
+                val session = sessionId ?: return@launch
+                val positionMs = controller.positionMs()
+                listening.onProgress(positionMs, _ui.value.playing)
+                val positionSec = positionMs / MS_PER_SEC
+                sequence += 1
                 progress.keepalive(
                     id,
-                    sessionId ?: return@launch,
-                    sequence + 1,
+                    session,
+                    sequence,
                     positionSec,
                     durationSec = durationSec(),
-                    listenedMs = positionSec * MS_PER_SEC,
+                    listenedMs = listening.totalMs,
                 )
             }
         }
@@ -222,6 +230,7 @@ class EpisodePlayerViewModel
         ) {
             when (val r = resolve(episode)) {
                 is ApiResult.Ok -> {
+                    listening.reset()
                     sessionId = UUID.randomUUID().toString()
                     sequence = 0
                     controller.play(r.value, episode, podcast, startMs, _ui.value.rate)
@@ -281,6 +290,7 @@ class EpisodePlayerViewModel
             durationMs: Long,
         ): PodcastEpisodeProgress? {
             val session = sessionId ?: return null
+            listening.synchronize(positionMs)
             sequence += 1
             val positionSec = (if (completed) durationMs else positionMs) / MS_PER_SEC
             return when (
@@ -291,7 +301,7 @@ class EpisodePlayerViewModel
                         sequence = sequence,
                         positionSec = positionSec,
                         durationSec = durationMs.takeIf { it > 0L }?.div(MS_PER_SEC),
-                        listenedMs = positionSec * MS_PER_SEC,
+                        listenedMs = listening.totalMs,
                         completed = if (completed) true else null,
                     )
             ) {

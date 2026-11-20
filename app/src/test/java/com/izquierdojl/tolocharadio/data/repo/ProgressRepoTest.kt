@@ -40,12 +40,31 @@ class ProgressRepoTest {
                         sessionId = "s1",
                         sequence = 3,
                         positionSec = 60,
-                        listenedMs = 60_000,
+                        listenedMs = 30_000,
                         source = "android",
                     ),
                 )
             } returns Response.success(wrapper())
-            val r = repo.report(11L, "s1", 3, 60)
+            val r = repo.report(11L, "s1", 3, 60, listenedMs = 30_000)
+            assertTrue(r is ApiResult.Ok)
+        }
+
+    @Test
+    fun `report respeta listenedMs aunque difiera de la posicion`() =
+        runTest {
+            coEvery {
+                api.reportProgress(
+                    11L,
+                    ReportEpisodeProgressBody(
+                        sessionId = "s3",
+                        sequence = 4,
+                        positionSec = 1_200,
+                        listenedMs = 5_000,
+                        source = "android",
+                    ),
+                )
+            } returns Response.success(wrapper())
+            val r = repo.report(11L, "s3", 4, 1_200, listenedMs = 5_000)
             assertTrue(r is ApiResult.Ok)
         }
 
