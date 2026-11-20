@@ -151,25 +151,35 @@ data class IssuedToken(
 @Serializable
 data class PodcastStatsSummaryDto(
     val totalMs: Long = 0,
-    val podcastCount: Int = 0,
-    val startedEpisodes: Int = 0,
-    val completedEpisodes: Int = 0,
+    val episodesStarted: Int = 0,
+    val episodesCompleted: Int = 0,
     val completionRate: Double = 0.0,
-    val avgMsPerEpisode: Long = 0,
+    val podcastsCount: Int = 0,
+    val averageEpisodeMs: Long = 0,
 )
 
-/** Programa con tiempo escuchado (ranking). */
+/** Programa con tiempo escuchado (ranking plano de `top-podcasts`). */
 @Serializable
 data class PodcastTopPodcastDto(
-    val podcast: PodcastSummary,
+    val podcastId: Long,
+    val title: String,
+    val author: String? = null,
+    val imageUrl: String? = null,
     val totalMs: Long = 0,
+    val episodesStarted: Int = 0,
+    val episodesCompleted: Int = 0,
 )
 
-/** Episodio con tiempo escuchado (ranking). */
+/** Episodio con tiempo escuchado (ranking plano de `top-episodes`). */
 @Serializable
 data class PodcastTopEpisodeDto(
-    val episode: PodcastEpisode,
+    val episodeId: Long,
+    val podcastId: Long,
+    val title: String,
+    val podcastTitle: String,
+    val imageUrl: String? = null,
     val totalMs: Long = 0,
+    val completed: Boolean = false,
 )
 
 /** Cubo temporal `{bucket,totalMs}` (día, semana o mes). */
@@ -201,12 +211,20 @@ data class PodcastCategoryEntryDto(
     val totalMs: Long = 0,
 )
 
-/** Sesión de escucha reciente. */
+/** Sesión de escucha reciente (`GET /podcasts/stats/recent`). */
 @Serializable
 data class PodcastRecentEntryDto(
-    val episode: PodcastEpisode? = null,
+    val episodeId: Long,
+    val podcastId: Long,
+    val episodeTitle: String,
+    val podcastTitle: String,
+    val imageUrl: String? = null,
     val startedAt: Long = 0,
-    val durationMs: Long = 0,
+    val endedAt: Long = 0,
+    val listenedMs: Long = 0,
+    val positionSec: Long? = null,
+    val durationSec: Long? = null,
+    val completed: Boolean = false,
 )
 
 /** Cuerpo de `PUT /podcasts/queue/order` (revisión optimista, FR-022). */

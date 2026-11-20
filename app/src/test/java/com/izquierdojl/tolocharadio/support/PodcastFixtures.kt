@@ -63,19 +63,19 @@ fun testQueue(
 /** Resumen de estadísticas de podcast de prueba. */
 fun testPodcastStatsSummary(
     totalMs: Long = 3_600_000L,
-    podcastCount: Int = 2,
-    startedEpisodes: Int = 3,
-    completedEpisodes: Int = 2,
+    episodesStarted: Int = 3,
+    episodesCompleted: Int = 2,
     completionRate: Double = 0.66,
-    avgMsPerEpisode: Long = 1_200_000L,
+    podcastsCount: Int = 2,
+    averageEpisodeMs: Long = 1_200_000L,
 ): PodcastStatsSummaryDto =
     PodcastStatsSummaryDto(
         totalMs = totalMs,
-        podcastCount = podcastCount,
-        startedEpisodes = startedEpisodes,
-        completedEpisodes = completedEpisodes,
+        episodesStarted = episodesStarted,
+        episodesCompleted = episodesCompleted,
         completionRate = completionRate,
-        avgMsPerEpisode = avgMsPerEpisode,
+        podcastsCount = podcastsCount,
+        averageEpisodeMs = averageEpisodeMs,
     )
 
 /** Serie temporal de podcast de prueba. */
@@ -98,12 +98,41 @@ fun testPodcastCategories(vararg entries: Pair<String, Long>): PodcastCategories
 
 /** Actividad reciente de podcast de prueba. */
 fun testPodcastRecents(vararg entries: Pair<PodcastEpisode?, Long>): PodcastRecents =
-    PodcastRecents(entries.map { PodcastRecentEntryDto(it.first, 0L, it.second) })
+    PodcastRecents(
+        entries.mapIndexed { index, (episode, listenedMs) ->
+            PodcastRecentEntryDto(
+                episodeId = episode?.id ?: (index + 1L),
+                podcastId = episode?.podcastId ?: 1L,
+                episodeTitle = episode?.title ?: "Episodio",
+                podcastTitle = "Programa",
+                startedAt = index.toLong(),
+                listenedMs = listenedMs,
+            )
+        },
+    )
 
 /** Ranking de programas de prueba. */
 fun testPodcastTopPodcasts(vararg entries: Pair<PodcastSummary, Long>): PodcastTopPodcasts =
-    PodcastTopPodcasts(entries.map { PodcastTopPodcastDto(it.first, it.second) })
+    PodcastTopPodcasts(
+        entries.map {
+            PodcastTopPodcastDto(
+                podcastId = it.first.id,
+                title = it.first.title,
+                totalMs = it.second,
+            )
+        },
+    )
 
 /** Ranking de episodios de prueba. */
 fun testPodcastTopEpisodes(vararg entries: Pair<PodcastEpisode, Long>): PodcastTopEpisodes =
-    PodcastTopEpisodes(entries.map { PodcastTopEpisodeDto(it.first, it.second) })
+    PodcastTopEpisodes(
+        entries.map {
+            PodcastTopEpisodeDto(
+                episodeId = it.first.id,
+                podcastId = it.first.podcastId,
+                title = it.first.title,
+                podcastTitle = "Programa",
+                totalMs = it.second,
+            )
+        },
+    )

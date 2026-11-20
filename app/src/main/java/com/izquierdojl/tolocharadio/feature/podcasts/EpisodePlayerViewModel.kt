@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.userMessage
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
+import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisodeProgress
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.data.repo.ProgressRepo
 import com.izquierdojl.tolocharadio.data.repo.QueueRepo
@@ -175,8 +176,13 @@ class EpisodePlayerViewModel
             val durationMs = _ui.value.durationMs
             val position = controller.stop()
             ticker?.cancel()
-            if (id != null) report(id, position, durationMs = durationMs)
             _ui.value = EpisodePlayerUi(rate = _ui.value.rate)
+            if (id == null) return
+            viewModelScope.launch {
+                val result = reportProgress(id, position, completed = false, durationMs = durationMs)
+                // El servidor auto-completa cerca del final; si lo hizo, sale de la cola.
+                if (result?.completed == true) queue.remove(id)
+            }
         }
 
         /** Descarta de "continuar escuchando" sin completar (FR-016). */
@@ -233,6 +239,8 @@ class EpisodePlayerViewModel
             viewModelScope.launch {
                 ticker?.cancel()
                 complete(episodeId, durationSec)
+                // Paridad con la web: el episodio terminado sale de la cola antes de avanzar.
+                queue.remove(episodeId)
                 val nextId = next(episodeId)
                 if (nextId == null) {
                     _ui.value = EpisodePlayerUi(rate = _ui.value.rate)
@@ -262,39 +270,46 @@ class EpisodePlayerViewModel
             completed: Boolean = false,
             durationMs: Long = _ui.value.durationMs,
         ) {
-            val session = sessionId ?: return
-            viewModelScope.launch {
-                sequence += 1
-                val positionSec = (if (completed) durationMs else positionMs) / MS_PER_SEC
-                progress.report(
-                    episodeId = episodeId,
-                    sessionId = session,
-                    sequence = sequence,
-                    positionSec = positionSec,
-                    durationSec = durationMs.takeIf { it > 0L }?.div(MS_PER_SEC),
-                    listenedMs = positionSec * MS_PER_SEC,
-                    completed = if (completed) true else null,
-                )
+            viewModelScope.launch { reportProgress(episodeId, positionMs, completed, durationMs) }
+        }
+
+        /** Reporta y devuelve el progreso resultante (null si no hay sesión o falla). */
+        private suspend fun reportProgress(
+            episodeId: Long,
+            positionMs: Long,
+            completed: Boolean,
+            durationMs: Long,
+        ): PodcastEpisodeProgress? {
+            val session = sessionId ?: return null
+            sequence += 1
+            val positionSec = (if (completed) durationMs else positionMs) / MS_PER_SEC
+            return when (
+                val r =
+                    progress.report(
+                        episodeId = episodeId,
+                        sessionId = session,
+                        sequence = sequence,
+                        positionSec = positionSec,
+                        durationSec = durationMs.takeIf { it > 0L }?.div(MS_PER_SEC),
+                        listenedMs = positionSec * MS_PER_SEC,
+                        completed = if (completed) true else null,
+                    )
+            ) {
+                is ApiResult.Ok -> r.value
+                is ApiResult.Err -> null
             }
         }
 
-        private fun complete(
+        private suspend fun complete(
             episodeId: Long,
             durationSec: Long,
         ) {
-            val session = sessionId ?: return
-            viewModelScope.launch {
-                sequence += 1
-                progress.report(
-                    episodeId = episodeId,
-                    sessionId = session,
-                    sequence = sequence,
-                    positionSec = durationSec,
-                    durationSec = durationSec,
-                    listenedMs = durationSec * MS_PER_SEC,
-                    completed = true,
-                )
-            }
+            reportProgress(
+                episodeId = episodeId,
+                positionMs = durationSec * MS_PER_SEC,
+                completed = true,
+                durationMs = durationSec * MS_PER_SEC,
+            )
         }
 
         /** Duración conocida del episodio en segundos (null si aún no cargó). */

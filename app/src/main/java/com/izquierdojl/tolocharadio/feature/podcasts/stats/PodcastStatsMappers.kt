@@ -28,13 +28,13 @@ fun PodcastStatsSummaryDto.toSummaryItems(): List<StatsSummaryItem> =
         ),
         StatsSummaryItem(
             label = "Episodios",
-            value = "$startedEpisodes empezados · $completedEpisodes completados",
+            value = "$episodesStarted empezados · $episodesCompleted completados",
             hint = "Tasa de finalización: ${(completionRate * 100).roundToInt()} %",
         ),
         StatsSummaryItem(
             label = "Programas",
-            value = podcastCount.toString(),
-            hint = "Media por episodio: ${StatsFormat.formatDurationMs(avgMsPerEpisode)}",
+            value = podcastsCount.toString(),
+            hint = "Media por episodio: ${StatsFormat.formatDurationMs(averageEpisodeMs)}",
         ),
     )
 
@@ -50,11 +50,11 @@ fun PodcastHabits.toStatsHabits(): StatsHabitListDto =
     )
 
 fun PodcastTopPodcasts.toRankingItems(): List<RankingItem> {
-    return items.map { RankingItem(label = it.podcast.title, totalMs = it.totalMs) }
+    return items.map { RankingItem(label = it.title, totalMs = it.totalMs) }
 }
 
 fun PodcastTopEpisodes.toRankingItems(): List<RankingItem> {
-    return items.map { RankingItem(label = it.episode.title, totalMs = it.totalMs) }
+    return items.map { RankingItem(label = it.title, totalMs = it.totalMs) }
 }
 
 fun PodcastCategories.toShareItems(): List<ShareItem> {
@@ -64,8 +64,8 @@ fun PodcastCategories.toShareItems(): List<ShareItem> {
 fun PodcastRecents.toRecentItems(): List<RecentItem> =
     items.map {
         RecentItem(
-            label = it.episode?.title ?: "Episodio",
+            label = it.episodeTitle,
             startedAt = it.startedAt,
-            durationMs = it.durationMs,
+            durationMs = it.listenedMs,
         )
     }
