@@ -25,6 +25,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertNull
@@ -81,16 +82,26 @@ class EpisodePlayerViewModelTest {
     private fun activeState(
         episode: PodcastEpisode,
         positionMs: Long,
+        playing: Boolean = true,
     ) = EpisodePlaybackController.State.Active(
         episode = episode,
         podcast = null,
-        playing = true,
+        playing = playing,
         positionMs = positionMs,
         durationMs = 1_800_000L,
         rate = 1f,
         local = false,
         casting = false,
     )
+
+    /** Simula el muestreo continuo del controlador (1 s entre posiciones). */
+    private fun TestScope.emitPlayback(
+        episode: PodcastEpisode,
+        vararg positionsMs: Long,
+    ) {
+        positionsMs.forEach { state.value = activeState(episode, it) }
+        advanceUntilIdle()
+    }
 
     @Test
     fun `play usa el progreso embebido`() =
@@ -239,24 +250,26 @@ class EpisodePlayerViewModelTest {
         }
 
     @Test
-    fun `stop limpia el episodio y reporta la duracion capturada`() =
+    fun `stop limpia el episodio y reporta el tiempo escuchado`() =
         runTest {
             prepareResolve()
             val episode = testEpisode(progress = null)
             viewModel.play(episode, null)
             advanceUntilIdle()
-            state.value =
-                EpisodePlaybackController.State.Active(
-                    episode = episode,
-                    podcast = null,
-                    playing = true,
-                    positionMs = 10_000L,
-                    durationMs = 1_800_000L,
-                    rate = 1f,
-                    local = false,
-                    casting = false,
-                )
-            advanceUntilIdle()
+            emitPlayback(
+                episode,
+                0L,
+                1_000L,
+                2_000L,
+                3_000L,
+                4_000L,
+                5_000L,
+                6_000L,
+                7_000L,
+                8_000L,
+                9_000L,
+                10_000L,
+            )
             every { controller.stop() } returns 10_000L
 
             viewModel.stop()
@@ -283,6 +296,7 @@ class EpisodePlayerViewModelTest {
             val episode = testEpisode(progress = null)
             viewModel.play(episode, null)
             advanceUntilIdle()
+            emitPlayback(episode, 0L, 1_000L, 2_000L)
             state.value = activeState(episode, positionMs = 1_764_000L)
             advanceUntilIdle()
             every { controller.stop() } returns 1_764_000L
@@ -293,7 +307,7 @@ class EpisodePlayerViewModelTest {
                     sequence = any(),
                     positionSec = 1_764L,
                     durationSec = 1_800L,
-                    listenedMs = 1_764_000L,
+                    listenedMs = 2_000L,
                     completed = null,
                 )
             } returns ApiResult.Ok(testProgress(1_764L, 1_800L, completed = true))
@@ -311,6 +325,7 @@ class EpisodePlayerViewModelTest {
             val episode = testEpisode(progress = null)
             viewModel.play(episode, null)
             advanceUntilIdle()
+            emitPlayback(episode, 0L, 1_000L, 2_000L)
             state.value = activeState(episode, positionMs = 600_000L)
             advanceUntilIdle()
             every { controller.stop() } returns 600_000L
@@ -321,7 +336,7 @@ class EpisodePlayerViewModelTest {
                     sequence = any(),
                     positionSec = 600L,
                     durationSec = 1_800L,
-                    listenedMs = 600_000L,
+                    listenedMs = 2_000L,
                     completed = null,
                 )
             } returns ApiResult.Ok(testProgress(600L, 1_800L, completed = false))
@@ -333,14 +348,103 @@ class EpisodePlayerViewModelTest {
         }
 
     @Test
+    fun `un seek no infla el tiempo escuchado`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            emitPlayback(episode, 0L, 1_000L, 2_000L, 3_000L)
+            every { controller.positionMs() } returns 600_000L
+
+            viewModel.seekTo(600_000L)
+            advanceUntilIdle()
+
+            coVerify {
+                progress.report(
+                    episodeId = 1L,
+                    sessionId = any(),
+                    sequence = any(),
+                    positionSec = 600L,
+                    durationSec = 1_800L,
+                    listenedMs = 3_000L,
+                    completed = null,
+                )
+            }
+        }
+
+    @Test
+    fun `el keepalive de segundo plano envia el tiempo acumulado y avanza la secuencia`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            emitPlayback(episode, 0L, 1_000L, 2_000L, 3_000L)
+            every { controller.positionMs() } returns 3_000L
+
+            viewModel.onAppBackground()
+            advanceUntilIdle()
+            viewModel.onAppBackground()
+            advanceUntilIdle()
+
+            coVerify {
+                progress.keepalive(
+                    episodeId = 1L,
+                    sessionId = any(),
+                    sequence = 1L,
+                    positionSec = 3L,
+                    durationSec = 1_800L,
+                    listenedMs = 3_000L,
+                )
+            }
+            coVerify {
+                progress.keepalive(
+                    episodeId = 1L,
+                    sessionId = any(),
+                    sequence = 2L,
+                    positionSec = 3L,
+                    durationSec = 1_800L,
+                    listenedMs = 3_000L,
+                )
+            }
+        }
+
+    @Test
+    fun `al terminar informa el tiempo escuchado y no la duracion completa`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            coEvery { next(1L) } returns null
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            emitPlayback(episode, 0L, 1_000L, 2_000L, 3_000L)
+
+            events.tryEmit(EpisodePlayerEvent.Ended(episodeId = 1L, durationSec = 1_800L))
+            advanceUntilIdle()
+
+            coVerify {
+                progress.report(
+                    episodeId = 1L,
+                    sessionId = any(),
+                    sequence = any(),
+                    positionSec = 1_800L,
+                    durationSec = 1_800L,
+                    listenedMs = 3_000L,
+                    completed = true,
+                )
+            }
+        }
+
+    @Test
     fun `un reporte periodico de un completado no lo retira de la cola`() =
         runTest {
             prepareResolve()
             val episode = testEpisode(progress = null)
             viewModel.play(episode, null)
             advanceUntilIdle()
-            state.value = activeState(episode, positionMs = 60_000L)
-            advanceUntilIdle()
+            emitPlayback(episode, 0L, 1_000L, 2_000L)
+            every { controller.positionMs() } returns 2_000L
             coEvery {
                 progress.report(
                     episodeId = 1L,
@@ -348,7 +452,7 @@ class EpisodePlayerViewModelTest {
                     sequence = any(),
                     positionSec = any(),
                     durationSec = 1_800L,
-                    listenedMs = any(),
+                    listenedMs = 2_000L,
                     completed = null,
                 )
             } returns ApiResult.Ok(testProgress(60L, 1_800L, completed = true))

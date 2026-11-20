@@ -23,9 +23,6 @@ fun PodcastProgressValue.toDto(): PodcastEpisodeProgress =
 /** Origen del informe de progreso (contrato del servidor). */
 private const val PROGRESS_SOURCE = "android"
 
-/** Milisegundos por segundo. */
-private const val MS_PER_SEC = 1_000L
-
 /**
  * Progreso de escucha por episodio (spec 0046, US3).
  * Reporte idempotente `{sessionId,sequence,positionSec}` (PUT),
@@ -54,8 +51,8 @@ class ProgressRepo
             sessionId: String,
             sequence: Long,
             positionSec: Long,
+            listenedMs: Long,
             durationSec: Long? = null,
-            listenedMs: Long = positionSec * MS_PER_SEC,
             completed: Boolean? = null,
         ): ApiResult<PodcastEpisodeProgress> {
             val body =
@@ -80,8 +77,8 @@ class ProgressRepo
             sessionId: String,
             sequence: Long,
             positionSec: Long,
+            listenedMs: Long,
             durationSec: Long? = null,
-            listenedMs: Long = positionSec * MS_PER_SEC,
         ): ApiResult<Unit> {
             val body =
                 ReportEpisodeProgressBody(
