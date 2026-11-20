@@ -82,7 +82,7 @@ class PodcastStatsViewModelTest {
         runTest {
             prepareSuccess()
             coEvery { repo.summary() } returns
-                ApiResult.Ok(testPodcastStatsSummary(totalMs = 0L, startedEpisodes = 0, podcastCount = 0))
+                ApiResult.Ok(testPodcastStatsSummary(totalMs = 0L, episodesStarted = 0, podcastsCount = 0))
             coEvery { repo.recent() } returns ApiResult.Ok(testPodcastRecents())
             val viewModel = vm()
             advanceUntilIdle()

@@ -128,7 +128,7 @@ class PodcastStatsViewModel
                         PodcastRecents(recentValue.items.sortedByDescending { it.startedAt })
 
                     if (summaryValue.totalMs <= 0L &&
-                        summaryValue.startedEpisodes <= 0 &&
+                        summaryValue.episodesStarted <= 0 &&
                         sortedRecent.items.isEmpty()
                     ) {
                         _ui.value = PodcastStatsUi.Empty

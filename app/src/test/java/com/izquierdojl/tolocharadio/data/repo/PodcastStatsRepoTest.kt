@@ -23,11 +23,11 @@ class PodcastStatsRepoTest {
                 Response.success(
                     PodcastStatsSummaryDto(
                         totalMs = 3_600_000,
-                        podcastCount = 4,
-                        startedEpisodes = 10,
-                        completedEpisodes = 7,
+                        podcastsCount = 4,
+                        episodesStarted = 10,
+                        episodesCompleted = 7,
                         completionRate = 0.7,
-                        avgMsPerEpisode = 360_000,
+                        averageEpisodeMs = 360_000,
                     ),
                 )
             val r = repo.summary()

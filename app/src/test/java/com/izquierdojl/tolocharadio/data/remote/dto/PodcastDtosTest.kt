@@ -1,6 +1,11 @@
 package com.izquierdojl.tolocharadio.data.remote.dto
 
 import com.izquierdojl.tolocharadio.core.network.TolochaJson
+import com.izquierdojl.tolocharadio.data.remote.api.PodcastCategories
+import com.izquierdojl.tolocharadio.data.remote.api.PodcastHabits
+import com.izquierdojl.tolocharadio.data.remote.api.PodcastRecents
+import com.izquierdojl.tolocharadio.data.remote.api.PodcastTopEpisodes
+import com.izquierdojl.tolocharadio.data.remote.api.PodcastTopPodcasts
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -88,5 +93,91 @@ class PodcastDtosTest {
         assertEquals(2, r.imported)
         assertEquals(1, r.failed)
         assertEquals("https://x.example/f", r.errors.single().feedUrl)
+    }
+
+    @Test
+    fun `PodcastStatsSummary lee los agregados reales del backend`() {
+        val raw =
+            """
+            {"totalMs":170000,"episodesStarted":2,"episodesCompleted":1,
+             "completionRate":0.5,"podcastsCount":2,"averageEpisodeMs":85000}
+            """.trimIndent()
+        val s = json.decodeFromString<PodcastStatsSummaryDto>(raw)
+        assertEquals(170_000L, s.totalMs)
+        assertEquals(2, s.episodesStarted)
+        assertEquals(1, s.episodesCompleted)
+        assertEquals(0.5, s.completionRate, 0.001)
+        assertEquals(2, s.podcastsCount)
+        assertEquals(85_000L, s.averageEpisodeMs)
+    }
+
+    @Test
+    fun `PodcastTopPodcasts lee el ranking plano del backend`() {
+        val raw =
+            """
+            {"items":[{"podcastId":7,"title":"Tech Talks","author":"Ana",
+             "imageUrl":null,"totalMs":150000,"episodesStarted":2,"episodesCompleted":1}]}
+            """.trimIndent()
+        val item = json.decodeFromString<PodcastTopPodcasts>(raw).items.single()
+        assertEquals(7L, item.podcastId)
+        assertEquals("Tech Talks", item.title)
+        assertEquals("Ana", item.author)
+        assertEquals(150_000L, item.totalMs)
+        assertEquals(2, item.episodesStarted)
+        assertEquals(1, item.episodesCompleted)
+    }
+
+    @Test
+    fun `PodcastTopEpisodes lee el ranking plano del backend`() {
+        val raw =
+            """
+            {"items":[{"episodeId":11,"podcastId":7,"title":"Episodio B",
+             "podcastTitle":"Tech Talks","imageUrl":null,"totalMs":90000,"completed":true}]}
+            """.trimIndent()
+        val item = json.decodeFromString<PodcastTopEpisodes>(raw).items.single()
+        assertEquals(11L, item.episodeId)
+        assertEquals(7L, item.podcastId)
+        assertEquals("Episodio B", item.title)
+        assertEquals("Tech Talks", item.podcastTitle)
+        assertEquals(90_000L, item.totalMs)
+        assertTrue(item.completed)
+    }
+
+    @Test
+    fun `PodcastRecents lee episodeTitle y listenedMs`() {
+        val raw =
+            """
+            {"items":[{"episodeId":12,"podcastId":8,"episodeTitle":"Episodio C",
+             "podcastTitle":"Sin Categoria","imageUrl":null,"startedAt":1700000000000,
+             "endedAt":1700000060000,"listenedMs":20000,"positionSec":20,
+             "durationSec":600,"completed":false}]}
+            """.trimIndent()
+        val item = json.decodeFromString<PodcastRecents>(raw).items.single()
+        assertEquals(12L, item.episodeId)
+        assertEquals("Episodio C", item.episodeTitle)
+        assertEquals(20_000L, item.listenedMs)
+        assertFalse(item.completed)
+    }
+
+    @Test
+    fun `timeline habits y categories del backend se deserializan`() {
+        val timeline =
+            json.decodeFromString<PodcastTimelineDto>(
+                """{"granularity":"day","items":[{"bucket":"2026-11-19","totalMs":60000}]}""",
+            )
+        assertEquals("day", timeline.granularity)
+        assertEquals(60_000L, timeline.items.single().totalMs)
+
+        val habits =
+            json.decodeFromString<PodcastHabits>(
+                """{"items":[{"weekday":1,"hour":12,"totalMs":20000}]}""",
+            )
+        assertEquals(12, habits.items.single().hour)
+
+        val categories =
+            json.decodeFromString<PodcastCategories>(
+                """{"items":[{"category":"Tecnología","totalMs":150000}]}""",
+            )
+        assertEquals("Tecnología", categories.items.single().category)
     }
 }

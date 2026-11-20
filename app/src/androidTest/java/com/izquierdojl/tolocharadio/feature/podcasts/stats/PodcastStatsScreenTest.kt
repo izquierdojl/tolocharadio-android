@@ -35,11 +35,11 @@ class PodcastStatsScreenTest {
     private fun summary() =
         PodcastStatsSummaryDto(
             totalMs = 3_600_000L,
-            podcastCount = 2,
-            startedEpisodes = 3,
-            completedEpisodes = 2,
+            podcastsCount = 2,
+            episodesStarted = 3,
+            episodesCompleted = 2,
             completionRate = 0.66,
-            avgMsPerEpisode = 1_200_000L,
+            averageEpisodeMs = 1_200_000L,
         )
 
     @Test
