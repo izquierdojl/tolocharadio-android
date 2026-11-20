@@ -43,7 +43,7 @@ fun StatsSummaryCards(
 }
 
 @Composable
-private fun SummaryCard(
+internal fun SummaryCard(
     label: String,
     value: String,
     hint: String? = null,

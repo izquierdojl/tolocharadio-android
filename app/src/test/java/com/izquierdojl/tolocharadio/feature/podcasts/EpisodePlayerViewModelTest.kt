@@ -16,6 +16,7 @@ import com.izquierdojl.tolocharadio.feature.player.VoiceBoostController
 import com.izquierdojl.tolocharadio.support.testEpisode
 import com.izquierdojl.tolocharadio.support.testProgress
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
@@ -178,5 +180,43 @@ class EpisodePlayerViewModelTest {
             advanceUntilIdle()
 
             verify { controller.seekTo(0L) }
+        }
+
+    @Test
+    fun `stop limpia el episodio y reporta la duracion capturada`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            state.value =
+                EpisodePlaybackController.State.Active(
+                    episode = episode,
+                    podcast = null,
+                    playing = true,
+                    positionMs = 10_000L,
+                    durationMs = 1_800_000L,
+                    rate = 1f,
+                    local = false,
+                    casting = false,
+                )
+            advanceUntilIdle()
+            every { controller.stop() } returns 10_000L
+
+            viewModel.stop()
+            advanceUntilIdle()
+
+            assertNull(viewModel.ui.value.episode)
+            coVerify {
+                progress.report(
+                    episodeId = 1L,
+                    sessionId = any(),
+                    sequence = any(),
+                    positionSec = 10L,
+                    durationSec = 1_800L,
+                    listenedMs = 10_000L,
+                    completed = null,
+                )
+            }
         }
 }

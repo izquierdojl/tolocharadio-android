@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
+import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -110,5 +111,23 @@ class InstancePrefsTest {
             assertEquals(7, prefs.downloadRetentionDays.first())
             prefs.setDownloadRetentionDays(0)
             assertEquals(0, prefs.downloadRetentionDays.first())
+        }
+
+    @Test
+    fun `podcastStartScreen tiene default HOME y persiste`() =
+        runTest {
+            val prefs = InstancePrefs(FakeDataStore())
+            assertEquals(PodcastStartScreen.HOME, prefs.podcastStartScreen.first())
+            prefs.setPodcastStartScreen(PodcastStartScreen.QUEUE)
+            assertEquals(PodcastStartScreen.QUEUE, prefs.podcastStartScreen.first())
+        }
+
+    @Test
+    fun `podcastStartScreen corrupto cae a HOME`() =
+        runTest {
+            val store = FakeDataStore()
+            store.state.value = mutablePreferencesOf(stringPreferencesKey("podcast_start_screen") to "XXX")
+            val prefs = InstancePrefs(store)
+            assertEquals(PodcastStartScreen.HOME, prefs.podcastStartScreen.first())
         }
 }

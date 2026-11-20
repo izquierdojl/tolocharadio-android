@@ -213,8 +213,16 @@ class EpisodePlaybackController
          * Corte externo (la radio toma el reproductor): finaliza el
          * seguimiento y devuelve la última posición sin tocar el motor.
          */
-        fun stopExternal(): Long {
+        fun stopExternal(): Long = finish(positionMs())
+
+        /** Parada del usuario: detiene el motor activo y finaliza. */
+        fun stop(): Long {
             val position = positionMs()
+            activePlayer().stop()
+            return finish(position)
+        }
+
+        private fun finish(position: Long): Long {
             finalized = true
             stopTicker()
             detach()
@@ -222,12 +230,6 @@ class EpisodePlaybackController
             lastSource = null
             voiceBoost.setEpisodeActive(false)
             return position
-        }
-
-        /** Parada del usuario: detiene el motor activo y finaliza. */
-        fun stop(): Long {
-            activePlayer().stop()
-            return stopExternal()
         }
 
         private fun activePlayer(): Player = cast.activePlayer

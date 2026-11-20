@@ -24,6 +24,28 @@ object Routes {
 
     fun podcastShow(podcastId: Long) = "podcasts/$podcastId"
 
+    /** Gráficas del modo activo (spec 0048, FR-049). */
+    fun statsRoute(podcastMode: Boolean): String = if (podcastMode) PODCAST_STATS else STATS
+
+    /**
+     * Destino al cambiar de modo con una pantalla abierta. `null` si no
+     * hay que navegar. Intercambia las dos rutas de Gráficas y mantiene
+     * el resto del guard de modo (spec 0048, FR-052).
+     */
+    fun routeAfterModeChange(
+        currentRoute: String?,
+        podcastMode: Boolean,
+        podcastsEnabled: Boolean,
+    ): String? =
+        when {
+            currentRoute == null -> null
+            currentRoute == STATS && podcastMode -> PODCAST_STATS
+            currentRoute == PODCAST_STATS && (!podcastsEnabled || !podcastMode) -> STATS
+            currentRoute in PODCAST_ROUTES && (!podcastsEnabled || !podcastMode) -> EXPLORE
+            podcastMode && currentRoute in RADIO_CONTENT_ROUTES -> PODCAST_HOME
+            else -> null
+        }
+
     fun stationDetail(stationId: String) = "station/$stationId"
 
     /** Formulario unificado de servidor (alta si `serverId` es null). */

@@ -2,6 +2,7 @@ package com.izquierdojl.tolocharadio.feature.podcasts.player
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,10 +33,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.izquierdojl.tolocharadio.core.ui.components.TolochaTestTags
+import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
+import com.izquierdojl.tolocharadio.domain.podcasts.remainingMs
+import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerUi
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerViewModel
 
 /**
@@ -50,6 +58,33 @@ fun EpisodeMiniPlayer(
 ) {
     val ui by viewModel.ui.collectAsState()
     val episode = ui.episode ?: return
+    EpisodeMiniPlayerContent(
+        ui = ui,
+        episode = episode,
+        onOpenFullPlayer = onOpenFullPlayer,
+        onToggle = viewModel::toggle,
+        onSkipBack = viewModel::skipBack,
+        onSkipForward = viewModel::skipForward,
+        onStop = viewModel::stop,
+    )
+}
+
+/** Contenido sin Hilt de la tarjeta inferior, testeable y con tiempos. */
+@Composable
+internal fun EpisodeMiniPlayerContent(
+    ui: EpisodePlayerUi,
+    episode: PodcastEpisode,
+    onOpenFullPlayer: () -> Unit,
+    onToggle: () -> Unit,
+    onSkipBack: () -> Unit,
+    onSkipForward: () -> Unit,
+    onStop: () -> Unit,
+) {
+    val remaining = remainingMs(ui.positionMs, ui.durationMs)
+    val timeDescription =
+        remaining?.let {
+            "Transcurrido ${formatPlaybackTime(ui.positionMs)}. Quedan ${formatPlaybackTime(it)}"
+        } ?: "Transcurrido ${formatPlaybackTime(ui.positionMs)}"
     Surface(
         tonalElevation = 3.dp,
         modifier =
@@ -104,7 +139,7 @@ fun EpisodeMiniPlayer(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(
-                    onClick = viewModel::skipBack,
+                    onClick = onSkipBack,
                     modifier = Modifier.size(40.dp),
                 ) {
                     Icon(
@@ -114,7 +149,7 @@ fun EpisodeMiniPlayer(
                     )
                 }
                 FilledIconButton(
-                    onClick = viewModel::toggle,
+                    onClick = onToggle,
                     modifier = Modifier.size(44.dp),
                     colors =
                         IconButtonDefaults.filledIconButtonColors(
@@ -128,7 +163,7 @@ fun EpisodeMiniPlayer(
                     )
                 }
                 IconButton(
-                    onClick = viewModel::skipForward,
+                    onClick = onSkipForward,
                     modifier = Modifier.size(40.dp),
                 ) {
                     Icon(
@@ -139,13 +174,37 @@ fun EpisodeMiniPlayer(
                 }
                 Spacer(Modifier.weight(1f))
                 IconButton(
-                    onClick = viewModel::stop,
+                    onClick = onStop,
                     modifier = Modifier.size(40.dp),
                 ) {
                     Icon(
                         Icons.Filled.Close,
                         contentDescription = "Detener",
                         modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
+                        .testTag(TolochaTestTags.EPISODE_TIME_ROW)
+                        .semantics {
+                            contentDescription = timeDescription
+                        },
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    formatPlaybackTime(ui.positionMs),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                remaining?.let {
+                    Text(
+                        formatRemainingTime(it),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

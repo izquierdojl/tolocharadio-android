@@ -77,6 +77,58 @@ class PodcastCardsTest {
     }
 
     @Test
+    fun laTarjetaDeEpisodioMuestraCorazonLlenoSiEsFavorito() {
+        compose.setContent {
+            TolochaTheme {
+                EpisodeCard(
+                    ui =
+                        EpisodeCardUi(
+                            episode =
+                                PodcastEpisode(
+                                    id = 1L,
+                                    podcastId = 7L,
+                                    title = "Episodio favorito",
+                                    durationSec = 1_800L,
+                                    isFavorite = true,
+                                ),
+                            podcast = summary(7L, "Podcast de prueba"),
+                        ),
+                    onPlayPause = {},
+                    onOpenDetail = {},
+                    onToggleFavorite = {},
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Quitar de favoritos").assertExists()
+    }
+
+    @Test
+    fun laFilaDeEpisodioMuestraCorazonLlenoSiEsFavorito() {
+        compose.setContent {
+            TolochaTheme {
+                EpisodeRow(
+                    episode =
+                        PodcastEpisode(
+                            id = 1L,
+                            podcastId = 7L,
+                            title = "Episodio favorito",
+                            durationSec = 1_800L,
+                            isFavorite = true,
+                        ),
+                    podcast = summary(7L, "Podcast de prueba"),
+                    isPlaying = false,
+                    onPlayPause = {},
+                    onOpenDetail = {},
+                    onToggleFavorite = {},
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Quitar de favoritos").assertExists()
+    }
+
+    @Test
     fun lasTarjetasDeUnaFilaTienenLaMismaAltura() {
         compose.setContent {
             TolochaTheme {

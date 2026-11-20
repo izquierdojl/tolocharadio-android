@@ -80,6 +80,9 @@ fun EpisodeSheet(
 ) {
     val playerUi by player.ui.collectAsState()
     val playingThis = playerUi.episode?.id == episode.id && playerUi.playing
+    val favoritesLoaded by actions.favoritesLoaded.collectAsState()
+    val favoriteIds by actions.favoriteIds.collectAsState()
+    val isFavorite = if (favoritesLoaded) episode.id in favoriteIds else episode.isFavorite
     val downloadRecords by actions.downloadRecords.collectAsState()
     val downloadProgress by actions.downloadProgress.collectAsState()
     val downloadState = downloadUiState(downloadRecords[episode.id], downloadProgress[episode.id])
@@ -150,8 +153,8 @@ fun EpisodeSheet(
                     )
                 }
                 FavoriteButton(
-                    isFavorite = episode.isFavorite,
-                    onToggle = { actions.toggleFavorite(episode) },
+                    isFavorite = isFavorite,
+                    onToggle = { actions.toggleFavorite(episode.id, isFavorite) },
                     modifier = Modifier.size(38.dp),
                 )
                 IconButton(

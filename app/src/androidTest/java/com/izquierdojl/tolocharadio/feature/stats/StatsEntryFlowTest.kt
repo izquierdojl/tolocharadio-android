@@ -55,7 +55,7 @@ class StatsEntryFlowTest {
             }
         }
 
-        compose.onNodeWithText("Tus estadísticas").assertIsDisplayed()
+        compose.onNodeWithText("Tus estadísticas de radio").assertIsDisplayed()
         compose.onNodeWithText("Reintentar").performClick()
         assertTrue(retried)
     }

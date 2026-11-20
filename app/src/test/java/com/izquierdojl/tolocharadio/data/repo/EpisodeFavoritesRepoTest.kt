@@ -11,6 +11,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Response
@@ -28,6 +29,17 @@ class EpisodeFavoritesRepoTest {
             val r = repo.list()
             assertTrue(r is ApiResult.Ok)
             assertEquals(setOf(11L), repo.favoriteIds.value)
+            assertTrue(repo.loaded.value)
+        }
+
+    @Test
+    fun `loaded permanece false si falla el listado`() =
+        runTest {
+            coEvery { api.favorites() } returns
+                Response.error(500, """{"error":{"code":"UNAVAILABLE","message":"x","status":500}}""".toResponseBody())
+            val r = repo.list()
+            assertTrue(r is ApiResult.Err)
+            assertFalse(repo.loaded.value)
         }
 
     @Test
@@ -38,6 +50,7 @@ class EpisodeFavoritesRepoTest {
             val r = repo.add(11L)
             assertTrue(r is ApiResult.Ok)
             assertEquals(setOf(11L), repo.favoriteIds.value)
+            assertTrue(repo.loaded.value)
         }
 
     @Test
@@ -47,5 +60,6 @@ class EpisodeFavoritesRepoTest {
                 Response.error(404, """{"error":{"code":"NOT_FOUND","message":"x","status":404}}""".toResponseBody())
             val r = repo.remove(11L)
             assertTrue(r is ApiResult.Ok)
+            assertTrue(repo.loaded.value)
         }
 }

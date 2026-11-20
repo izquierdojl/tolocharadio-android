@@ -26,6 +26,11 @@ class EpisodeFavoritesRepo
         private val _favoriteIds = MutableStateFlow<Set<Long>>(emptySet())
         val favoriteIds: StateFlow<Set<Long>> = _favoriteIds.asStateFlow()
 
+        private val _loaded = MutableStateFlow(false)
+
+        /** `true` cuando el servidor ya confirmó la lista o una mutación. */
+        val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
+
         suspend fun list(): ApiResult<List<PodcastEpisode>> {
             return when (val r = safeCall { api.favorites() }) {
                 is ApiResult.Ok -> {
@@ -41,6 +46,7 @@ class EpisodeFavoritesRepo
                 is ApiResult.Ok -> {
                     _favoriteIds.value = _favoriteIds.value + episodeId
                     _favorites.value = _favorites.value.filterNot { it.id == episodeId } + r.value.episode
+                    _loaded.value = true
                     ApiResult.Ok(r.value.episode)
                 }
                 is ApiResult.Err -> r
@@ -85,10 +91,12 @@ class EpisodeFavoritesRepo
         private fun publish(items: List<PodcastEpisode>) {
             _favorites.value = items
             _favoriteIds.value = items.map { it.id }.toSet()
+            _loaded.value = true
         }
 
         private fun drop(episodeId: Long) {
             _favoriteIds.value = _favoriteIds.value - episodeId
             _favorites.value = _favorites.value.filterNot { it.id == episodeId }
+            _loaded.value = true
         }
     }

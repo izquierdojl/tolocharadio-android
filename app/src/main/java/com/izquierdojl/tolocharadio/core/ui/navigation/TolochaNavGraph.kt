@@ -103,6 +103,7 @@ fun TolochaNavGraph(
     startupGate: StartupGate = StartupGate.NoServers,
     startupServerId: String? = null,
     startScreen: StartScreen = StartScreen.EXPLORE,
+    podcastStartScreen: PodcastStartScreen = PodcastStartScreen.HOME,
     defaultSection: ContentMode = ContentMode.RADIO,
 ) {
     val navController = rememberNavController()
@@ -164,6 +165,7 @@ fun TolochaNavGraph(
         podcastsEnabled = modeUi.podcastsEnabled,
         podcastMode = podcastMode,
         startScreen = startScreen,
+        podcastStartScreen = podcastStartScreen,
         defaultSection = defaultSection,
         startupGate = startupGate,
     )
@@ -324,7 +326,7 @@ fun TolochaNavGraph(
                     )
                 }
                 composable(Routes.SETTINGS) {
-                    SettingsScreen(onStats = { navController.navigate(Routes.STATS) })
+                    SettingsScreen(onStats = { navController.navigate(Routes.statsRoute(podcastMode)) })
                 }
                 composable(Routes.STATS) {
                     StatsScreen(onEditServer = editActiveServer)
@@ -365,13 +367,16 @@ fun TolochaNavGraph(
                     )
                 }
                 composable(Routes.PODCAST_QUEUE) {
-                    QueueScreen(snackbar = snackbar)
+                    QueueScreen(
+                        snackbar = snackbar,
+                        onOpenFullPlayer = { episodeFullPlayer = true },
+                    )
                 }
                 composable(Routes.PODCAST_FAVORITES) {
                     PodcastFavoritesScreen(snackbar = snackbar)
                 }
                 composable(Routes.PODCAST_STATS) {
-                    PodcastStatsScreen()
+                    PodcastStatsScreen(onEditServer = editActiveServer)
                 }
                 composable(
                     route = Routes.PODCAST_SHOW,
@@ -513,27 +518,26 @@ private fun NotificationRouteEffects(
  * podcasts o fuera de modo a la pantalla Radio vigente, sin errores.
  */
 @Composable
+@Suppress("LongParameterList")
 private fun PodcastRouteEffects(
     navController: androidx.navigation.NavHostController,
     currentRoute: String?,
     podcastsEnabled: Boolean,
     podcastMode: Boolean,
     startScreen: StartScreen,
+    podcastStartScreen: PodcastStartScreen,
     defaultSection: ContentMode,
     startupGate: StartupGate,
 ) {
-    LaunchedEffect(startScreen, defaultSection, startupGate, podcastsEnabled) {
+    LaunchedEffect(startScreen, defaultSection, podcastStartScreen, startupGate, podcastsEnabled) {
         if (currentRoute != Routes.HOME) return@LaunchedEffect
         val target =
-            if (defaultSection == ContentMode.PODCAST && podcastsEnabled) {
-                Routes.PODCAST_HOME
-            } else {
-                when (startScreen) {
-                    StartScreen.FAVORITES -> Routes.FAVORITES
-                    StartScreen.HISTORY -> Routes.HISTORY
-                    StartScreen.EXPLORE -> Routes.EXPLORE
-                }
-            }
+            resolveStartDestination(
+                startScreen = startScreen,
+                defaultSection = defaultSection,
+                podcastStartScreen = podcastStartScreen,
+                podcastsEnabled = podcastsEnabled,
+            )
         navController.navigate(target) {
             popUpTo(Routes.HOME) { inclusive = true }
             launchSingleTop = true
@@ -541,12 +545,7 @@ private fun PodcastRouteEffects(
     }
     LaunchedEffect(currentRoute, podcastMode, podcastsEnabled) {
         val route = currentRoute ?: return@LaunchedEffect
-        val target =
-            when {
-                route in PODCAST_ROUTES && (!podcastsEnabled || !podcastMode) -> Routes.EXPLORE
-                podcastMode && route in RADIO_CONTENT_ROUTES -> Routes.PODCAST_HOME
-                else -> return@LaunchedEffect
-            }
+        val target = Routes.routeAfterModeChange(route, podcastMode, podcastsEnabled) ?: return@LaunchedEffect
         navController.navigate(target) {
             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
             launchSingleTop = true

@@ -36,6 +36,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -43,7 +44,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.izquierdojl.tolocharadio.core.ui.components.AppInfoDialog
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
+import com.izquierdojl.tolocharadio.core.ui.components.TolochaTestTags
 import com.izquierdojl.tolocharadio.core.ui.navigation.ContentMode
+import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
@@ -75,6 +78,7 @@ fun SettingsScreen(
                 SettingsActions(
                     onThemeModeChange = viewModel::onThemeModeChange,
                     onStartScreenChange = viewModel::onStartScreenChange,
+                    onPodcastStartScreenChange = viewModel::onPodcastStartScreenChange,
                     onDefaultSectionChange = viewModel::onDefaultSectionChange,
                     onBufferProfileChange = viewModel::onBufferProfileChange,
                     onResumeOnConnectivityChange = viewModel::onResumeOnConnectivityChange,
@@ -100,6 +104,7 @@ fun SettingsScreen(
 internal data class SettingsActions(
     val onThemeModeChange: (ThemeMode) -> Unit = {},
     val onStartScreenChange: (StartScreen) -> Unit = {},
+    val onPodcastStartScreenChange: (PodcastStartScreen) -> Unit = {},
     val onDefaultSectionChange: (ContentMode) -> Unit = {},
     val onBufferProfileChange: (BufferProfile) -> Unit = {},
     val onResumeOnConnectivityChange: (Boolean) -> Unit = {},
@@ -153,7 +158,7 @@ internal fun SettingsContent(
         }
 
         Spacer(Modifier.height(16.dp))
-        Text("Pantalla de arranque", style = MaterialTheme.typography.titleSmall)
+        Text("Pantalla de arranque en radio", style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(4.dp))
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             StartScreen.entries.forEachIndexed { index, screen ->
@@ -180,6 +185,19 @@ internal fun SettingsContent(
         Spacer(Modifier.height(4.dp))
         Text(
             "Se abrirá automáticamente al arrancar la app con un servidor configurado.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+
+        Spacer(Modifier.height(16.dp))
+        Text("Pantalla de arranque en podcast", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(4.dp))
+        PodcastStartSettings(
+            current = ui.podcastStartScreen,
+            onChange = actions.onPodcastStartScreenChange,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Se aplica al arrancar en modo Podcasts con un servidor que ofrece podcasts.",
             style = MaterialTheme.typography.bodySmall,
         )
 
@@ -237,6 +255,50 @@ internal fun SettingsContent(
             onClick = actions.onAbout,
         )
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+/**
+ * Selector de pantalla de arranque de podcast (spec 0048, US5).
+ * Desplegable para que quepan las cinco etiquetas.
+ */
+@Composable
+internal fun PodcastStartSettings(
+    current: PodcastStartScreen,
+    onChange: (PodcastStartScreen) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxWidth()) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(TolochaTestTags.PODCAST_START_SCREEN)
+                    .semantics { contentDescription = "Pantalla de arranque de podcast: ${current.label()}" }
+                    .clickable { expanded = true }
+                    .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(current.label(), style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "Pantalla que se abre al iniciar en Podcasts.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Icon(Icons.Default.ExpandMore, contentDescription = null)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            PodcastStartScreen.entries.forEach { screen ->
+                DropdownMenuItem(
+                    text = { Text(screen.label()) },
+                    onClick = {
+                        expanded = false
+                        onChange(screen)
+                    },
+                )
+            }
+        }
     }
 }
 

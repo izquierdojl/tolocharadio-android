@@ -3,6 +3,7 @@ package com.izquierdojl.tolocharadio.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.izquierdojl.tolocharadio.core.ui.navigation.ContentMode
+import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.core.util.AppBuildInfo
@@ -26,6 +27,7 @@ import javax.inject.Inject
 data class SettingsUi(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val startScreen: StartScreen = StartScreen.EXPLORE,
+    val podcastStartScreen: PodcastStartScreen = PodcastStartScreen.HOME,
     val defaultSection: ContentMode = ContentMode.RADIO,
     val bufferProfile: BufferProfile = BufferProfile.DEFAULT,
     val resumeOnConnectivity: Boolean = true,
@@ -58,6 +60,7 @@ sealed interface AppInfoUiState {
 
 /** Configuración: tema claro/oscuro y pantalla de arranque (todo local, sin sesión). */
 @HiltViewModel
+@Suppress("TooManyFunctions")
 class SettingsViewModel
     @Inject
     constructor(
@@ -85,6 +88,11 @@ class SettingsViewModel
             viewModelScope.launch {
                 prefs.startScreen.collect { screen ->
                     _ui.value = _ui.value.copy(startScreen = screen)
+                }
+            }
+            viewModelScope.launch {
+                prefs.podcastStartScreen.collect { screen ->
+                    _ui.value = _ui.value.copy(podcastStartScreen = screen)
                 }
             }
             viewModelScope.launch {
@@ -125,6 +133,12 @@ class SettingsViewModel
         fun onStartScreenChange(screen: StartScreen) {
             _ui.value = _ui.value.copy(startScreen = screen)
             viewModelScope.launch { prefs.setStartScreen(screen) }
+        }
+
+        /** Pantalla de arranque de podcast (spec 0048, US5). */
+        fun onPodcastStartScreenChange(screen: PodcastStartScreen) {
+            _ui.value = _ui.value.copy(podcastStartScreen = screen)
+            viewModelScope.launch { prefs.setPodcastStartScreen(screen) }
         }
 
         /** Sección inicial Radio|Podcasts del arranque (spec 0046, FR-003). */

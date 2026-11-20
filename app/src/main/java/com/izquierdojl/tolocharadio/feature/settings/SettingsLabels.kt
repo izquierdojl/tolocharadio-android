@@ -1,6 +1,7 @@
 package com.izquierdojl.tolocharadio.feature.settings
 
 import com.izquierdojl.tolocharadio.core.ui.navigation.ContentMode
+import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
@@ -19,6 +20,16 @@ fun StartScreen.label(): String =
         StartScreen.EXPLORE -> "Explorar"
         StartScreen.FAVORITES -> "Favoritos"
         StartScreen.HISTORY -> "Historial"
+    }
+
+/** Etiqueta de la pantalla de arranque de podcast (spec 0048, US5). */
+fun PodcastStartScreen.label(): String =
+    when (this) {
+        PodcastStartScreen.HOME -> "Inicio"
+        PodcastStartScreen.DISCOVER -> "Descubrir"
+        PodcastStartScreen.SUBSCRIPTIONS -> "Suscripciones"
+        PodcastStartScreen.QUEUE -> "Cola"
+        PodcastStartScreen.FAVORITES -> "Favoritos"
     }
 
 /** Etiqueta legible de la sección inicial para el diálogo (spec 0046). */
