@@ -157,6 +157,7 @@ Instalación rápida:
 | Insignia | `QueueBadgeTest`, `QueueBadgeViewModelTest` |
 | Descarga | `DownloadsRepoTest`, `DownloadProgressButtonTest` |
 | Tarjetas | `PodcastCardsTest` |
+| Búsqueda en Suscripciones | `SubscriptionSearchTest`, `SubscriptionSearchUseCaseTest`, `SubscriptionsViewModelTest`, `SubscriptionSearchBarTest`, `SubscriptionSearchResultsTest` |
 
 ---
 
@@ -170,6 +171,10 @@ Instalación rápida:
 | La insignia no coincide | Abre la cola para forzar la recarga; revisa que el episodio en curso esté excluido |
 | El porcentaje no avanza | El `DownloadManager` puede no informar el total; debe mostrarse indeterminado, no un 0 % fijo |
 | Las tarjetas siguen desiguales | Comprueba que el título usa `minLines = 2` y que la fila de acciones tiene altura fija |
+| El filtro de podcasts no ignora tildes | Verifica `normalizeSearchText` (NFD + marcas + minúsculas) y que el filtro se aplica tras ordenar |
+| La búsqueda de episodios devuelve podcasts no suscritos | El endpoint debe limitarse a las suscripciones de la cuenta; revisa la sesión y la respuesta del servidor |
+| Atrás sale de la pantalla con resultados visibles | Comprueba que `BackHandler` está activo solo con `showResults` y que el teclado estaba cerrado |
+| El buscador aparece sin suscripciones | Debe mostrarse solo con `SubscriptionsUiState.Content`; sin suscripciones prevalece el estado vacío |
 
 ### 3.8 Retención de descargas (extensión 2026-11-19)
 
@@ -178,3 +183,33 @@ Instalación rápida:
 3. Con una descarga completada hace más de 30 días, abre Podcasts o cambia la retención.
 4. **Esperado**: la descarga antigua desaparece; las recientes y el episodio en curso se conservan.
 5. Elige «Nunca» y comprueba que no se borra ninguna descarga automáticamente.
+
+### 3.9 Búsqueda en Suscripciones (extensión 2026-11-21)
+
+**Datos de prueba**: al menos 3 suscripciones; una con un título con tilde o mayúsculas; un episodio completado y otro pendiente; más de 20 coincidencias para un término común.
+
+1. Abre Suscripciones: el buscador está oculto y hay un botón de búsqueda a la izquierda del orden. Púlsalo para desplegar el campo y los ámbitos.
+2. Con «Podcasts» activo, escribe parte de un nombre con otra capitalización o sin tilde.
+3. **Esperado**: la lista se filtra al instante, sin red, y conserva el orden elegido.
+4. Escribe un término sin coincidencias.
+5. **Esperado**: mensaje «No hay suscripciones que coincidan con «término»» y el icono de limpiar recupera la lista.
+6. Cambia a «Episodios» y escribe un término que solo aparezca en el título de un episodio suscrito.
+7. **Esperado**: no se consulta hasta confirmar; al confirmar aparecen solo episodios de las suscripciones, con programa, fecha, duración y estado; los completados también aparecen.
+8. Si hay más de 20, pulsa «Cargar más».
+9. **Esperado**: se añaden resultados sin repetir ni perder los anteriores.
+10. Abre un resultado, reprodúcelo, marca favorito, añade a la cola y descarga.
+11. **Esperado**: las acciones funcionan igual que en Inicio/Favoritos y el estado se refleja en la fila.
+12. Cambia a «Podcasts».
+13. **Esperado**: los resultados desaparecen, el término se conserva y la lista se filtra con él.
+14. Vuelve a «Episodios», busca de nuevo y pulsa Atrás con resultados visibles y el teclado cerrado.
+15. **Esperado**: vuelve a la lista con «Podcasts» activo y el término conservado; un segundo Atrás sale de la pantalla. Con el teclado abierto, el primer Atrás solo lo oculta.
+16. Activa el modo avión y busca episodios.
+17. **Esperado**: error accionable, término conservado y «Reintentar» disponible.
+18. Cancela la suscripción de un podcast con resultados visibles.
+19. **Esperado**: sus episodios desaparecen y la lista refleja la baja.
+20. Con una cuenta sin suscripciones, abre Suscripciones.
+21. **Esperado**: no hay buscador; solo el estado vacío con «Descubrir podcasts».
+22. Activa TalkBack y sube la letra al 200 %.
+23. **Esperado**: el campo, el ámbito activo y los cambios de resultados se anuncian; no hay solapamientos y las acciones conservan 48 dp.
+24. Con un término activo, vuelve a pulsar el botón de búsqueda.
+25. **Esperado**: los controles se ocultan, el término y los resultados se limpian y la lista vuelve completa.

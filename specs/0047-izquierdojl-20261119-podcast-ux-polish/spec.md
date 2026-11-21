@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-19
 
-**Status**: Done (2026-11-19; validado en emulador, incluida la revisión manual y TalkBack)
+**Status**: Done (2026-11-19; validado en emulador, incluida la revisión manual y TalkBack); extensión 2026-11-21 cerrada y verificada manualmente en emulador (2026-11-21)
 
 **Input**: User description: "Vamos a planificar una spec con las siguientes mejoras
 
@@ -24,6 +24,14 @@
 - Q: ¿Dónde debe aplicarse el potenciador de voz? → A: Solo episodios de podcast; no se aplica a radio en directo ni a Chromecast.
 - Q: ¿Qué debe ocupar el hueco izquierdo de la cabecera, donde hoy está el logotipo "TolochaRadio"? → A: Se mantiene el logotipo completo y se añade la hamburguesa; en pantallas estrechas el logotipo se reduce hasta el emblema.
 - Q: ¿La insignia de la cola debe incluir el episodio que ya está sonando cuando forma parte de la cola? → A: Solo cuenta los pendientes, sin el episodio en curso.
+
+### Session 2026-11-21
+
+- Q: Cuando el ámbito «Episodios» muestra resultados, ¿estos sustituyen a la lista de suscripciones o se muestran junto a ella? → A: Sustituyen a la lista mientras la búsqueda está activa; al vaciar el término o cambiar de ámbito vuelve la lista.
+- Q: Al cambiar entre «Podcasts» y «Episodios», ¿se conserva el término escrito y se aplica al nuevo ámbito, o se borra? → A: Se conserva un único término compartido y se aplica al nuevo ámbito; «Podcasts» filtra al instante y «Episodios» espera a confirmar.
+- Q: Con resultados de episodios visibles, ¿el botón Atrás debe volver primero a la lista de suscripciones o salir directamente de la pantalla? → A: Atrás vuelve a la lista con el ámbito «Podcasts» y el término conservado; un segundo Atrás sale. Con el teclado abierto, el primer Atrás solo lo oculta.
+- Q: ¿La búsqueda de episodios debe incluir también los episodios ya completados o solo los pendientes y en curso? → A: Incluye todos los episodios de las suscripciones, completados incluidos, mostrando su estado de escucha.
+- Q: Cuando la persona no tiene ninguna suscripción, ¿debe ver el buscador en la pantalla de Suscripciones o solo el estado vacío con la acción de descubrir? → A: Sin suscripciones no se muestra el buscador; se mantiene el estado vacío con la acción de descubrir.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -156,6 +164,31 @@ Las tarjetas en cuadrícula de programas y de episodios ganan un poco de altura 
 
 ---
 
+### User Story 8 - Buscar en la pantalla de Suscripciones (Priority: P2)
+
+La persona usuaria, desde la pantalla de Suscripciones y con al menos una suscripción, dispone de un buscador con dos ámbitos: «Podcasts» y «Episodios». Los controles de búsqueda están ocultos por defecto y se despliegan con el botón de búsqueda de la cabecera, situado a la izquierda del orden de suscripciones. En «Podcasts» filtra al escribir entre los programas que sigue por nombre. En «Episodios» busca por título entre los episodios de sus suscripciones y ve los resultados con el programa al que pertenecen, pudiendo abrirlos y usar sus acciones habituales. La búsqueda sigue el mismo modelo que la versión web: filtrar podcasts por nombre y buscar episodios por título dentro de las suscripciones.
+
+**Why this priority**: Con muchas suscripciones, encontrar un programa o un episodio concreto obliga a recorrer la lista entera o a acudir al buscador del directorio, que no se limita a lo que ya sigue. El servidor ya ofrece esta búsqueda a la web; llevarla a la app cierra una brecha de paridad y ahorra tiempo sin bloquear la escucha.
+
+**Independent Test**: Con varias suscripciones, escribir parte del nombre de una en «Podcasts» y comprobar que la lista se reduce al instante; cambiar a «Episodios», buscar un término que solo aparezca en el título de un episodio suscrito y comprobar que aparece con su programa; buscar un término sin coincidencias y comprobar el mensaje; borrar el término y comprobar que vuelve la lista completa.
+
+**Acceptance Scenarios**:
+
+1. **Given** la pantalla Suscripciones con varias suscripciones, **When** la persona escribe parte del nombre de un programa con el ámbito «Podcasts» activo, **Then** la lista se reduce al instante a los programas cuyo nombre contiene el término, sin distinguir mayúsculas ni tildes, y se conserva el orden elegido.
+2. **Given** el ámbito «Podcasts» con un término que no coincide con ninguna suscripción, **When** la persona mira la lista, **Then** ve un mensaje en español con el término buscado y puede borrarlo para recuperar la lista completa.
+3. **Given** el ámbito «Episodios», **When** la persona escribe un término y confirma la búsqueda, **Then** los resultados sustituyen a la lista de suscripciones y muestran episodios de sus suscripciones —incluidos los completados— cuyo título contiene el término, con el nombre del programa, la fecha, la duración y su estado de escucha, ordenados del más reciente al más antiguo.
+4. **Given** una búsqueda de episodios con más coincidencias que las mostradas, **When** la persona llega al final de los resultados, **Then** puede cargar más sin repetir ni perder los ya visibles.
+5. **Given** los resultados de episodios, **When** la persona abre uno, **Then** accede a su detalle y sus acciones de reproducir, favorito, cola y descarga funcionan con el mismo comportamiento y estado que en el resto de la app.
+6. **Given** una búsqueda de episodios activa, **When** la persona cambia al ámbito «Podcasts», **Then** los resultados desaparecen, el término se conserva y la lista de suscripciones se filtra al instante con ese término.
+7. **Given** una búsqueda de episodios activa, **When** la persona cancela la suscripción de un podcast cuyos episodios aparecen, **Then** esos episodios desaparecen de los resultados y la lista refleja la baja.
+8. **Given** una búsqueda de episodios sin coincidencias o con error de red, **When** termina la consulta, **Then** se informa en español, se conserva el término, se puede reintentar si hubo error y no se muestran resultados de búsquedas anteriores.
+9. **Given** la pantalla con lector de pantalla activo, **When** la persona recorre el buscador, **Then** el campo y la alternancia de ámbito tienen etiquetas comprensibles, el ámbito activo se anuncia como seleccionado y el cambio de resultados se comunica sin perder el foco.
+10. **Given** resultados de episodios visibles con el teclado cerrado, **When** la persona pulsa Atrás, **Then** vuelve a la lista de suscripciones con el ámbito «Podcasts» activo y el término conservado, y un segundo Atrás sale de la pantalla.
+11. **Given** una cuenta sin suscripciones, **When** la persona abre Suscripciones, **Then** no ve el buscador y sí el estado vacío con la acción de descubrir podcasts.
+12. **Given** la pantalla Suscripciones con suscripciones, **When** la persona mira la cabecera, **Then** los controles de búsqueda están ocultos y ve un botón de búsqueda a la izquierda del orden; al pulsarlo se despliegan el campo y los ámbitos, y al volver a pulsarlo se ocultan y la lista vuelve completa.
+
+---
+
 ### Edge Cases
 
 - Episodio de la cola cuyo progreso no está disponible en ese momento: se empieza desde el principio sin bloquear la cola ni mostrar un error técnico.
@@ -174,7 +207,15 @@ Las tarjetas en cuadrícula de programas y de episodios ganan un poco de altura 
 - Descarga en curso al girar la pantalla, cambiar de pantalla o volver del segundo plano: el progreso no se reinicia ni se duplica la descarga.
 - Descarga fallida o cancelada, o sin espacio: se vuelve al estado descargable con aviso y sin dejar ficheros corruptos.
 - Tarjetas con títulos muy largos, caracteres especiales o tamaño de letra máximo: se recortan con puntos suspensivos solo tras dos líneas y nunca tapan las acciones.
-- Servidor sin podcasts: no hay barra de podcast, ni insignia de cola, ni controles de episodio; la cabecera y la barra de radio siguen completas.
+- Término de búsqueda compuesto solo por espacios: se trata como vacío; no se consulta ni se muestra el mensaje de «sin resultados».
+- Ocultar el buscador con un término o resultados activos: se limpian el término y los resultados y se vuelve a la lista completa, sin dejar la lista filtrada sin control visible.
+- Búsqueda de episodios con un término muy largo o con caracteres especiales: se envía tal cual, sin romper la consulta; si no hay coincidencias se muestra el mensaje habitual.
+- Cambio rápido de ámbito o de término con una búsqueda en curso: solo la última consulta puede mostrar resultados; las respuestas tardías se descartan.
+- Rotación, cambio de tema o vuelta desde segundo plano durante la búsqueda: se conservan el término, el ámbito y los resultados visibles sin repetir la consulta de forma innecesaria.
+- Cancelación de la suscripción del único podcast que coincidía con la búsqueda: sus episodios desaparecen de los resultados y la lista de suscripciones refleja la baja.
+- Sin conexión al buscar episodios: se muestra un error accionable y se conserva el término; el filtrado local de podcasts sigue funcionando con la lista ya cargada.
+- Sin ninguna suscripción: no se muestra el buscador; se mantiene el estado vacío con la acción de descubrir podcasts.
+- Servidor sin podcasts: no hay barra de podcast, ni insignia de cola, ni controles de episodio, ni buscador de suscripciones; la cabecera y la barra de radio siguen completas.
 
 ## Requirements *(mandatory)*
 
@@ -268,6 +309,7 @@ Las tarjetas en cuadrícula de programas y de episodios ganan un poco de altura 
 - **Preferencia de potenciador de voz**: estado encendido/apagado recordado por la persona usuaria para la reproducción local de episodios.
 - **Descarga de episodio**: transferencia del archivo a la ubicación controlada de Descargas, con estado (en curso, completada, fallida) y porcentaje de avance cuando se conoce el tamaño.
 - **Tarjeta de contenido**: representación en cuadrícula de un programa o de un episodio, con portada, título, metadatos, acciones y altura uniforme por fila.
+- **Resultado de búsqueda de episodios**: episodio de una suscripción que coincide por título, acompañado de su programa, fecha, duración y estado de escucha/favorito para ofrecer las mismas acciones que en el resto de la app.
 
 ## Success Criteria *(mandatory)*
 
@@ -282,7 +324,7 @@ Las tarjetas en cuadrícula de programas y de episodios ganan un poco de altura 
 - **SC-007**: La insignia de cola coincide con el total de pendientes mostrado en la pantalla de cola en el 100 % de las comprobaciones, se actualiza en menos de 1 segundo y desaparece con la cola vacía.
 - **SC-008**: Tras pulsar descargar, el porcentaje es visible en menos de 1 segundo, se actualiza al menos cada 2 segundos, se mantiene dentro de 0–100 % y nunca se inicia una descarga duplicada por pulsaciones repetidas.
 - **SC-009**: Las tarjetas muestran el título completo hasta dos líneas con el tamaño de letra por defecto y no presentan solapamientos con las acciones con el tamaño de letra al 200 %.
-- **SC-010**: Las siete mejoras se completan sin cambios en el contrato del servidor ni en el flujo de sesión, y sin regresiones en reproducción, cola, descargas, favoritos y navegación existentes.
+- **SC-010**: Las mejoras se completan sin cambios en el contrato del servidor ni en el flujo de sesión, y sin regresiones en reproducción, cola, descargas, favoritos y navegación existentes.
 
 ## Assumptions
 
@@ -298,6 +340,13 @@ Las tarjetas en cuadrícula de programas y de episodios ganan un poco de altura 
 - La reanudación se aplica también cuando el episodio arranca solo al terminar el anterior de la cola, para que el comportamiento sea el mismo se elija a mano o no.
 - La descarga sigue usando la transferencia gestionada por el sistema y el indicador de descargas disponibles ya existente; el porcentaje se obtiene de esa misma transferencia.
 - No se modifican el contrato del servidor, el modelo de sesión ni las credenciales.
+- Los ámbitos de búsqueda siguen el modelo de la web: «Podcasts» filtra en el dispositivo mientras se escribe y «Episodios» consulta al servidor al confirmar; los episodios se buscan por título, no por descripción, notas ni transcripción.
+- El servidor ya ofrece la búsqueda de episodios por título limitada a las suscripciones de la persona y la web ya la consume; esta extensión no cambia el contrato ni añade credenciales.
+- La búsqueda de episodios se muestra por páginas con una acción de «Cargar más» mientras el servidor indique que hay más; no hay historial de búsquedas, sugerencias ni búsqueda incremental en ese ámbito.
+- «Podcasts» filtra sobre la lista de suscripciones ya cargada; si esa lista no se ha podido cargar, se mantienen el error y el reintento existentes.
+- Los controles de búsqueda están colapsados por defecto para no ocupar espacio; el botón de búsqueda se sitúa a la izquierda del orden de suscripciones y, al ocultarlos, se limpia el término para no dejar la lista filtrada sin control visible.
+- La búsqueda de episodios no filtra por estado de escucha: aparecen pendientes, en curso y completados, con su estado visible.
+- Fuera de alcance de la búsqueda en Suscripciones: buscar dentro de descripciones o notas, la búsqueda global del directorio (que sigue en Descubrir), los filtros por fecha o estado y una ordenación de resultados distinta de la fecha de publicación.
 - Fuera de alcance: eliminación de silencios, ecualizador manual, cambio de los intervalos de salto, potenciador en radio o Cast, rediseño completo de la navegación y cambios en el modo Radio más allá de la barra inferior y la cabecera compartidas.
 
 ## Dependencies
@@ -305,6 +354,7 @@ Las tarjetas en cuadrícula de programas y de episodios ganan un poco de altura 
 - **Spec 0046 — Modo Podcast**: la cola, las tarjetas, el reproductor de episodios, las descargas y la cabecera nacen de esa spec; esta los ajusta.
 - **Spec 0042/0044 — Motor y recuperación de reproducción**: la notificación y el estado del reproductor son la base de los controles de transporte.
 - **Spec 0035/0037 — Volumen y Cast**: el potenciador de voz debe convivir con el control de volumen y no aplicarse a la sesión remota.
+- **API de podcasts del servidor**: la búsqueda de episodios por título dentro de las suscripciones ya existe y la web la consume; esta extensión la incorpora a la app sin cambios de contrato.
 - **Constitución (v3.1.0)**: la guía de navegación ya reserva la barra inferior a contenido y sitúa Configuración y Servidores en el menú de hamburguesa; la enmienda está aplicada y no se requiere excepción.
 
 ## Extensión 2026-11-19 — Limpieza automática de descargas
@@ -317,3 +367,30 @@ Las tarjetas en cuadrícula de programas y de episodios ganan un poco de altura 
 - **SC-011**: Con retención de 30 días, el 100 % de las descargas completadas hace más de 30 días desaparecen en la siguiente apertura de Podcasts, mientras las recientes y el episodio en curso permanecen.
 
 **Supuestos de la extensión**: la antigüedad se mide desde la finalización de la descarga; la limpieza se ejecuta al abrir las pantallas de Podcasts y al cambiar el ajuste, sin WorkManager (YAGNI); el episodio en curso se conserva aunque supere el umbral.
+
+## Extensión 2026-11-21 — Búsqueda en Suscripciones
+
+Desarrolla la User Story 8. La búsqueda de podcasts se resuelve sobre la lista ya cargada; la de episodios usa la capacidad del servidor que ya consume la web, limitada a las suscripciones de la persona y sin cambios de contrato.
+
+### Functional Requirements
+
+- **FR-059**: Cuando exista al menos una suscripción, la pantalla de Suscripciones MUST mantener los controles de búsqueda ocultos por defecto y MUST ofrecer un botón de búsqueda a la izquierda del orden de suscripciones para mostrarlos u ocultarlos; al ocultarlos MUST limpiarse el término y los resultados y MUST volver la lista completa. Sin suscripciones MUST mostrar solo el estado vacío con la acción de descubrir, sin buscador.
+- **FR-060**: En el ámbito Podcasts, el sistema MUST filtrar la lista al escribir por nombre del programa con coincidencia parcial, sin distinguir mayúsculas ni tildes, conservando el orden activo y sin consultar al servidor.
+- **FR-061**: En el ámbito Episodios, al confirmar la búsqueda el sistema MUST mostrar solo episodios de las suscripciones de la persona cuyo título contenga el término —incluidos los completados, sin excluir por estado—, con programa, fecha, duración y estado de escucha, ordenados del más reciente al más antiguo.
+- **FR-062**: Los resultados de episodios MUST permitir cargar más coincidencias mientras existan, sin repetir ni perder las ya mostradas.
+- **FR-063**: Los resultados de episodios MUST permitir abrir el detalle y MUST ofrecer reproducir, favorito, cola y descarga con el mismo comportamiento y estado que en el resto de la app.
+- **FR-064**: Mientras haya resultados de episodios, estos MUST sustituir a la lista de suscripciones —sin mostrarse ambas a la vez—; cambiar de ámbito o vaciar el término MUST abandonar los resultados y volver a la lista, y una respuesta de una búsqueda anterior MUST NOT sustituir a la vigente.
+- **FR-065**: Una búsqueda de episodios sin coincidencias MUST mostrar un mensaje en español con el término; un error MUST informar de forma accionable, conservar el término y permitir reintentar.
+- **FR-066**: El término MUST ignorar espacios sobrantes; un término vacío o compuesto solo por espacios MUST NOT lanzar búsquedas ni mostrar resultados.
+- **FR-067**: Tras cancelar una suscripción, sus episodios MUST desaparecer de los resultados y de la lista, sin mostrar datos obsoletos.
+- **FR-068**: El buscador MUST ser accesible con lector de pantalla: campo con etiqueta en español, ámbito activo anunciado como seleccionado, resultados actualizados comunicados, áreas táctiles de al menos 48 dp y adaptación al tamaño de letra hasta el 200 % (SC-003) sin solapamientos.
+- **FR-069**: La búsqueda MUST NOT requerir cambios en el contrato del servidor ni credenciales nuevas, MUST usar la búsqueda de episodios dentro de las suscripciones que el servidor ya ofrece a la web, y MUST NOT mostrarse en servidores sin podcasts.
+- **FR-070**: El término MUST ser único y conservarse al cambiar de ámbito; al volver a Podcasts, la lista MUST filtrarse con ese término sin exigir volver a escribirlo.
+- **FR-071**: Con resultados de episodios visibles, Atrás MUST volver a la lista de suscripciones con el ámbito «Podcasts» activo y el término conservado, sin relanzar la búsqueda; solo desde la lista MUST salir de la pantalla. Con el teclado abierto, el primer Atrás MUST limitarse a ocultarlo.
+
+### Success Criteria
+
+- **SC-012**: Con al menos 50 suscripciones, el filtrado por nombre en el ámbito Podcasts responde en menos de 300 ms sin esperar a la red; la primera página de resultados de episodios aparece en menos de 2 s con una conexión habitual.
+- **SC-013**: El 100 % de los resultados de episodios pertenece a podcasts suscritos, el 100 % de los términos sin coincidencia muestra un mensaje claro en español y ninguna respuesta tardía sustituye a la búsqueda vigente.
+- **SC-014**: La búsqueda completa se puede usar con lector de pantalla y con tamaño de letra al 200 %, sin solapamientos, con etiquetas comprensibles y sin perder el término al cambiar de ámbito, rotar o volver del segundo plano.
+- **SC-015**: En el 100 % de las aperturas de Suscripciones los controles de búsqueda están ocultos; un solo toque en el botón de búsqueda los muestra y otro los oculta devolviendo la lista completa, sin dejar filtros activos.

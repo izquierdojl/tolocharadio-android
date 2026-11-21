@@ -20,6 +20,8 @@ Siete mejoras de UX y reproducción sobre el modo podcast ya existente (spec 004
 
 El enfoque reutiliza la arquitectura existente (MVVM + Clean, Hilt, Media3, Compose M3), no añade dependencias ni módulos Gradle y concentra las reglas nuevas en `domain` con UI delgada.
 
+**Extensión 2026-11-21**: se añade la búsqueda en Suscripciones (US8, FR-059–FR-071, SC-012–SC-014), planificada en la sección final. El resto del plan original sigue vigente sin cambios.
+
 ## Technical Context
 
 **Language/Version**: Kotlin 2.3.10, JVM target 17 (`app/build.gradle.kts`)
@@ -168,3 +170,124 @@ Artefactos generados:
 ## Complexity Tracking
 
 Sin violaciones que justificar. La guía de navegación se actualizó en la constitución v3.1.0 (barra inferior solo de contenido; Configuración y Servidores en el menú de hamburguesa), por lo que el cambio de ubicación ya no requiere excepción.
+
+## Extensión 2026-11-21 — Búsqueda en Suscripciones
+
+**Rama de trabajo**: `main` (la rama `0047-izquierdojl-20261119-podcast-ux-polish` ya está fusionada; esta extensión se planifica sobre la base actual).
+
+**Spec**: [spec.md](./spec.md) — User Story 8, FR-059–FR-071, SC-012–SC-014.
+
+### Resumen
+
+Añadir a la pantalla de Suscripciones un buscador con dos ámbitos, sin cambios en el contrato del servidor:
+
+1. **«Podcasts»**: filtro local por título sobre la lista de suscripciones ya cargada, con coincidencia parcial y sin distinguir mayúsculas ni tildes, conservando el orden activo.
+2. **«Episodios»**: búsqueda por título dentro de las suscripciones mediante la capacidad que el servidor ya ofrece a la web (`GET /podcasts/episodes/search`), con paginación, estados de carga/vacío/error y acciones de episodio.
+3. **Buscador colapsado**: los controles están ocultos por defecto y se despliegan con un botón de la cabecera situado a la izquierda del orden de suscripciones; al ocultarlos se limpian término y resultados.
+4. **Un único término compartido** entre ámbitos; los resultados sustituyen a la lista mientras están activos; Atrás vuelve a «Podcasts» con el término conservado; sin suscripciones no se muestra el buscador.
+5. **Mismos estados y acciones** que el resto de la app para los episodios encontrados: abrir ficha, reproducir, favorito, cola y descarga, reutilizando `EpisodeRow`, `EpisodePlayerViewModel`, `EpisodeActionsViewModel` y `EpisodeSheet`.
+
+No se modifican `PodcastsApi.kt`, los DTOs, la autenticación, el esquema de datos ni las dependencias.
+
+### Technical Context (delta)
+
+**Language/Version**: Kotlin 2.3.10, JVM target 17 (sin cambios).
+
+**Primary Dependencies**: las existentes. Se reutilizan `EpisodesRepo.searchEpisodes`, `PodcastEpisodeSearchPage`, `EpisodeRow`, `EpisodePlayerViewModel`, `EpisodeActionsViewModel`, `EpisodeSheet` y los componentes Material 3 ya disponibles (`OutlinedTextField`, `SingleChoiceSegmentedButtonRow`, `SegmentedButton`). Sin dependencias nuevas.
+
+**Storage**: ninguna nueva. El estado de búsqueda (término, ámbito, resultados y paginación) vive en el `ViewModel`; no se persiste historial ni término entre sesiones.
+
+**Testing**: JUnit 4 + `kotlinx-coroutines-test` + Turbine + MockK para dominio y ViewModel; Compose Test para el buscador y los estados de resultados. Gates: `assembleDebug`, `testDebugUnitTest`, `detekt`, `ktlintCheck`, `lintDebug`; Compose tests en local con emulador.
+
+**Target Platform**: Android; `minSdk 26`, `compileSdk`/`targetSdk` 37. Móvil, UI en español, tema oscuro por defecto.
+
+**Project Type**: aplicación Android de un módulo `app`, MVVM + Clean por capas.
+
+**Performance Goals**:
+- El filtro local de «Podcasts» responde en < 300 ms con al menos 50 suscripciones, sin red.
+- La primera página de episodios aparece en < 2 s con una conexión habitual.
+- La paginación carga 20 resultados por página y solo al pulsar «Cargar más».
+- En «Episodios» no se consulta al servidor al escribir; solo al confirmar la búsqueda.
+
+**Constraints**:
+- Sin cambios de API, DTO, autenticación ni credenciales (FR-069).
+- Sin nuevas librerías ni módulos Gradle (YAGNI, constitución V).
+- Sin XML/Views nuevas; todo Compose M3.
+- Sin PII en logs; errores accionables en español.
+- El buscador no aparece sin suscripciones ni en servidores sin podcasts.
+- La búsqueda no altera la reproducción en curso; las acciones de episodio reutilizan el player y las acciones existentes.
+
+**Scale/Scope**: 1 pantalla, 1 historia (US8), 13 requisitos funcionales (FR-059–FR-071), 3 criterios de éxito (SC-012–SC-014). Página de 20 resultados; sin historial, sugerencias ni búsqueda incremental en episodios.
+
+### Constitution Check (delta)
+
+| Principio / gate | Cumplimiento | Evidencia en el plan |
+|------------------|--------------|----------------------|
+| **I. MVVM + Clean** | PASS | `filterSubscriptionsByTitle` y la validación del término viven en `domain`; `SearchSubscriptionEpisodesUseCase` envuelve el repositorio; el ViewModel expone estado tipado y la UI solo compone. |
+| **II. Kotlin + Compose M3 + Media3** | PASS | `OutlinedTextField`, `SingleChoiceSegmentedButtonRow`, `LazyColumn` y `EpisodeRow`; sin XML ni cambios en Media3. |
+| **III. Test-First** | PASS | Tests de dominio (normalización/filtro y caso de uso), ViewModel (búsqueda, paginación, errores, carreras y baja) y Compose (campo, ámbitos, estados) antes de implementar. |
+| **IV. Streaming robusto** | PASS | La búsqueda no toca el player; las acciones reutilizan los mismos ViewModels y estados; errores en español; sin PII. |
+| **V. Simplicidad (YAGNI)** | PASS | Se reutilizan API, DTOs, repositorio y componentes existentes; sin historial, sugerencias, nuevas dependencias ni módulos. |
+| **Gates de calidad** | PASS | Los mismos gates obligatorios; Compose tests en local con emulador. |
+| **Gobernanza (v3.1.0)** | PASS | No se altera la navegación ni la ubicación de Configuración/Servidores; no se requiere excepción. |
+
+### Project Structure (delta)
+
+```text
+specs/0047-izquierdojl-20261119-podcast-ux-polish/
+├── plan.md                         # esta sección
+├── research.md                     # + R10–R13
+├── data-model.md                   # + sección 7
+├── quickstart.md                   # + 3.9
+└── contracts/
+    └── subscriptions-search.md     # NUEVO: contrato de UI y API consumida
+
+app/src/main/java/com/izquierdojl/tolocharadio/
+├── core/ui/components/TolochaTestTags.kt        # + etiquetas de búsqueda
+├── domain/podcasts/
+│   ├── SubscriptionSearch.kt                    # NUEVO: normalización y filtro
+│   └── SearchSubscriptionEpisodesUseCase.kt     # NUEVO: búsqueda de episodios
+├── feature/podcasts/
+│   ├── SubscriptionsViewModel.kt                # + estado y acciones de búsqueda
+│   └── subscriptions/
+│       ├── SubscriptionsScreen.kt               # integra buscador, resultados y Atrás
+│       ├── SubscriptionSearchBar.kt             # NUEVO: campo + ámbitos
+│       ├── SubscriptionSearchResults.kt         # NUEVO: resultados y estados
+│       └── SubscriptionEpisodeResult.kt         # NUEVO: DTO → EpisodeRow
+└── res/values/strings.xml                       # + textos de búsqueda
+
+app/src/test/java/com/izquierdojl/tolocharadio/
+├── domain/podcasts/SubscriptionSearchTest.kt
+├── domain/podcasts/SubscriptionSearchUseCaseTest.kt
+└── feature/podcasts/SubscriptionsViewModelTest.kt
+
+app/src/androidTest/java/com/izquierdojl/tolocharadio/
+└── feature/podcasts/subscriptions/
+    ├── SubscriptionSearchBarTest.kt
+    └── SubscriptionSearchResultsTest.kt
+```
+
+**Structure Decision**: se mantiene el módulo único y la separación por capas. La lógica de normalización y filtro es pura y testeable en JVM; la búsqueda remota se encapsula en un caso de uso; la pantalla se divide en componentes pequeños para no engordar `SubscriptionsScreen` ni disparar la complejidad de Detekt. Las acciones de episodio se delegan en los ViewModels de actividad ya usados por Inicio y Favoritos.
+
+### Phase 0: Research (delta)
+
+Resumen de decisiones (detalle en [research.md](./research.md), R10–R13):
+
+- **R10 Filtro local**: normalización NFD + eliminación de marcas + minúsculas, coincidencia parcial y orden preservado; función pura en `domain`. Alternativa descartada: `contains(ignoreCase = true)` (no ignora tildes).
+- **R11 Búsqueda de episodios**: reutilizar `EpisodesRepo.searchEpisodes` mediante `SearchSubscriptionEpisodesUseCase`; página de 20, `offset = tamaño actual`, deduplicación por id y `hasMore` del servidor. Guarda de generación para descartar respuestas tardías porque `safeCall` captura excepciones. Alternativa descartada: endpoint nuevo o filtro en cliente de todos los episodios.
+- **R12 UI y navegación**: buscador colapsado por defecto bajo la cabecera, desplegable con un botón de búsqueda a la izquierda del orden; resultados sustituyen a la lista; se ocultan orden/vista mientras hay resultados; `BackHandler` vuelve a «Podcasts» conservando el término. Alternativas descartadas: resultados bajo la lista o pantalla separada.
+- **R13 Pruebas**: dominio (filtro y caso de uso), ViewModel (éxito, vacío, error, reintento, paginación, carreras, baja) y Compose de componentes stateless; validación manual en quickstart.
+
+### Phase 1: Design & Contracts (delta)
+
+Artefactos actualizados:
+
+- [data-model.md](./data-model.md): sección 7 con `SubscriptionSearchScope`, `SubscriptionEpisodeResult` y `SubscriptionSearchUi`, sus transiciones e invariantes.
+- [contracts/subscriptions-search.md](./contracts/subscriptions-search.md): contrato del buscador, de los resultados, de la API consumida (sin cambios) y semántica de accesibilidad.
+- [quickstart.md](./quickstart.md): sección 3.9 con escenarios manuales de búsqueda.
+
+**Post-Design Constitution Check**: se mantiene en PASS. No hay nuevas dependencias, permisos, módulos ni cambios de contrato; la accesibilidad y el 200 % se cubren en el contrato de UI y en quickstart.
+
+### Complexity Tracking (delta)
+
+Sin violaciones que justificar. La pantalla se apoya en componentes existentes y en dos ViewModels de actividad ya compartidos; no se introduce deuda de navegación ni de persistencia.

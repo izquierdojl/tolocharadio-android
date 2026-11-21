@@ -204,6 +204,74 @@ NotDownloaded --pulsar--> Downloading(0) --avance--> Downloading(1) --> Download
 
 ---
 
+## 7. Búsqueda en Suscripciones (extensión 2026-11-21)
+
+### `SubscriptionSearchScope` (presentación, no persiste)
+
+| Valor | Significado |
+|-------|-------------|
+| `PODCASTS` | Filtra la lista de suscripciones ya cargada, sin red |
+| `EPISODES` | Busca por título en las suscripciones al confirmar |
+
+**Regla**: es único por pantalla; el valor por defecto es `PODCASTS`.
+
+**Visibilidad del buscador**: `searchVisible` es estado local de la pantalla (`rememberSaveable`), no del ViewModel. Empieza en `false`; al ocultarlo se limpian el término, los resultados y el ámbito vuelve a `PODCASTS`.
+
+### `SubscriptionEpisodeResult` (derivado, no persiste)
+
+| Campo | Tipo | Origen |
+|-------|------|--------|
+| `episode` | `PodcastEpisode` | Mapeado desde `PodcastEpisodeSearchItem` |
+| `podcast` | `PodcastSummary` | Programa embebido en el resultado |
+
+**Regla**: `episode.id` es la clave de lista y de deduplicación. El favorito mostrado se deriva de `favoriteIds`; el resto de estado (en reproducción, descarga, completado) viene del player/acciones o de la respuesta.
+
+### `SubscriptionSearchUi` (estado de presentación)
+
+| Campo | Tipo | Regla |
+|-------|------|-------|
+| `term` | `String` | Texto actual del campo; se conserva al cambiar de ámbito y al volver con Atrás |
+| `submittedTerm` | `String` | Último término confirmado; gobierna el mensaje de vacío y el encabezado de resultados |
+| `scope` | `SubscriptionSearchScope` | `PODCASTS` por defecto |
+| `results` | `List<SubscriptionEpisodeResult>` | Página 1 + páginas cargadas, sin ids duplicados |
+| `loading` | `Boolean` | Primera página en curso |
+| `loadingMore` | `Boolean` | Página siguiente en curso |
+| `hasMore` | `Boolean` | `pagination.hasMore` del servidor |
+| `error` | `String?` | Error accionable en español; `null` si no hay |
+| `showResults` | `Boolean` | `true` cuando hay una búsqueda confirmada (éxito, vacío o error) |
+
+**Transiciones**
+
+| Evento | Efecto |
+|--------|--------|
+| Mostrar el buscador | `searchVisible = true`; se muestran campo y ámbitos |
+| Ocultar el buscador | Limpia término, resultados, error y `showResults`; vuelve a `PODCASTS`; `searchVisible = false` |
+| Escribir en `PODCASTS` | La lista se filtra localmente; no cambia el estado remoto |
+| Escribir en `EPISODES` | No consulta; si el término queda vacío, limpia resultados y `showResults` |
+| Confirmar búsqueda | `loading = true`, `showResults = true`; al terminar, resultados o error |
+| Éxito con 0 coincidencias | `results = []`, `showResults = true`, mensaje con el término |
+| Error | `error` informado, `showResults = true`, botón de reintento |
+| Cargar más | `loadingMore = true`; al terminar, append sin duplicados y nuevo `hasMore` |
+| Cambiar de ámbito | Cancela la búsqueda, limpia resultados/error/`showResults` y `submittedTerm`, y conserva `term` |
+| Vaciar el término | Cancela la búsqueda y limpia resultados/`showResults`/`submittedTerm`; el término vacío no consulta |
+| Atrás con resultados | Limpia resultados/error/`submittedTerm`, conserva `term` y activa `PODCASTS` |
+| Baja de suscripción | Elimina de `results` los episodios del podcast dado y actualiza la lista |
+| Sin suscripciones | La UI no muestra el buscador; el estado vacío existente prevalece |
+
+**Invariantes**
+
+- `results` nunca contiene episodios de podcasts no suscritos.
+- `submittedTerm` vacío implica `showResults = false`.
+- `submittedTerm` se limpia al cambiar de ámbito, vaciar el término o cerrar con Atrás.
+- Una respuesta de una generación anterior nunca modifica el estado.
+- Los resultados incluyen episodios completados, en curso y pendientes, con su estado visible.
+- Los resultados sustituyen a la lista mientras `showResults = true`; no se muestran ambas a la vez.
+- El término es único y compartido entre ámbitos.
+
+**Persistencia**: ninguna. El estado vive en el `ViewModel` de la pantalla, por lo que sobrevive a rotación, cambio de tema y vuelta desde segundo plano; la muerte de proceso no se cubre en esta iteración.
+
+---
+
 ## Resumen de persistencia
 
 | Dato | Dónde | Cambia el esquema |
@@ -214,3 +282,4 @@ NotDownloaded --pulsar--> Downloading(0) --avance--> Downloading(1) --> Download
 | Progreso de descarga | Memoria (`DownloadsRepo`) | No |
 | Preferencia de voz | DataStore | No (nueva clave) |
 | Estado del cajón/temporizador | Memoria | No |
+| Búsqueda en Suscripciones | Memoria (`SubscriptionsViewModel`) | No |

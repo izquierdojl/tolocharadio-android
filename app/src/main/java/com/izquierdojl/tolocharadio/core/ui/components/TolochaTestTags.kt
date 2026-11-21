@@ -44,4 +44,34 @@ object TolochaTestTags {
 
     /** Selector de pantalla de arranque de podcast en Configuración. */
     const val PODCAST_START_SCREEN = "tolocha_podcast_start_screen"
+
+    /** Campo de búsqueda de Suscripciones. */
+    const val SUBSCRIPTIONS_SEARCH_FIELD = "tolocha_subscriptions_search_field"
+
+    /** Botón que despliega u oculta los controles de búsqueda. */
+    const val SUBSCRIPTIONS_SEARCH_TOGGLE = "tolocha_subscriptions_search_toggle"
+
+    /** Alternancia de ámbito Podcasts | Episodios. */
+    const val SUBSCRIPTIONS_SEARCH_SCOPE = "tolocha_subscriptions_search_scope"
+
+    /** Acción de limpiar el término de búsqueda. */
+    const val SUBSCRIPTIONS_SEARCH_CLEAR = "tolocha_subscriptions_search_clear"
+
+    /** Acción de confirmar la búsqueda de episodios. */
+    const val SUBSCRIPTIONS_SEARCH_SUBMIT = "tolocha_subscriptions_search_submit"
+
+    /** Contenedor de resultados de episodios. */
+    const val SUBSCRIPTIONS_SEARCH_RESULTS = "tolocha_subscriptions_search_results"
+
+    /** Estado vacío de la búsqueda de episodios. */
+    const val SUBSCRIPTIONS_SEARCH_EMPTY = "tolocha_subscriptions_search_empty"
+
+    /** Estado de error de la búsqueda de episodios. */
+    const val SUBSCRIPTIONS_SEARCH_ERROR = "tolocha_subscriptions_search_error"
+
+    /** Acción de cargar la página siguiente. */
+    const val SUBSCRIPTIONS_SEARCH_LOAD_MORE = "tolocha_subscriptions_search_load_more"
+
+    /** Estado anunciado de la búsqueda (live region). */
+    const val SUBSCRIPTIONS_SEARCH_STATUS = "tolocha_subscriptions_search_status"
 }

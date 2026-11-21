@@ -15,7 +15,7 @@ description: "Task list for Mejoras de experiencia podcast"
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no pending dependencies)
-- **[Story]**: User story label (`US1`…`US7`)
+- **[Story]**: User story label (`US1`…`US8`)
 - Every task includes an exact file path
 
 ## Path Conventions
@@ -339,6 +339,8 @@ Task: "Extend InstancePrefsTest.kt for voiceBoost"
 - **Gates**: `assembleDebug`, `testDebugUnitTest`, `detekt`, `ktlintCheck`, `lintDebug`, `compileDebugAndroidTestKotlin` y `connectedDebugAndroidTest` en API 37 — en verde.
 - **Validación manual**: audio del emulador, potenciador de voz, descargas, retención, notificación, reanudación, ficha de acciones compactas y revisión TalkBack — completada por la persona usuaria.
 - **Sin cambios** en `PodcastsApi.kt`, DTOs, `TolochaDb.kt`, `backup_rules.xml` ni `data_extraction_rules.xml` (T071 verificado).
+- **Extensión 2026-11-21**: T082–T098 completadas; T096 verificada manualmente en emulador por el usuario (2026-11-21).
+- **Gates de la extensión**: `assembleDebug`, `testDebugUnitTest`, `detekt`, `ktlintCheck`, `lintDebug`, `compileDebugAndroidTestKotlin` y `connectedDebugAndroidTest` en API 37 — en verde.
 
 ---
 
@@ -354,3 +356,38 @@ Task: "Extend InstancePrefsTest.kt for voiceBoost"
 - [X] T079 Fix the empty output buffer in `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/VoiceBoostAudioProcessor.kt` (`ByteBuffer` position before `flip`) and add `VoiceBoostAudioProcessorTest`.
 - [X] T080 Remove the cleanup effect that looped in `app/src/main/java/com/izquierdojl/tolocharadio/core/ui/navigation/TolochaNavGraph.kt` and move it to `EpisodeActionsViewModel`.
 - [X] T081 Compact the episode sheet actions into one icon row (play, favorite, a continuación, al final, reproducido, descarga y descartar) in `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/sheet/EpisodeSheet.kt`.
+
+---
+
+## Phase 12: Extensión 2026-11-21 — Búsqueda en Suscripciones (US8)
+
+**Goal**: añadir a Suscripciones un buscador con ámbitos «Podcasts» (filtro local) y «Episodios» (búsqueda por título en las suscripciones), con término compartido, resultados que sustituyen a la lista, estados de carga/vacío/error, paginación y las mismas acciones de episodio.
+
+**Independent Test**: con varias suscripciones, filtrar por nombre sin tildes/mayúsculas; buscar un episodio suscrito por título y comprobar que aparece con su programa; comprobar vacío, error y «Cargar más»; cambiar de ámbito y pulsar Atrás.
+
+**Dependencias**: fases 1–11 completadas (suscripciones, `EpisodeRow`, player y acciones de episodio). No introduce API, DTOs, dependencias ni persistencia nuevos.
+
+### Tests for User Story 8
+
+- [X] T082 [P] [US8] Write failing domain tests for normalization and local filtering (case, accents, partial, blank, order preserved, special characters) in `app/src/test/java/com/izquierdojl/tolocharadio/domain/podcasts/SubscriptionSearchTest.kt`.
+- [X] T083 [P] [US8] Write failing use-case tests for blank term (no network), delegation with offset/limit and error passthrough in `app/src/test/java/com/izquierdojl/tolocharadio/domain/podcasts/SubscriptionSearchUseCaseTest.kt`.
+- [X] T084 [P] [US8] Write failing ViewModel tests for scope/term, search success, empty, error/retry, pagination, stale response discarded, scope change, clear, close/back and unsubscribe cleanup in `app/src/test/java/com/izquierdojl/tolocharadio/feature/podcasts/SubscriptionsViewModelTest.kt`.
+- [X] T085 [P] [US8] Write failing Compose tests for the search bar (labels, scope selection, clear, submit, 48 dp and semantics) and result states (loading, empty, error/retry, content, load more) in `app/src/androidTest/java/com/izquierdojl/tolocharadio/feature/podcasts/subscriptions/SubscriptionSearchBarTest.kt` and `SubscriptionSearchResultsTest.kt`.
+
+### Implementation for User Story 8
+
+- [X] T086 [US8] Implement `normalizeSearchText` and `filterSubscriptionsByTitle` in `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/SubscriptionSearch.kt`, using NFD + combining marks + `lowercase(Locale.ROOT)`.
+- [X] T087 [US8] Add `SearchSubscriptionEpisodesUseCase` (trim/blank validation, delegate to `EpisodesRepo.searchEpisodes`) in `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/SearchSubscriptionEpisodesUseCase.kt`.
+- [X] T088 [US8] Extend `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/SubscriptionsViewModel.kt` with `SubscriptionSearchScope`, `SubscriptionSearchUi`, `searchUi`, `setSearchTerm`, `setSearchScope`, `searchEpisodes`, `loadMoreEpisodes`, `closeEpisodeSearch`, `onEpisodeProgressChanged`, a generation guard and unsubscribe cleanup.
+- [X] T089 [P] [US8] Add search strings in `app/src/main/res/values/strings.xml` and test tags in `app/src/main/java/com/izquierdojl/tolocharadio/core/ui/components/TolochaTestTags.kt`.
+- [X] T090 [P] [US8] Add the `SubscriptionEpisodeResult` model and the mapper from `PodcastEpisodeSearchItem` to `PodcastEpisode` + `PodcastSummary` in `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/subscriptions/SubscriptionEpisodeResult.kt`.
+- [X] T091 [US8] Implement the stateless `SubscriptionSearchBar` (field, segmented scope, clear/search, labels, 48 dp, 200 % font) in `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/subscriptions/SubscriptionSearchBar.kt`.
+- [X] T092 [US8] Implement the stateless `SubscriptionSearchResults` (loading, empty, error/retry, content, load more, `EpisodeRow`, `liveRegion`) in `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/subscriptions/SubscriptionSearchResults.kt`.
+- [X] T093 [US8] Add `SubscriptionSearchHost` in the same file to collect `EpisodePlayerViewModel`/`EpisodeActionsViewModel`, derive favorites/downloads, wire actions, `FavoriteFailureEffect` and `EpisodeSheet`, and update the episode state locally on `progressChanged`.
+- [X] T094 [US8] Integrate the search bar/results into `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/subscriptions/SubscriptionsScreen.kt`: show only with subscriptions, filter the list after sorting, hide sort/view on results, `BackHandler`, empty message with term and no search when the list is empty.
+- [X] T095 [US8] Run the full gates (`./gradlew assembleDebug testDebugUnitTest detekt ktlintCheck lintDebug` and `compileDebugAndroidTestKotlin`) and fix regressions.
+- [X] T096 [US8] Validate quickstart 3.9 on an emulator API 26+/37 with TalkBack and font scale 200 %. — verificado manualmente en emulador por el usuario (2026-11-21)
+- [X] T097 [US8] Verify no changes to `PodcastsApi.kt`, DTOs, auth, database schema or dependencies, and record the result in the PR notes.
+- [X] T098 [US8] Collapse the search controls behind a header search toggle placed to the left of subscription sorting, clear term/results on hide and animate the reveal in `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/subscriptions/SubscriptionsScreen.kt`.
+
+**Checkpoint**: User Story 8 funcional y testeable de forma independiente; gates en verde y quickstart 3.9 verificado manualmente en emulador (T096).

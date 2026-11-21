@@ -23,4 +23,23 @@
     <string name="queue_badge_description">%1$d episodios en cola</string>
     <string name="queue_badge_description_one">1 episodio en cola</string>
     <string name="queue_badge_overflow">99+</string>
+    <string name="subscriptions_search_scope">Buscar en</string>
+    <string name="subscriptions_search_scope_description">Ámbito de búsqueda</string>
+    <string name="subscriptions_search_show">Mostrar búsqueda</string>
+    <string name="subscriptions_search_hide">Ocultar búsqueda</string>
+    <string name="subscriptions_search_podcasts_label">Buscar en tus podcasts</string>
+    <string name="subscriptions_search_episodes_label">Buscar episodios en tus suscripciones</string>
+    <string name="subscriptions_scope_podcasts">Podcasts</string>
+    <string name="subscriptions_scope_episodes">Episodios</string>
+    <string name="subscriptions_search_clear">Limpiar búsqueda</string>
+    <string name="subscriptions_search_action">Buscar episodios</string>
+    <string name="subscriptions_search_loading">Buscando episodios…</string>
+    <string name="subscriptions_search_empty">Sin resultados para «%1$s». Prueba con otro título.</string>
+    <string name="subscriptions_search_no_podcasts">No hay suscripciones que coincidan con «%1$s».</string>
+    <string name="subscriptions_search_error">No se pudieron buscar episodios. Inténtalo de nuevo.</string>
+    <string name="subscriptions_search_retry">Reintentar</string>
+    <string name="subscriptions_search_load_more">Cargar más</string>
+    <string name="subscriptions_search_results">Episodios para «%1$s»</string>
+    <string name="subscriptions_search_results_count">%1$d resultados</string>
+    <string name="subscriptions_search_results_count_one">%1$d resultado</string>
 </resources>

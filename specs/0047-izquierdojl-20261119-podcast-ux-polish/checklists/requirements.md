@@ -44,3 +44,9 @@
 - Gobernanza resuelta: la constitución v3.1.0 reserva la barra inferior a
   contenido y sitúa Configuración/Servidores en el menú de hamburguesa; no se
   requiere excepción (recogido en Dependencies).
+- Validación de la extensión 2026-11-21 (búsqueda en Suscripciones): se añadieron
+  la User Story 8, sus casos límite, los requisitos FR-059–FR-071 y los criterios
+  SC-012–SC-014. No quedan marcadores `[NEEDS CLARIFICATION]`. La búsqueda de
+  podcasts se filtra en la lista ya cargada y la de episodios se apoya en la
+  capacidad que el servidor ya ofrece a la web, sin cambios de contrato
+  (recogido en Assumptions y Dependencies).

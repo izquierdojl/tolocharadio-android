@@ -195,3 +195,107 @@ Este documento resuelve las incógnitas técnicas del plan. No hay `NEEDS CLARIF
 | La cola no trae progreso y añade latencia al pulsar | Solo se consulta cuando falta; se muestra el estado de carga ya existente |
 | Descarga en curso tras cerrar la app no se monitoriza | `refresh()` relanza el monitor de registros `RUNNING` con guarda de duplicados |
 | El cajón tapa el mini-player o rompe atrás | `ModalNavigationDrawer` gestiona atrás; la reproducción vive fuera del grafo y no se reinicia |
+
+---
+
+# Extensión 2026-11-21 — Búsqueda en Suscripciones
+
+## R10 — Filtro local de podcasts
+
+**Decision**: normalizar el término y el título con NFD, eliminar las marcas diacríticas y comparar en minúsculas con coincidencia parcial; aplicar el filtro después de ordenar y conservar el orden resultante.
+
+- `normalizeSearchText(value)`:
+  - `Normalizer.normalize(value, Normalizer.Form.NFD)`.
+  - Eliminar el bloque `\p{M}+`.
+  - `lowercase(Locale.ROOT)`.
+- `filterSubscriptionsByTitle(items, term)`:
+  - `term.trim()` vacío → devuelve la lista completa (copia).
+  - Si no → `items.filter { normalizeSearchText(it.title).contains(normalizeSearchText(term)) }`.
+- El filtro se aplica en la pantalla sobre el resultado de `sortSubscriptions`, de modo que se respeta el orden elegido (recientes, nombre, manual).
+- La normalización es una función pura de `domain`, sin Android, testeable en JVM.
+
+**Rationale**: replica `textMatch.ts` de la web y cumple FR-060/SC-012 sin red ni cambios de servidor. `String.contains(ignoreCase = true)` no ignora tildes y fallaría con «camion»/«camión».
+
+**Alternatives considered**:
+- Filtrar en el servidor: no existe un endpoint de búsqueda de suscripciones y añadirlo contradice FR-069.
+- Usar `Collator`: sirve para ordenar, pero no para coincidencia parcial.
+- Normalizar solo a minúsculas: no resuelve los acentos.
+
+---
+
+## R11 — Búsqueda de episodios y carreras
+
+**Decision**: reutilizar `EpisodesRepo.searchEpisodes` a través de un caso de uso de dominio, con página de 20, deduplicación por id y una guarda de generación para descartar respuestas tardías.
+
+- `SearchSubscriptionEpisodesUseCase(term, offset, limit)`:
+  - `term.trim()` vacío → `ApiResult.Err(DomainError.Validation)` sin llamar a red.
+  - Delegar en `EpisodesRepo.searchEpisodes(term, offset, limit)`.
+- El ViewModel guarda `submittedTerm` y `results`; al confirmar:
+  - Cancela la búsqueda anterior (`searchJob?.cancel()`).
+  - Incrementa `searchGeneration`.
+  - Llama al caso de uso con `offset = 0`, `limit = 20`.
+  - Solo publica el resultado si la generación sigue vigente.
+- `loadMore()` usa `offset = results.size`, añade con `distinctBy { episode.id }` y actualiza `hasMore` desde `pagination.hasMore`.
+- El servidor ya limita la búsqueda a las suscripciones de la persona, por título, sin distinguir mayúsculas ni tildes, en orden de publicación descendente e incluyendo completados. No se filtra por estado en cliente.
+- La guarda de generación es necesaria porque `safeCall` captura `Exception` (incluida `CancellationException`) y podría publicar un error de una búsqueda cancelada. No se modifica `safeCall` en esta extensión para no ampliar el radio de cambio.
+
+**Rationale**: el endpoint y el DTO ya existen y la web los consume; el caso de uso mantiene la regla de validación en `domain` y el ViewModel solo orquesta estado. La generación evita resultados obsoletos sin tocar la capa de red.
+
+**Alternatives considered**:
+- Añadir un endpoint de búsqueda de suscripciones: descartado por FR-069 y porque el backend ya ofrece la búsqueda de episodios suscritos.
+- Descargar todos los episodios y filtrar en cliente: descartado por tráfico y memoria.
+- Corregir `safeCall` para relanzar `CancellationException`: buena práctica, pero cambio transversal; se deja como mejora futura.
+
+---
+
+## R12 — Composición de la pantalla y navegación
+
+**Decision**: buscador bajo la cabecera, visible solo cuando hay suscripciones; resultados en lugar de la lista; Atrás vuelve a «Podcasts» conservando el término.
+
+- El buscador se compone de:
+  - Botón de búsqueda en la cabecera, a la izquierda del orden de suscripciones; los controles están ocultos por defecto.
+  - `OutlinedTextField` de una línea con etiqueta según el ámbito y `ImeAction.Search`.
+  - Botón de limpiar cuando el término no está vacío.
+  - `SingleChoiceSegmentedButtonRow` con «Podcasts» y «Episodios», altura mínima 48 dp.
+  - Acción de buscar visible solo en «Episodios»; en «Podcasts» el filtro es inmediato.
+- Al ocultar los controles se limpian término, resultados y ámbito (vuelve a «Podcasts»), de modo que la lista nunca queda filtrada sin un control visible.
+- Mientras `showResults` es `true`, los resultados (`LazyColumn` con `EpisodeRow`) sustituyen a la lista y se ocultan las acciones de orden y vista de la cabecera.
+- `BackHandler(enabled = showResults)` llama a `closeEpisodeSearch()`: limpia resultados y error, conserva el término y activa «Podcasts». El primer Atrás con teclado abierto lo oculta (comportamiento del sistema); el siguiente vuelve a la lista.
+- Sin suscripciones (`SubscriptionsUiState.Empty`) no se muestra el buscador; se mantiene el estado vacío con «Descubrir podcasts».
+- Si la baja deja la lista vacía, la pantalla pasa al estado vacío y el buscador desaparece.
+- Los resultados usan los ViewModels de actividad `EpisodePlayerViewModel` y `EpisodeActionsViewModel` (mismo patrón que Inicio/Favoritos) para reproducir, favorito, cola, descarga y ficha. El favorito se deriva de `favoriteIds` y, tras `progressChanged`, se actualiza localmente el estado de escucha del episodio.
+
+**Rationale**: cumple las clarificaciones 2026-11-21 y evita dos listas compitiendo en una pantalla pequeña. Reutilizar los ViewModels de actividad mantiene una única sesión de reproducción y un único estado de acciones.
+
+**Alternatives considered**:
+- Mantener la lista debajo de los resultados: descartado por la clarificación Q1 y por espacio.
+- Pantalla o panel separado: descartado por coste de navegación y porque el buscador debe seguir visible para cambiar de término.
+- Mostrar el buscador sin suscripciones: descartado por la clarificación Q5.
+
+---
+
+## R13 — Estrategia de pruebas
+
+**Decision**:
+
+- **Dominio**: `SubscriptionSearchTest` (mayúsculas, tildes, parcial, vacío, orden preservado) y `SubscriptionSearchUseCaseTest` (término vacío sin red, delegación con offset/límite).
+- **ViewModel**: `SubscriptionsViewModelTest` con MockK + Turbine: búsqueda correcta, vacío, error y reintento, paginación, respuesta tardía descartada, cambio de ámbito, vaciado del término, cierre con Atrás y baja de suscripción.
+- **Compose**: `SubscriptionSearchBarTest` (etiquetas, ámbitos, limpiar, buscar, estado seleccionado, 48 dp) y `SubscriptionSearchResultsTest` (carga, vacío, error, reintento, cargar más).
+- **Manual**: quickstart 3.9 con emulador, TalkBack y letra al 200 %.
+
+**Rationale**: cubre las capas exigidas por la constitución III y los flujos críticos sin depender del servidor. Los componentes stateless permiten tests de UI rápidos y estables.
+
+**Alternatives considered**:
+- Test instrumentado de la pantalla completa con Hilt: más lento y frágil; se reserva para la validación manual.
+- Robolectric: no está en el proyecto y añadirlo viola YAGNI.
+
+## Riesgos de la extensión
+
+| Riesgo | Mitigación |
+|--------|------------|
+| Una respuesta tardía pisa la búsqueda vigente | Cancelar el job y comprobar la generación antes de publicar |
+| El teclado abierto consume el primer Atrás | Se acepta el comportamiento del sistema (FR-071) y se valida en quickstart |
+| El buscador se solapa con la cabecera al 200 % | Componente en columna, etiquetas cortas y prueba manual con letra máxima |
+| Los resultados muestran estado de favorito/escucha obsoleto | Favorito derivado de `favoriteIds`; refresco tras `progressChanged` |
+| La baja deja resultados de un podcast no suscrito | Eliminar sus resultados al confirmar la baja y recargar la lista |
+| La pantalla supera la complejidad de Detekt | Extraer buscador, resultados y mapeador a archivos propios |
