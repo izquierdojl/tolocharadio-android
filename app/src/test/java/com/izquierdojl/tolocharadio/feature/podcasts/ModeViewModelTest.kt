@@ -64,6 +64,43 @@ class ModeViewModelTest {
         }
 
     @Test
+    fun `la seccion inicial decide el modo de arranque`() =
+        runTest {
+            prefs.setDefaultSection(ContentMode.PODCAST)
+            prefs.setContentMode(ContentMode.RADIO)
+            val ui = vm(enabled = true).ui.first { !it.loading }
+            assertEquals(ContentMode.PODCAST, ui.mode)
+        }
+
+    @Test
+    fun `el modo persistido no pisa la seccion inicial`() =
+        runTest {
+            prefs.setDefaultSection(ContentMode.RADIO)
+            prefs.setContentMode(ContentMode.PODCAST)
+            val ui = vm(enabled = true).ui.first { !it.loading }
+            assertEquals(ContentMode.RADIO, ui.mode)
+        }
+
+    @Test
+    fun `sin podcasts la seccion inicial podcast cae a radio`() =
+        runTest {
+            prefs.setDefaultSection(ContentMode.PODCAST)
+            val ui = vm(enabled = false).ui.first { !it.loading }
+            assertFalse(ui.podcastsEnabled)
+            assertEquals(ContentMode.RADIO, ui.mode)
+        }
+
+    @Test
+    fun `cambiar la seccion inicial no cambia el modo en caliente`() =
+        runTest {
+            val v = vm(enabled = true)
+            v.ui.first { !it.loading }
+            prefs.setDefaultSection(ContentMode.PODCAST)
+            val ui = v.ui.first { it.defaultSection == ContentMode.PODCAST }
+            assertEquals(ContentMode.RADIO, ui.mode)
+        }
+
+    @Test
     fun `setMode persiste el modo`() =
         runTest {
             val v = vm()

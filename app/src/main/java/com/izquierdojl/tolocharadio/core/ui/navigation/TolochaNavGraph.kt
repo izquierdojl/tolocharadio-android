@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -164,6 +165,7 @@ fun TolochaNavGraph(
         currentRoute = currentRoute,
         podcastsEnabled = modeUi.podcastsEnabled,
         podcastMode = podcastMode,
+        modeLoading = modeUi.loading,
         startScreen = startScreen,
         podcastStartScreen = podcastStartScreen,
         defaultSection = defaultSection,
@@ -513,6 +515,23 @@ private fun NotificationRouteEffects(
 }
 
 /**
+ * Puerta del arranque: espera a que la sección y las capacidades estén
+ * resueltas, a estar en la ruta inicial y a no haberlo aplicado antes.
+ * Resolver antes daría un fallback a Radio y consumiría la única oportunidad
+ * de abrir la pantalla elegida.
+ */
+internal fun shouldApplyStartDestination(
+    currentRoute: String?,
+    startupGate: StartupGate,
+    modeLoading: Boolean,
+    alreadyApplied: Boolean,
+): Boolean =
+    !alreadyApplied &&
+        !modeLoading &&
+        startupGate == StartupGate.Ready &&
+        currentRoute == Routes.HOME
+
+/**
  * Arranque y puerta de modo podcast (spec 0046):
  * sección inicial Radio|Podcasts y redirección de rutas podcast sin
  * podcasts o fuera de modo a la pantalla Radio vigente, sin errores.
@@ -524,13 +543,26 @@ private fun PodcastRouteEffects(
     currentRoute: String?,
     podcastsEnabled: Boolean,
     podcastMode: Boolean,
+    modeLoading: Boolean,
     startScreen: StartScreen,
     podcastStartScreen: PodcastStartScreen,
     defaultSection: ContentMode,
     startupGate: StartupGate,
 ) {
-    LaunchedEffect(startScreen, defaultSection, podcastStartScreen, startupGate, podcastsEnabled) {
-        if (currentRoute != Routes.HOME) return@LaunchedEffect
+    var startupApplied by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(
+        currentRoute,
+        startScreen,
+        defaultSection,
+        podcastStartScreen,
+        startupGate,
+        podcastsEnabled,
+        modeLoading,
+    ) {
+        if (!shouldApplyStartDestination(currentRoute, startupGate, modeLoading, startupApplied)) {
+            return@LaunchedEffect
+        }
         val target =
             resolveStartDestination(
                 startScreen = startScreen,
@@ -542,10 +574,20 @@ private fun PodcastRouteEffects(
             popUpTo(Routes.HOME) { inclusive = true }
             launchSingleTop = true
         }
+        startupApplied = true
     }
-    LaunchedEffect(currentRoute, podcastMode, podcastsEnabled) {
+    LaunchedEffect(currentRoute, podcastMode, podcastsEnabled, podcastStartScreen, modeLoading) {
+        // No aplicar el guard de modo mientras las capacidades y la sección
+        // inicial siguen cargando: rebotaría una ruta de podcast restaurada.
+        if (modeLoading) return@LaunchedEffect
         val route = currentRoute ?: return@LaunchedEffect
-        val target = Routes.routeAfterModeChange(route, podcastMode, podcastsEnabled) ?: return@LaunchedEffect
+        val target =
+            Routes.routeAfterModeChange(
+                currentRoute = route,
+                podcastMode = podcastMode,
+                podcastsEnabled = podcastsEnabled,
+                podcastStartRoute = podcastStartScreen.route(),
+            ) ?: return@LaunchedEffect
         navController.navigate(target) {
             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
             launchSingleTop = true

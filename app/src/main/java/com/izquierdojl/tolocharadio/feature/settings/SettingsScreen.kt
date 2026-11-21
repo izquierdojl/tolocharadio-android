@@ -1,6 +1,7 @@
 package com.izquierdojl.tolocharadio.feature.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -197,7 +198,7 @@ internal fun SettingsContent(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "Se aplica al arrancar en modo Podcasts con un servidor que ofrece podcasts.",
+            "Se aplica al arrancar o al cambiar a Podcasts con un servidor que ofrece podcasts.",
             style = MaterialTheme.typography.bodySmall,
         )
 
@@ -258,45 +259,45 @@ internal fun SettingsContent(
     }
 }
 
+/** Opciones de podcast en la primera fila del selector (3 + 2). */
+private const val PODCAST_START_FIRST_ROW = 3
+
 /**
  * Selector de pantalla de arranque de podcast (spec 0048, US5).
- * Desplegable para que quepan las cinco etiquetas.
+ * Mismo lenguaje visual que la pantalla de arranque de radio; las cinco
+ * opciones se reparten en dos filas para que quepan sin truncar etiquetas.
  */
 @Composable
 internal fun PodcastStartSettings(
     current: PodcastStartScreen,
     onChange: (PodcastStartScreen) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    Box(Modifier.fillMaxWidth()) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .testTag(TolochaTestTags.PODCAST_START_SCREEN)
-                    .semantics { contentDescription = "Pantalla de arranque de podcast: ${current.label()}" }
-                    .clickable { expanded = true }
-                    .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(current.label(), style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    "Pantalla que se abre al iniciar en Podcasts.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            Icon(Icons.Default.ExpandMore, contentDescription = null)
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            PodcastStartScreen.entries.forEach { screen ->
-                DropdownMenuItem(
-                    text = { Text(screen.label()) },
-                    onClick = {
-                        expanded = false
-                        onChange(screen)
-                    },
-                )
+    val rows =
+        listOf(
+            PodcastStartScreen.entries.take(PODCAST_START_FIRST_ROW),
+            PodcastStartScreen.entries.drop(PODCAST_START_FIRST_ROW),
+        )
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .testTag(TolochaTestTags.PODCAST_START_SCREEN),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        rows.forEach { row ->
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                row.forEachIndexed { index, screen ->
+                    SegmentedButton(
+                        selected = current == screen,
+                        onClick = { onChange(screen) },
+                        shape =
+                            SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = row.size,
+                            ),
+                        label = { Text(screen.label()) },
+                    )
+                }
             }
         }
     }

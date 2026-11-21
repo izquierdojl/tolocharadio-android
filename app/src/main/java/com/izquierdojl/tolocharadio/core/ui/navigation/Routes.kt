@@ -36,13 +36,14 @@ object Routes {
         currentRoute: String?,
         podcastMode: Boolean,
         podcastsEnabled: Boolean,
+        podcastStartRoute: String = PODCAST_HOME,
     ): String? =
         when {
             currentRoute == null -> null
             currentRoute == STATS && podcastMode -> PODCAST_STATS
             currentRoute == PODCAST_STATS && (!podcastsEnabled || !podcastMode) -> STATS
             currentRoute in PODCAST_ROUTES && (!podcastsEnabled || !podcastMode) -> EXPLORE
-            podcastMode && currentRoute in RADIO_CONTENT_ROUTES -> PODCAST_HOME
+            podcastMode && currentRoute in RADIO_CONTENT_ROUTES -> podcastStartRoute
             else -> null
         }
 

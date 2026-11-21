@@ -86,16 +86,27 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         setContent {
             val mode by instancePrefs.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
-            val startScreen by instancePrefs.startScreen.collectAsState(initial = StartScreen.EXPLORE)
-            val podcastStartScreen by instancePrefs.podcastStartScreen.collectAsState(initial = PodcastStartScreen.HOME)
-            val defaultSection by instancePrefs.defaultSection.collectAsState(initial = ContentMode.RADIO)
+            // `null` hasta la primera emisión: el arranque no debe resolverse
+            // con los valores por defecto de las preferencias.
+            val startScreen: StartScreen? by instancePrefs.startScreen.collectAsState(initial = null)
+            val podcastStartScreen: PodcastStartScreen? by
+                instancePrefs.podcastStartScreen.collectAsState(initial = null)
+            val defaultSection: ContentMode? by instancePrefs.defaultSection.collectAsState(initial = null)
             // `null` mientras Room emite la primera vez: evita mostrar el
             // formulario de servidor antes de saber si ya hay uno guardado.
             val servers by serverRepository.servers.collectAsState(initial = null)
 
             TolochaTheme(darkTheme = resolveDarkTheme(mode, isSystemInDarkTheme())) {
                 val loadedServers = servers
+                val loadedStartScreen = startScreen
+                val loadedPodcastStartScreen = podcastStartScreen
+                val loadedDefaultSection = defaultSection
                 if (loadedServers == null) {
+                    Surface(Modifier.fillMaxSize()) {}
+                } else if (loadedStartScreen == null ||
+                    loadedPodcastStartScreen == null ||
+                    loadedDefaultSection == null
+                ) {
                     Surface(Modifier.fillMaxSize()) {}
                 } else {
                     val startupServer =
@@ -120,9 +131,9 @@ class MainActivity : FragmentActivity() {
                     TolochaNavGraph(
                         startupGate = gate,
                         startupServerId = startupServer?.id,
-                        startScreen = startScreen,
-                        podcastStartScreen = podcastStartScreen,
-                        defaultSection = defaultSection,
+                        startScreen = loadedStartScreen,
+                        podcastStartScreen = loadedPodcastStartScreen,
+                        defaultSection = loadedDefaultSection,
                     )
                 }
             }

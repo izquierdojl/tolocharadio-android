@@ -148,12 +148,12 @@ Contratos internos de presentación. **No hay API externa nueva**: se reutilizan
 | Sección | Control | Valores |
 |---------|---------|---------|
 | Pantalla de arranque en radio | Segmented buttons existente | Explorar, Favoritos, Historial |
-| Pantalla de arranque en podcast | Desplegable | Inicio, Descubrir, Suscripciones, Cola, Favoritos |
+| Pantalla de arranque en podcast | Botones segmentados (dos filas, 3 + 2) | Inicio, Descubrir, Suscripciones, Cola, Favoritos |
 
 - La sección de radio se renombra para distinguirla de la de podcast.
 - La de podcast se coloca después de la de radio y antes de "Sección inicial".
 - Valor por defecto: Inicio.
-- Texto de ayuda: se aplica al arrancar con la sección inicial Podcasts y un servidor con podcasts.
+- Texto de ayuda: se aplica al arrancar o al cambiar a Podcasts con un servidor con podcasts.
 - Si el servidor no ofrece podcasts, la preferencia sigue visible pero no tiene efecto; el arranque usa radio.
 - Los dos selectores son independientes.
 
@@ -161,8 +161,8 @@ Contratos internos de presentación. **No hay API externa nueva**: se reutilizan
 
 - Tag: `TolochaTestTags.PODCAST_START_SCREEN`.
 - Etiquetas visibles: "Pantalla de arranque en radio", "Pantalla de arranque en podcast".
-- Etiqueta actual del desplegable: "Inicio" por defecto.
-- Descripción accesible: "Pantalla de arranque de podcast: {valor}".
+- Botones segmentados con las cinco opciones; "Suscripciones" en la primera fila.
+- Semántica de selección única: el botón activo expone `Selected`.
 
 ---
 

@@ -1,7 +1,10 @@
 package com.izquierdojl.tolocharadio.feature.settings
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,7 +21,7 @@ class SettingsPodcastStartTest {
     val compose = createComposeRule()
 
     @Test
-    fun elSelectorDePodcastMuestraLasCincoOpciones() {
+    fun elSelectorDePodcastMuestraLasCincoOpcionesYSeleccionaSuscripciones() {
         var selected: PodcastStartScreen? = null
         compose.setContent {
             TolochaTheme {
@@ -33,11 +36,15 @@ class SettingsPodcastStartTest {
         }
 
         compose.onNodeWithTag(TolochaTestTags.PODCAST_START_SCREEN).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag(TolochaTestTags.PODCAST_START_SCREEN).performClick()
-        compose.onNodeWithText("Descubrir").assertIsDisplayed()
-        compose.onNodeWithText("Suscripciones").assertIsDisplayed()
-        compose.onNodeWithText("Cola").performClick()
+        listOf("Inicio", "Descubrir", "Suscripciones", "Cola").forEach { label ->
+            compose.onNodeWithText(label).assertIsDisplayed()
+        }
+        // "Favoritos" también existe en el selector de arranque de radio.
+        compose.onAllNodesWithText("Favoritos").assertCountEquals(2)
+        compose.onNodeWithText("Inicio").assertIsSelected()
 
-        assertEquals(PodcastStartScreen.QUEUE, selected)
+        compose.onNodeWithText("Suscripciones").performClick()
+
+        assertEquals(PodcastStartScreen.SUBSCRIPTIONS, selected)
     }
 }

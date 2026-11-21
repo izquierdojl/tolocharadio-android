@@ -89,6 +89,23 @@ class StartDestinationTest {
     }
 
     @Test
+    fun `routeAfterModeChange usa la pantalla de arranque de podcast`() {
+        assertEquals(
+            Routes.PODCAST_SUBSCRIPTIONS,
+            Routes.routeAfterModeChange(
+                Routes.EXPLORE,
+                podcastMode = true,
+                podcastsEnabled = true,
+                podcastStartRoute = Routes.PODCAST_SUBSCRIPTIONS,
+            ),
+        )
+        assertEquals(
+            Routes.PODCAST_HOME,
+            Routes.routeAfterModeChange(Routes.EXPLORE, podcastMode = true, podcastsEnabled = true),
+        )
+    }
+
+    @Test
     fun `routeAfterModeChange mantiene el guard del resto de rutas`() {
         assertEquals(
             Routes.EXPLORE,

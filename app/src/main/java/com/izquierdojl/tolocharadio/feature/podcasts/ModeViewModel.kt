@@ -10,6 +10,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -37,7 +39,9 @@ class ModeViewModel
 
         init {
             viewModelScope.launch {
-                prefs.contentMode.collect { mode ->
+                // Solo cambios en caliente: el valor persistido de la última
+                // sesión no debe pisar la sección inicial resuelta al arrancar.
+                prefs.contentMode.drop(1).collect { mode ->
                     _ui.value = _ui.value.copy(mode = mode)
                 }
             }
@@ -46,20 +50,32 @@ class ModeViewModel
                     _ui.value = _ui.value.copy(defaultSection = section)
                 }
             }
-            refresh()
+            viewModelScope.launch {
+                val section = prefs.defaultSection.first()
+                val enabled = podcastCapabilitiesEnabled()
+                _ui.value =
+                    _ui.value.copy(
+                        mode = if (enabled) section else ContentMode.RADIO,
+                        defaultSection = section,
+                        podcastsEnabled = enabled,
+                        loading = false,
+                    )
+            }
         }
 
         /** Recarga las capacidades del servidor activo (puerta del modo). */
         fun refresh() {
             viewModelScope.launch {
-                val enabled =
-                    when (val r = system.podcastCapabilities()) {
-                        is ApiResult.Ok -> r.value.podcasts
-                        is ApiResult.Err -> false
-                    }
+                val enabled = podcastCapabilitiesEnabled()
                 _ui.value = _ui.value.copy(podcastsEnabled = enabled, loading = false)
             }
         }
+
+        private suspend fun podcastCapabilitiesEnabled(): Boolean =
+            when (val r = system.podcastCapabilities()) {
+                is ApiResult.Ok -> r.value.podcasts
+                is ApiResult.Err -> false
+            }
 
         /** Cambia de modo Radio↔Podcasts (FR-002). */
         fun setMode(mode: ContentMode) {
