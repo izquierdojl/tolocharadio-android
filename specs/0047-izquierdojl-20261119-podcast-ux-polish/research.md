@@ -289,6 +289,45 @@ Este documento resuelve las incógnitas técnicas del plan. No hay `NEEDS CLARIF
 - Test instrumentado de la pantalla completa con Hilt: más lento y frágil; se reserva para la validación manual.
 - Robolectric: no está en el proyecto y añadirlo viola YAGNI.
 
+## R14 — Gesto de actualización y conservación del contenido
+
+**Decision**: usar `PullToRefreshBox` y `rememberPullToRefreshState` de Material 3 dentro de un componente compartido `PullToRefreshContent`; el indicador se muestra solo durante la recarga manual y el contenido visible se mantiene.
+
+- El componente envuelve únicamente el área desplazable (lista o cuadrícula), no la cabecera de sección.
+- `refreshing` es un estado independiente del `UiState`; la carga inicial y el reintento desde error siguen mostrando el spinner o el estado existentes.
+- El gesto se activa con la lista al principio; con la lista desplazada, el mismo arrastre se consume como scroll normal.
+- El ViewModel no cambia a `Loading` durante la recarga manual: mantiene el `Content` y publica el resultado cuando termina.
+- El contenedor es stateless: recibe `refreshing`, `onRefresh` y el contenido; no conoce repositorios ni ViewModels.
+- El contenedor expone una acción personalizada de accesibilidad «Actualizar» que invoca `onRefresh` cuando no hay recarga en vuelo. Es la alternativa para TalkBack, donde el gesto de arrastre no es descubrible ni fiable; no añade ningún botón visible ni altera la cabecera.
+
+**Rationale**: Material 3 ya está en el proyecto (BOM 2026.05.00, Material 3 1.4.0), el gesto respeta el comportamiento nativo de listas y se evita duplicar código y semántica entre Inicio y Suscripciones. La acción de accesibilidad reutiliza el mismo callback y mantiene la paridad funcional sin romper la restricción de acciones de la cabecera (FR-014).
+
+**Alternatives considered**:
+- `SwipeRefresh` de Accompanist: requiere dependencia nueva y su API está en desuso.
+- `nestedScroll` propio: más código, más estados que probar y peor integración con accesibilidad.
+- Botón visible de recarga en la cabecera: descartado porque FR-014 limita las acciones directas de la cabecera; la acción de accesibilidad cubre TalkBack sin añadir ruido visual.
+- Reutilizar el `Loading` existente: descartado porque sustituiría el contenido por un spinner y perdería la posición de la lista.
+
+## R15 — Concurrencia, búsqueda activa y pruebas
+
+**Decision**:
+
+- Cada ViewModel guarda el job de recarga y descarta una segunda solicitud mientras la primera está en vuelo.
+- Inicio recarga la portada agregada; el resumen de cola y las secciones se sustituyen al publicar el resultado.
+- Suscripciones recarga la lista. Con `showResults` activo:
+  - En «Podcasts», la lista nueva se filtra localmente con el término vigente.
+  - En «Episodios», se relanza la búsqueda con el término confirmado (`submittedTerm`), lo que limpia los resultados y pide la primera página; la generación existente descarta respuestas tardías. No se usa el texto que la persona haya podido escribir sin confirmar.
+- Si la recarga falla y hay contenido, se conserva y se emite un mensaje accionable; si no lo hay, se mantiene el estado `Error` con reintento.
+- La recarga no toca `EpisodePlayerViewModel`, `EpisodeActionsViewModel`, la cola ni las descargas.
+- **Pruebas**: `PodcastHomeViewModelTest` (éxito, error con contenido, error sin contenido, segunda solicitud ignorada), ampliación de `SubscriptionsViewModelTest` (lista, error, búsqueda en ambos ámbitos, concurrencia) y `PullToRefreshContentTest` (indicador, callback, semántica y acción accesible «Actualizar»). La supervivencia de la reproducción cuando la respuesta ya no incluye el elemento en curso se valida en quickstart 3.10 porque el reproductor es independiente de estos ViewModels.
+
+**Rationale**: cubre las reglas de la spec sin introducir lógica de dominio nueva; la guarda y la generación existente evitan carreras y resultados obsoletos.
+
+**Alternatives considered**:
+- Recargar también los resultados de episodios en paralelo con la lista: descartado porque duplicaría consultas y podría publicar dos estados incoherentes.
+- Cancelar la búsqueda al recargar: descartado por FR-079; el término y el ámbito deben conservarse.
+- Test instrumentado de la pantalla completa con Hilt: más lento y frágil; se reserva para quickstart.
+
 ## Riesgos de la extensión
 
 | Riesgo | Mitigación |
@@ -299,3 +338,10 @@ Este documento resuelve las incógnitas técnicas del plan. No hay `NEEDS CLARIF
 | Los resultados muestran estado de favorito/escucha obsoleto | Favorito derivado de `favoriteIds`; refresco tras `progressChanged` |
 | La baja deja resultados de un podcast no suscrito | Eliminar sus resultados al confirmar la baja y recargar la lista |
 | La pantalla supera la complejidad de Detekt | Extraer buscador, resultados y mapeador a archivos propios |
+| Un segundo arrastre lanza una consulta duplicada | Guarda de job en cada ViewModel y `refreshing` como estado de la UI |
+| La recarga deja la pantalla en blanco o pierde el scroll | Mantener `Content` y envolver solo el área desplazable; no usar `Loading` en la recarga manual |
+| La recarga pisa el término o los resultados de la búsqueda | Reaplicar el filtro local o repetir `searchEpisodes()` con el término vigente |
+| El indicador queda atascado tras un error | `finally`/publicación de `refreshing = false` en éxito y error, con test específico |
+| El gesto interfiere con el reordenado manual de suscripciones | El asa de arrastre consume el gesto; la recarga solo se activa desde el borde superior de la lista |
+| TalkBack no puede ejecutar el arrastre | Acción accesible «Actualizar» en el contenido, con el mismo callback y test de semántica |
+| La respuesta ya no incluye el episodio en reproducción y se corta el audio | La recarga solo sustituye el estado de la lista; no toca el player. Se valida en quickstart 3.10 |

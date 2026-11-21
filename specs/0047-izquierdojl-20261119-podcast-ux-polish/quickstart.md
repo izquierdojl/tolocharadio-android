@@ -213,3 +213,39 @@ Instalación rápida:
 23. **Esperado**: el campo, el ámbito activo y los cambios de resultados se anuncian; no hay solapamientos y las acciones conservan 48 dp.
 24. Con un término activo, vuelve a pulsar el botón de búsqueda.
 25. **Esperado**: los controles se ocultan, el término y los resultados se limpian y la lista vuelve completa.
+
+### 3.10 Actualización por arrastre en Inicio y Suscripciones (extensión 2026-11-21)
+
+**Datos de prueba**: al menos 2 dispositivos o clientes con la misma cuenta para provocar cambios desde fuera; una suscripción que se pueda dar de baja; un episodio en reproducción y una descarga en curso.
+
+**Medición de tiempos (SC-016/SC-017)**: usa un cronómetro o los registros de la app desde que se suelta el gesto. Repite cada medición 3 veces y toma la mediana. El indicador debe aparecer en < 1 s y los datos actualizados en ≤ 3 s con una conexión habitual.
+
+1. Abre Inicio con contenido y la lista al principio. Arrastra hacia abajo y suelta.
+2. **Esperado**: aparece el indicador, el contenido sigue visible y, al terminar, las secciones muestran los datos más recientes sin cambiar de pantalla.
+3. Cronometra desde que sueltas el gesto hasta que aparece el indicador y hasta que cambian los datos visibles.
+4. **Esperado**: indicador en < 1 s; datos actualizados en ≤ 3 s (mediana de 3 intentos).
+5. Desde otro cliente, suscríbete a un podcast o modifica la cola; vuelve a Inicio y repite el gesto.
+6. **Esperado**: el nuevo programa aparece, el resumen de cola se actualiza y no se reinicia la reproducción.
+7. Abre Suscripciones con contenido y repite el gesto.
+8. **Esperado**: la lista se recarga, las altas aparecen y las bajas desaparecen; se conservan el orden, el modo lista/tarjetas y el término de búsqueda si lo hubiera.
+9. Desplaza la lista lejos del principio y arrastra hacia abajo.
+10. **Esperado**: solo se desplaza; la recarga no se activa hasta llegar al principio y continuar el arrastre.
+11. Con una recarga en vuelo, arrastra de nuevo varias veces.
+12. **Esperado**: no se lanzan consultas duplicadas y el indicador sigue visible hasta que termina la única recarga.
+13. Activa el modo avión y arrastra para recargar.
+14. **Esperado**: el contenido anterior se conserva, se muestra un mensaje en español y se puede reintentar; no hay pantalla en blanco.
+15. En Suscripciones, escribe un término en «Podcasts» y recarga.
+16. **Esperado**: la lista nueva se filtra con el mismo término y se conserva el ámbito.
+17. Cambia a «Episodios», busca un término y recarga con resultados visibles.
+18. **Esperado**: se repite la búsqueda confirmada desde la primera página, se conservan término y ámbito y no se mezclan resultados de consultas anteriores.
+19. Inicia la reproducción de un episodio y una descarga; recarga Inicio y Suscripciones.
+20. **Esperado**: la reproducción continúa, la descarga no se cancela y la cola y el progreso local no se reinician.
+21. Con un episodio en reproducción, elimina su podcast o episodio desde otro cliente y recarga Inicio o Suscripciones.
+22. **Esperado**: el elemento desaparece de la lista, la reproducción continúa sin cortes y el reproductor conserva título y posición (FR-080).
+23. Gira la pantalla o envía la app a segundo plano durante la recarga y vuelve.
+24. **Esperado**: el indicador no se duplica, el estado de la pantalla se conserva y el resultado vigente se muestra al volver.
+25. Activa TalkBack y sube la letra al 200 %.
+26. Con TalkBack, abre las acciones del contenido y elige «Actualizar».
+27. **Esperado**: la recarga se inicia sin gesto, el inicio y el fin se anuncian, el foco no se pierde, no hay solapamientos y el contenido sigue siendo navegable (FR-081).
+28. Abre Inicio o Suscripciones en estado vacío o de error e intenta el gesto.
+29. **Esperado**: no se exige la recarga; se mantienen las acciones existentes de descubrir o reintentar.

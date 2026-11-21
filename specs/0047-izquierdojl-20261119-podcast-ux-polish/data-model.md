@@ -272,6 +272,53 @@ NotDownloaded --pulsar--> Downloading(0) --avance--> Downloading(1) --> Download
 
 ---
 
+## 8. Actualización por arrastre (extensión 2026-11-21)
+
+### `ManualRefreshState` (efímero, no persiste)
+
+Estado de presentación compartido por Inicio y Suscripciones durante una recarga manual.
+
+| Campo | Tipo | Regla |
+|-------|------|-------|
+| `refreshing` | `Boolean` | `true` solo mientras hay una recarga manual en vuelo; `false` en carga inicial, reposo, éxito y error |
+| `message` | `String?` | Error accionable en español; `null` cuando no hay error pendiente |
+
+**Transiciones**
+
+| Evento | Efecto |
+|--------|--------|
+| Arrastre al principio y suelta | `refreshing = true`, `message = null`; se lanza una sola recarga por pantalla |
+| Segundo arrastre durante la recarga | Se ignora; `refreshing` sigue `true` |
+| Éxito con datos | Se sustituye el contenido visible; `refreshing = false` |
+| Éxito sin datos | La pantalla pasa a su estado vacío existente; `refreshing = false` |
+| Error con contenido previo | Se conserva el contenido; `message` con el error; `refreshing = false` |
+| Error sin contenido previo | Se mantiene el estado `Error` existente con reintento; `refreshing = false` |
+| Descartar el mensaje | `message = null` |
+| Rotación o vuelta desde segundo plano | El estado sobrevive en el ViewModel; no se duplica la recarga |
+
+### `RefreshableContent` (contrato de presentación)
+
+| Campo | Tipo | Regla |
+|-------|------|-------|
+| `refreshing` | `Boolean` | Controla el indicador; nunca sustituye el contenido por una pantalla de carga |
+| `onRefresh` | `() -> Unit` | Se invoca una vez por gesto válido o por la acción accesible «Actualizar»; no se invoca si `refreshing` ya es `true` |
+| `content` | `@Composable () -> Unit` | Lista o cuadrícula visible; conserva su posición de scroll y su estado |
+
+**Invariantes**
+
+- La recarga manual nunca muestra el spinner de carga inicial ni deja la pantalla en blanco.
+- `refreshing` es `false` cuando no hay recarga en vuelo, incluso después de un error.
+- Solo hay una recarga en vuelo por pantalla; las solicitudes descartadas no emiten error.
+- El término y el ámbito de búsqueda no cambian; en «Episodios» se repite la consulta confirmada (`submittedTerm`) desde la primera página, no el texto escrito sin confirmar.
+- La recarga no modifica `EpisodePlayerUi`, la cola, las descargas ni el progreso local, aunque la respuesta ya no incluya el programa o episodio en reproducción.
+- El gesto no se activa con la lista desplazada; al llegar al principio, continuar arrastrando lo activa.
+- El contenedor expone una acción accesible «Actualizar» que invoca `onRefresh` cuando `refreshing = false`; no añade ningún control visible.
+- En modo lista y en modo tarjetas el contrato es el mismo; solo cambia el contenedor desplazable interno.
+
+**Persistencia**: ninguna. `ManualRefreshState` vive en el ViewModel de cada pantalla y se pierde al destruirse el proceso, igual que el resto del estado de presentación.
+
+---
+
 ## Resumen de persistencia
 
 | Dato | Dónde | Cambia el esquema |
@@ -283,3 +330,4 @@ NotDownloaded --pulsar--> Downloading(0) --avance--> Downloading(1) --> Download
 | Preferencia de voz | DataStore | No (nueva clave) |
 | Estado del cajón/temporizador | Memoria | No |
 | Búsqueda en Suscripciones | Memoria (`SubscriptionsViewModel`) | No |
+| Actualización por arrastre | Memoria (`PodcastHomeViewModel`, `SubscriptionsViewModel`) | No |

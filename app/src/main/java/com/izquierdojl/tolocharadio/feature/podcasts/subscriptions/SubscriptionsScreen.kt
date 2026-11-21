@@ -60,6 +60,7 @@ import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.PodcastCard
 import com.izquierdojl.tolocharadio.core.ui.components.PodcastRow
+import com.izquierdojl.tolocharadio.core.ui.components.PullToRefreshContent
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.TolochaTestTags
 import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
@@ -85,8 +86,10 @@ fun SubscriptionsScreen(
     viewModel: SubscriptionsViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsState()
+    val refreshing by viewModel.refreshing.collectAsState()
     val search by viewModel.searchUi.collectAsState()
     val message by viewModel.message.collectAsState()
+    val refreshErrorFallback = stringResource(R.string.pull_to_refresh_error)
     val manualOrder by viewModel.manualOrder.collectAsState()
     var viewMode by rememberSaveable { mutableStateOf(ViewMode.LIST) }
     var order by rememberSaveable { mutableStateOf(SubscriptionSort.RECENT_EPISODES) }
@@ -108,7 +111,7 @@ fun SubscriptionsScreen(
 
     LaunchedEffect(message) {
         message?.let {
-            snackbar.showSnackbar(it)
+            snackbar.showSnackbar(it.ifBlank { refreshErrorFallback })
             viewModel.clearMessage()
         }
     }
@@ -200,66 +203,72 @@ fun SubscriptionsScreen(
                     }
                 }
             is SubscriptionsUiState.Content -> {
-                if (search.showResults) {
-                    SubscriptionSearchHost(
-                        state = search,
-                        snackbar = snackbar,
-                        onLoadMore = viewModel::loadMoreEpisodes,
-                        onRetry = viewModel::searchEpisodes,
-                        onProgressChanged = viewModel::onEpisodeProgressChanged,
-                    )
-                } else {
-                    val items = sortSubscriptions(state.items, order, dragOrder ?: manualOrder)
-                    val listFiltered =
-                        search.scope == SubscriptionSearchScope.PODCASTS && search.term.isNotBlank()
-                    val visible = visibleSubscriptions(items, search.term, search.scope)
-                    if (visible.isEmpty() && listFiltered) {
-                        Text(
-                            stringResource(
-                                R.string.subscriptions_search_no_podcasts,
-                                search.term.trim(),
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp),
+                PullToRefreshContent(
+                    refreshing = refreshing,
+                    onRefresh = viewModel::refreshManually,
+                    modifier = Modifier.weight(1f).testTag(TolochaTestTags.SUBSCRIPTIONS_PULL_REFRESH),
+                ) {
+                    if (search.showResults) {
+                        SubscriptionSearchHost(
+                            state = search,
+                            snackbar = snackbar,
+                            onLoadMore = viewModel::loadMoreEpisodes,
+                            onRetry = viewModel::searchEpisodes,
+                            onProgressChanged = viewModel::onEpisodeProgressChanged,
                         )
                     } else {
-                        if (order == SubscriptionSort.MANUAL &&
-                            viewMode == ViewMode.LIST &&
-                            !listFiltered
-                        ) {
+                        val items = sortSubscriptions(state.items, order, dragOrder ?: manualOrder)
+                        val listFiltered =
+                            search.scope == SubscriptionSearchScope.PODCASTS && search.term.isNotBlank()
+                        val visible = visibleSubscriptions(items, search.term, search.scope)
+                        if (visible.isEmpty() && listFiltered) {
                             Text(
-                                "Arrastra el asa para ordenar. El orden se guarda en este dispositivo.",
-                                style = MaterialTheme.typography.bodySmall,
+                                stringResource(
+                                    R.string.subscriptions_search_no_podcasts,
+                                    search.term.trim(),
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                            )
-                        }
-                        if (viewMode == ViewMode.GRID) {
-                            SubscriptionsGrid(
-                                items = visible,
-                                onOpenShow = onOpenShow,
-                                onUnsubscribe = { pendingUnsubscribe = it },
+                                modifier = Modifier.padding(16.dp),
                             )
                         } else {
-                            SubscriptionsList(
-                                items = visible,
-                                manual = order == SubscriptionSort.MANUAL && !listFiltered,
-                                draggingId = draggingId,
-                                onMove = { from, to ->
-                                    val ids = (dragOrder ?: items.map { it.id }).toMutableList()
-                                    if (from in ids.indices && to in ids.indices && from != to) {
-                                        ids.add(to, ids.removeAt(from))
-                                        dragOrder = ids
-                                    }
-                                },
-                                onCommit = {
-                                    viewModel.saveManualOrder(dragOrder ?: items.map { it.id })
-                                },
-                                onDragStateChange = { id -> draggingId = id },
-                                onOpenShow = onOpenShow,
-                                onUnsubscribe = { pendingUnsubscribe = it },
-                            )
+                            if (order == SubscriptionSort.MANUAL &&
+                                viewMode == ViewMode.LIST &&
+                                !listFiltered
+                            ) {
+                                Text(
+                                    "Arrastra el asa para ordenar. El orden se guarda en este dispositivo.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                )
+                            }
+                            if (viewMode == ViewMode.GRID) {
+                                SubscriptionsGrid(
+                                    items = visible,
+                                    onOpenShow = onOpenShow,
+                                    onUnsubscribe = { pendingUnsubscribe = it },
+                                )
+                            } else {
+                                SubscriptionsList(
+                                    items = visible,
+                                    manual = order == SubscriptionSort.MANUAL && !listFiltered,
+                                    draggingId = draggingId,
+                                    onMove = { from, to ->
+                                        val ids = (dragOrder ?: items.map { it.id }).toMutableList()
+                                        if (from in ids.indices && to in ids.indices && from != to) {
+                                            ids.add(to, ids.removeAt(from))
+                                            dragOrder = ids
+                                        }
+                                    },
+                                    onCommit = {
+                                        viewModel.saveManualOrder(dragOrder ?: items.map { it.id })
+                                    },
+                                    onDragStateChange = { id -> draggingId = id },
+                                    onOpenShow = onOpenShow,
+                                    onUnsubscribe = { pendingUnsubscribe = it },
+                                )
+                            }
                         }
                     }
                 }

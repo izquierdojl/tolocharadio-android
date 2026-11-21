@@ -50,3 +50,10 @@
   podcasts se filtra en la lista ya cargada y la de episodios se apoya en la
   capacidad que el servidor ya ofrece a la web, sin cambios de contrato
   (recogido en Assumptions y Dependencies).
+- Validación de la extensión 2026-11-21 (actualización por arrastre): se añadieron
+  la User Story 9, sus casos límite, los requisitos FR-072–FR-082 y los criterios
+  SC-016–SC-018. No quedan marcadores `[NEEDS CLARIFICATION]`. El gesto se limita
+  a Inicio y Suscripciones; con búsqueda activa se recarga la vista vigente
+  conservando término y ámbito; los estados vacío y de error mantienen sus
+  acciones actuales (recogido en Assumptions). Todos los criterios son
+  verificables sin depender de una implementación concreta.

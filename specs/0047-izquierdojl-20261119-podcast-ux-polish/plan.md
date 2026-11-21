@@ -20,7 +20,7 @@ Siete mejoras de UX y reproducción sobre el modo podcast ya existente (spec 004
 
 El enfoque reutiliza la arquitectura existente (MVVM + Clean, Hilt, Media3, Compose M3), no añade dependencias ni módulos Gradle y concentra las reglas nuevas en `domain` con UI delgada.
 
-**Extensión 2026-11-21**: se añade la búsqueda en Suscripciones (US8, FR-059–FR-071, SC-012–SC-014), planificada en la sección final. El resto del plan original sigue vigente sin cambios.
+**Extensiones 2026-11-21**: se añaden la búsqueda en Suscripciones (US8, FR-059–FR-071, SC-012–SC-014) y la actualización por arrastre en Inicio y Suscripciones (US9, FR-072–FR-082, SC-016–SC-018), planificadas en las secciones finales. El resto del plan original sigue vigente sin cambios.
 
 ## Technical Context
 
@@ -50,7 +50,7 @@ El enfoque reutiliza la arquitectura existente (MVVM + Clean, Hilt, Media3, Comp
 - La reproducción de radio en directo no debe ofrecer retroceso/avance en la notificación ni recibir el potenciador de voz.
 - El estado del reproductor y la sesión multimedia deben sobrevivir a rotación, segundo plano y cambio de episodio.
 
-**Scale/Scope**: 1 módulo, ~7 áreas de UI/player, 53 requisitos funcionales, 7 historias. Cola de hasta 200 episodios; 4 destinos en la barra de radio y 5 en la de podcast tras retirar Configuración. Sin cambios de backend.
+**Scale/Scope**: 1 módulo, ~7 áreas de UI/player, 82 requisitos funcionales (53 originales + 29 de las extensiones 2026-11-21), 9 historias y 18 criterios de éxito. Cola de hasta 200 episodios; 4 destinos en la barra de radio y 5 en la de podcast tras retirar Configuración. Sin cambios de backend.
 
 ## Constitution Check
 
@@ -291,3 +291,122 @@ Artefactos actualizados:
 ### Complexity Tracking (delta)
 
 Sin violaciones que justificar. La pantalla se apoya en componentes existentes y en dos ViewModels de actividad ya compartidos; no se introduce deuda de navegación ni de persistencia.
+
+## Extensión 2026-11-21 — Actualización por arrastre en Inicio y Suscripciones
+
+**Rama de trabajo**: `main` (la rama `0047-izquierdojl-20261119-podcast-ux-polish` ya está fusionada; esta extensión se planifica sobre la base actual).
+
+**Spec**: [spec.md](./spec.md) — User Story 9, FR-072–FR-082, SC-016–SC-018.
+
+### Resumen
+
+Añadir el gesto de arrastrar hacia abajo para recargar el contenido de Inicio y Suscripciones, sin cambios en el contrato del servidor:
+
+1. **Gesto**: envolver el contenido desplazable de cada pantalla en `PullToRefreshBox` de Material 3, con el umbral estándar y activación solo cuando la lista está al principio.
+2. **Recarga sin perder contexto**: los ViewModels exponen `refreshing` y un mensaje de error; `refreshManually()` mantiene el `Content` visible y no reutiliza el estado `Loading` de la carga inicial.
+3. **Datos**: Inicio vuelve a pedir la portada agregada; Suscripciones vuelve a pedir la lista. No se recargan ni reinician descargas, cola, reproducción ni progreso local.
+4. **Búsqueda activa**: se conservan término y ámbito; en «Podcasts» el filtro local se reaplica sobre la lista nueva; en «Episodios» se repite la búsqueda confirmada (`submittedTerm`) desde la primera página.
+5. **Concurrencia y errores**: una sola recarga en vuelo por pantalla; si falla, se conserva el contenido y se informa con reintento en español.
+6. **Accesibilidad**: el indicador anuncia el inicio y el fin con una región viva y una descripción de estado; el gesto no altera el foco ni la navegación con lector de pantalla, y el contenido expone una acción accesible «Actualizar» que permite recargar sin depender del arrastre.
+
+No se modifican `PodcastsApi.kt`, los DTOs, la autenticación, el esquema de datos ni las dependencias.
+
+### Technical Context (delta)
+
+**Language/Version**: Kotlin 2.3.10, JVM target 17 (sin cambios).
+
+**Primary Dependencies**: las existentes. Se usa `androidx.compose.material3.pulltorefresh.PullToRefreshBox` y `rememberPullToRefreshState` del BOM de Compose ya incluido (Material 3 1.4.0 resuelto por el BOM 2026.05.00). Sin dependencias nuevas.
+
+**Storage**: ninguna nueva. `refreshing` y el mensaje de error son estado efímero del ViewModel; no se persiste nada.
+
+**Testing**: JUnit 4 + `kotlinx-coroutines-test` + Turbine + MockK para `PodcastHomeViewModel` y `SubscriptionsViewModel`; Compose Test para el contenedor de actualización (indicador, callback y semántica). Gates: `assembleDebug`, `testDebugUnitTest`, `detekt`, `ktlintCheck`, `lintDebug`; Compose tests en local con emulador.
+
+**Target Platform**: Android; `minSdk 26`, `compileSdk`/`targetSdk` 37. Móvil, UI en español, tema oscuro por defecto.
+
+**Project Type**: aplicación Android de un módulo `app`, MVVM + Clean por capas.
+
+**Performance Goals**:
+- El indicador aparece en < 1 s desde el gesto.
+- Los datos actualizados se muestran en ≤ 3 s con conexión habitual.
+- No se lanza más de una consulta por pantalla mientras hay una recarga en vuelo.
+- La recarga no bloquea el hilo principal ni reinicia la lista.
+
+**Constraints**:
+- Sin cambios de API, DTO, autenticación ni credenciales (FR-082).
+- Sin nuevas librerías ni módulos Gradle (YAGNI, constitución V).
+- Sin XML/Views nuevas; todo Compose M3.
+- Sin PII en logs; errores accionables en español.
+- La reproducción, la cola, las descargas y el progreso local no se alteran.
+- Los estados vacío y de error conservan sus acciones actuales; no se exige el gesto.
+- El gesto solo actúa con la lista al principio; con la lista desplazada se comporta como scroll normal.
+- Con lector de pantalla, la recarga se inicia también mediante una acción accesible «Actualizar» del contenido; no se añade un botón visible ni se altera la cabecera.
+
+**Scale/Scope**: 2 pantallas, 1 historia (US9), 11 requisitos funcionales (FR-072–FR-082), 3 criterios de éxito (SC-016–SC-018). Sin persistencia ni cambios de backend.
+
+### Constitution Check (delta)
+
+| Principio / gate | Cumplimiento | Evidencia en el plan |
+|------------------|--------------|----------------------|
+| **I. MVVM + Clean** | PASS | `refreshManually()` y las guardas de concurrencia viven en los ViewModels; la UI solo compone el contenedor stateless y pasa estado/callbacks; sin `Context` de Activity. |
+| **II. Kotlin + Compose M3 + Media3** | PASS | `PullToRefreshBox` de Material 3 ya incluido; sin XML/Views ni cambios en Media3. |
+| **III. Test-First** | PASS | Tests de ViewModel (éxito, error con y sin contenido, concurrencia y búsqueda activa) y Compose del contenedor, incluida la acción accesible «Actualizar», antes de implementar; quickstart 3.10 para validación manual. |
+| **IV. Streaming robusto** | PASS | La recarga no toca el player; errores accionables en español; sin PII; el contenido previo nunca se sustituye por una pantalla en blanco. |
+| **V. Simplicidad (YAGNI)** | PASS | Se reutilizan las consultas, repositorios y componentes existentes; un único envoltorio compartido por dos pantallas; sin persistencia, dependencias ni módulos nuevos. |
+| **Gates de calidad** | PASS | Los mismos gates obligatorios; Compose tests en local con emulador. |
+| **Gobernanza (v3.1.0)** | PASS | No se altera la navegación ni la ubicación de Configuración/Servidores; no se requiere excepción. |
+
+### Project Structure (delta)
+
+```text
+specs/0047-izquierdojl-20261119-podcast-ux-polish/
+├── plan.md                         # esta sección
+├── research.md                     # + R14–R15
+├── data-model.md                   # + sección 8
+├── quickstart.md                   # + 3.10
+└── contracts/
+    └── pull-to-refresh.md          # NUEVO: contrato del gesto y de los ViewModels
+
+app/src/main/java/com/izquierdojl/tolocharadio/
+├── core/ui/components/
+│   ├── PullToRefreshContent.kt     # NUEVO: envoltorio stateless
+│   ├── TolochaTestTags.kt          # + etiquetas de actualización
+│   └── ...
+├── feature/podcasts/
+│   ├── home/
+│   │   ├── PodcastHomeViewModel.kt # + refreshing/message y refreshManually()
+│   │   └── PodcastHomeScreen.kt    # envuelve el contenido
+│   ├── SubscriptionsViewModel.kt   # + refreshing/message, refreshManually() y búsqueda
+│   └── subscriptions/
+│       └── SubscriptionsScreen.kt  # envuelve el contenido
+└── res/values/strings.xml          # + textos del indicador y del error
+
+app/src/test/java/com/izquierdojl/tolocharadio/
+├── feature/podcasts/home/PodcastHomeViewModelTest.kt   # NUEVO
+└── feature/podcasts/SubscriptionsViewModelTest.kt      # + tests de recarga
+
+app/src/androidTest/java/com/izquierdojl/tolocharadio/
+└── core/ui/components/PullToRefreshContentTest.kt      # NUEVO
+```
+
+**Structure Decision**: se mantiene el módulo único y la separación por capas. El gesto se encapsula en `PullToRefreshContent`, un componente stateless con dos consumidores reales (Inicio y Suscripciones), lo que evita duplicar semántica y permite probarlo por separado. Los ViewModels conservan la orquestación, las guardas de concurrencia y la interacción con la búsqueda; las pantallas solo conectan estado y callbacks.
+
+### Phase 0: Research (delta)
+
+Resumen de decisiones (detalle en [research.md](./research.md), R14–R15):
+
+- **R14 Gesto y recarga**: `PullToRefreshBox` + `rememberPullToRefreshState` de Material 3, con indicador solo durante la recarga manual y `Content` intacto; la carga inicial sigue usando el spinner existente. El contenedor añade una acción de accesibilidad «Actualizar» que reutiliza `onRefresh`, sin botón visible. Alternativa descartada: `SwipeRefresh` de Accompanist (dependencia nueva y API heredada), `nestedScroll` propio (más código y peor accesibilidad) o un botón en la cabecera (rompe FR-014).
+- **R15 Concurrencia, búsqueda y pruebas**: guarda de un único job por pantalla; en Suscripciones se relanza la búsqueda con el término confirmado (`submittedTerm`) cuando hay resultados de episodios; el filtro local de «Podcasts» se recalcula al publicar la lista nueva. Tests de ViewModel y Compose del contenedor (incluida la acción accesible y la reproducción que sobrevive a una respuesta sin el elemento en curso), más quickstart 3.10.
+
+### Phase 1: Design & Contracts (delta)
+
+Artefactos actualizados:
+
+- [data-model.md](./data-model.md): sección 8 con `ManualRefreshState` y `RefreshableContent`, sus transiciones e invariantes; sin persistencia.
+- [contracts/pull-to-refresh.md](./contracts/pull-to-refresh.md): contrato del gesto, del contenedor, de `refreshManually()` en ambos ViewModels, matriz de estados y semántica de accesibilidad.
+- [quickstart.md](./quickstart.md): sección 3.10 con escenarios manuales de actualización, búsqueda, error, rotación, TalkBack con la acción accesible «Actualizar», reproducción que sobrevive a una respuesta sin el elemento en curso (FR-080) y medición de tiempos (SC-016/SC-017: indicador < 1 s, datos ≤ 3 s, mediana de 3 intentos).
+
+**Post-Design Constitution Check**: se mantiene en PASS. No hay nuevas dependencias, permisos, módulos ni cambios de contrato; el estado es efímero, la accesibilidad se cubre con región viva y el 200 % en quickstart.
+
+### Complexity Tracking (delta)
+
+Sin violaciones que justificar. Un componente compartido para dos pantallas es la abstracción mínima que evita duplicar el gesto y su semántica; no se añade persistencia ni lógica de dominio nueva.
