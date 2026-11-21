@@ -42,4 +42,8 @@
     <string name="subscriptions_search_results">Episodios para «%1$s»</string>
     <string name="subscriptions_search_results_count">%1$d resultados</string>
     <string name="subscriptions_search_results_count_one">%1$d resultado</string>
+    <string name="pull_to_refresh_action">Actualizar</string>
+    <string name="pull_to_refresh_updating">Actualizando…</string>
+    <string name="pull_to_refresh_updated">Actualizado</string>
+    <string name="pull_to_refresh_error">No se pudo actualizar. Inténtalo de nuevo.</string>
 </resources>

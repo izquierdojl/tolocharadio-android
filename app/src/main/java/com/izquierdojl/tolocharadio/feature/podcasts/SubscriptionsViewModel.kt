@@ -73,6 +73,11 @@ class SubscriptionsViewModel
         private val _ui = MutableStateFlow<SubscriptionsUiState>(SubscriptionsUiState.Loading)
         val ui: StateFlow<SubscriptionsUiState> = _ui.asStateFlow()
 
+        private val _refreshing = MutableStateFlow(false)
+
+        /** Recarga manual en curso; mantiene la lista visible. */
+        val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
+
         private val _message = MutableStateFlow<String?>(null)
         val message: StateFlow<String?> = _message.asStateFlow()
 
@@ -87,6 +92,7 @@ class SubscriptionsViewModel
                 initialValue = emptyList(),
             )
 
+        private var listJob: Job? = null
         private var searchJob: Job? = null
         private var searchGeneration = 0
 
@@ -102,13 +108,49 @@ class SubscriptionsViewModel
         }
 
         fun refresh() {
-            viewModelScope.launch {
-                _ui.value = SubscriptionsUiState.Loading
-                when (val r = repo.list()) {
-                    is ApiResult.Ok -> publishList(r.value)
-                    is ApiResult.Err -> _ui.value = SubscriptionsUiState.Error(r.error.userMessage())
+            if (_refreshing.value) return
+            listJob?.cancel()
+            listJob =
+                viewModelScope.launch {
+                    _ui.value = SubscriptionsUiState.Loading
+                    when (val r = repo.list()) {
+                        is ApiResult.Ok -> publishList(r.value)
+                        is ApiResult.Err -> _ui.value = SubscriptionsUiState.Error(r.error.userMessage())
+                    }
                 }
-            }
+        }
+
+        /**
+         * Recarga manual por arrastre. Conserva la lista y, si falla,
+         * informa sin vaciar la pantalla (US9, FR-074/FR-078).
+         */
+        fun refreshManually() {
+            if (_refreshing.value || _ui.value !is SubscriptionsUiState.Content) return
+            _refreshing.value = true
+            _message.value = null
+            listJob?.cancel()
+            listJob =
+                viewModelScope.launch {
+                    try {
+                        when (val r = repo.list()) {
+                            is ApiResult.Ok -> {
+                                publishList(r.value)
+                                refreshEpisodesIfVisible()
+                            }
+                            is ApiResult.Err -> _message.value = r.error.userMessage()
+                        }
+                    } finally {
+                        _refreshing.value = false
+                    }
+                }
+        }
+
+        private suspend fun refreshEpisodesIfVisible() {
+            val current = _searchUi.value
+            if (!current.showResults || current.scope != SubscriptionSearchScope.EPISODES) return
+            val term = current.submittedTerm.trim()
+            if (term.isEmpty()) return
+            launchSearch(term).join()
         }
 
         /** Filtro local mientras se escribe en «Podcasts» (FR-060). */
@@ -242,10 +284,10 @@ class SubscriptionsViewModel
                 }
         }
 
-        private fun launchSearch(term: String) {
+        private fun launchSearch(term: String): Job {
             searchJob?.cancel()
             val generation = ++searchGeneration
-            searchJob =
+            val job =
                 viewModelScope.launch {
                     _searchUi.update {
                         it.copy(
@@ -285,6 +327,8 @@ class SubscriptionsViewModel
                             }
                     }
                 }
+            searchJob = job
+            return job
         }
 
         private fun clearSearchResults() {

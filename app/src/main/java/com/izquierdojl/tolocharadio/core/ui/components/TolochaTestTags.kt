@@ -74,4 +74,13 @@ object TolochaTestTags {
 
     /** Estado anunciado de la búsqueda (live region). */
     const val SUBSCRIPTIONS_SEARCH_STATUS = "tolocha_subscriptions_search_status"
+
+    /** Contenedor de recarga por arrastre de Inicio. */
+    const val HOME_PULL_REFRESH = "tolocha_home_pull_refresh"
+
+    /** Contenedor de recarga por arrastre de Suscripciones. */
+    const val SUBSCRIPTIONS_PULL_REFRESH = "tolocha_subscriptions_pull_refresh"
+
+    /** Indicador de progreso de la recarga por arrastre. */
+    const val PULL_REFRESH_INDICATOR = "tolocha_pull_refresh_indicator"
 }

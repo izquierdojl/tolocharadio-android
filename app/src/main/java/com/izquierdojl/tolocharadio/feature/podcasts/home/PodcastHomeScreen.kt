@@ -30,8 +30,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.izquierdojl.tolocharadio.R
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.EpisodeCard
@@ -39,7 +42,9 @@ import com.izquierdojl.tolocharadio.core.ui.components.EpisodeCardUi
 import com.izquierdojl.tolocharadio.core.ui.components.EpisodeRow
 import com.izquierdojl.tolocharadio.core.ui.components.PodcastCard
 import com.izquierdojl.tolocharadio.core.ui.components.PodcastRow
+import com.izquierdojl.tolocharadio.core.ui.components.PullToRefreshContent
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
+import com.izquierdojl.tolocharadio.core.ui.components.TolochaTestTags
 import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
 import com.izquierdojl.tolocharadio.core.ui.components.downloadUiState
 import com.izquierdojl.tolocharadio.data.local.podcasts.DownloadRecord
@@ -73,6 +78,9 @@ fun PodcastHomeScreen(
     actions: EpisodeActionsViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
 ) {
     val ui by viewModel.ui.collectAsState()
+    val refreshing by viewModel.refreshing.collectAsState()
+    val refreshMessage by viewModel.message.collectAsState()
+    val refreshErrorFallback = stringResource(R.string.pull_to_refresh_error)
     val playerUi by player.ui.collectAsState()
     val actionMessage by actions.message.collectAsState()
     val favoriteFailure by actions.favoriteFailure.collectAsState()
@@ -90,6 +98,13 @@ fun PodcastHomeScreen(
         actionMessage?.let {
             snackbar.showSnackbar(it)
             actions.clearMessage()
+        }
+    }
+
+    LaunchedEffect(refreshMessage) {
+        refreshMessage?.let {
+            snackbar.showSnackbar(it.ifBlank { refreshErrorFallback })
+            viewModel.clearMessage()
         }
     }
 
@@ -177,10 +192,16 @@ fun PodcastHomeScreen(
                         queueCount = home.queue.count,
                         queueLimit = home.queue.limit,
                     )
-                if (viewMode == ViewMode.GRID) {
-                    HomeGrid(sections = sections, actions = homeActions)
-                } else {
-                    HomeList(sections = sections, actions = homeActions)
+                PullToRefreshContent(
+                    refreshing = refreshing,
+                    onRefresh = viewModel::refreshManually,
+                    modifier = Modifier.weight(1f).testTag(TolochaTestTags.HOME_PULL_REFRESH),
+                ) {
+                    if (viewMode == ViewMode.GRID) {
+                        HomeGrid(sections = sections, actions = homeActions)
+                    } else {
+                        HomeList(sections = sections, actions = homeActions)
+                    }
                 }
             }
         }

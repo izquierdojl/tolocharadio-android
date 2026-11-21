@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-19
 
-**Status**: Done (2026-11-19; validado en emulador, incluida la revisión manual y TalkBack); extensión 2026-11-21 cerrada y verificada manualmente en emulador (2026-11-21)
+**Status**: Done (2026-11-19; validado en emulador, incluida la revisión manual y TalkBack); extensión de búsqueda 2026-11-21 cerrada y verificada manualmente en emulador; extensión de actualización por arrastre cerrada y verificada manualmente en emulador (2026-11-21)
 
 **Input**: User description: "Vamos a planificar una spec con las siguientes mejoras
 
@@ -189,6 +189,27 @@ La persona usuaria, desde la pantalla de Suscripciones y con al menos una suscri
 
 ---
 
+### User Story 9 - Actualizar Inicio y Suscripciones arrastrando hacia abajo (Priority: P3)
+
+La persona usuaria, en las pantallas de Inicio y de Suscripciones, arrastra la vista hacia abajo cuando está al principio y la suelta: la pantalla vuelve a cargar sus datos y muestra la información más reciente, como al recargar una pestaña del navegador. Mientras se actualiza ve un indicador; al terminar, el indicador desaparece y la vista conserva su modo, su orden, su búsqueda y la reproducción en curso.
+
+**Why this priority**: Es una convención de uso muy extendida que da control inmediato sobre datos que cambian en el servidor (nuevas suscripciones, novedades, cola) sin cerrar y abrir la pantalla. No bloquea ninguna función y se apoya en las consultas existentes.
+
+**Independent Test**: En Inicio, con la lista al principio, arrastrar hacia abajo y soltar: aparece el indicador y, al terminar, las secciones reflejan un cambio hecho desde otro cliente. Repetir en Suscripciones y comprobar que aparecen altas y desaparecen bajas sin perder el orden ni el modo de vista; con la lista desplazada, comprobar que el gesto no actualiza hasta llegar al principio.
+
+**Acceptance Scenarios**:
+
+1. **Given** la pantalla Inicio con contenido y al principio, **When** la persona arrastra hacia abajo y suelta, **Then** se inicia una actualización, aparece un indicador visible y este permanece hasta que se muestran los datos actualizados, sin dejar la pantalla en blanco ni cambiar de sección.
+2. **Given** la pantalla Suscripciones con contenido y al principio, **When** la persona arrastra hacia abajo y suelta, **Then** la lista se vuelve a cargar y refleja las altas y bajas, conservando el modo de vista, el orden activo y el término de búsqueda si lo hubiera.
+3. **Given** una lista desplazada lejos del principio, **When** la persona arrastra hacia abajo, **Then** el gesto solo desplaza la lista y no actualiza hasta que la vista está al principio; una vez allí, seguir arrastrando hacia abajo inicia la actualización.
+4. **Given** una actualización en curso, **When** la persona vuelve a arrastrar hacia abajo, **Then** no se lanza una segunda actualización y el indicador sigue visible hasta que termina la vigente.
+5. **Given** una actualización que falla por falta de conexión o error del servidor, **When** termina, **Then** el contenido anterior sigue visible, se informa en español y se puede reintentar, sin pantalla en blanco ni detalles técnicos.
+6. **Given** Suscripciones con una búsqueda activa, **When** la persona actualiza con el gesto, **Then** se conservan el término y el ámbito: en «Podcasts» se recarga la lista y se reaplica el filtro; en «Episodios» se repite la búsqueda vigente y se muestran resultados actualizados.
+7. **Given** una reproducción o una descarga en curso, **When** la persona actualiza Inicio o Suscripciones, **Then** la reproducción no se interrumpe, la descarga, la cola y el progreso local no se reinician y, si la respuesta ya no incluye el programa o episodio en reproducción, este sigue sonando y solo desaparece de la lista.
+8. **Given** el lector de pantalla activo, **When** la persona abre las acciones del contenido y elige «Actualizar», **Then** se inicia la recarga sin depender del gesto, el inicio y el fin se anuncian y el foco no se pierde.
+
+---
+
 ### Edge Cases
 
 - Episodio de la cola cuyo progreso no está disponible en ese momento: se empieza desde el principio sin bloquear la cola ni mostrar un error técnico.
@@ -216,6 +237,17 @@ La persona usuaria, desde la pantalla de Suscripciones y con al menos una suscri
 - Sin conexión al buscar episodios: se muestra un error accionable y se conserva el término; el filtrado local de podcasts sigue funcionando con la lista ya cargada.
 - Sin ninguna suscripción: no se muestra el buscador; se mantiene el estado vacío con la acción de descubrir podcasts.
 - Servidor sin podcasts: no hay barra de podcast, ni insignia de cola, ni controles de episodio, ni buscador de suscripciones; la cabecera y la barra de radio siguen completas.
+- Arrastre con la lista desplazada: solo desplaza; la actualización solo se activa al llegar al principio y continuar el arrastre.
+- Actualización solicitada durante la carga inicial o mientras hay una búsqueda o un «cargar más» en curso: no se duplican consultas y prevalece la solicitud vigente.
+- Actualización sin conexión o con error del servidor: se conservan los datos ya visibles y se informa con reintento; si la pantalla aún no tenía datos, se mantiene el estado de error existente.
+- Rotación, cambio de tema o vuelta desde segundo plano durante la actualización: el indicador no se duplica y, al volver, se muestra el resultado vigente sin perder el estado de la pantalla.
+- Actualización mientras se reordena la lista de suscripciones: el gesto de orden tiene prioridad y no dispara una recarga accidental.
+- Datos que cambian entre actualizaciones: las bajas desaparecen, las altas se incorporan y lo que ya no existe en el servidor deja de mostrarse; la reproducción en curso continúa aunque su programa o episodio haya desaparecido de la lista.
+- Actualización con el reproductor o una descarga activos: no se pausa la reproducción ni se cancelan las descargas.
+- Arrastre en una pantalla vacía o en error: el gesto no es obligatorio; siguen disponibles las acciones existentes de descubrir o reintentar.
+- Arrastres repetidos muy rápidos: solo una actualización está vigente y las solicitudes descartadas no generan mensajes de error.
+- Con lector de pantalla activo, la recarga se inicia desde la acción accesible «Actualizar» del contenido; no depende de que la persona acierte con el gesto de arrastre.
+- La respuesta de la recarga ya no incluye el programa o episodio en reproducción: desaparece de la lista, pero la reproducción continúa sin cortes y conserva título y posición.
 
 ## Requirements *(mandatory)*
 
@@ -346,8 +378,15 @@ La persona usuaria, desde la pantalla de Suscripciones y con al menos una suscri
 - «Podcasts» filtra sobre la lista de suscripciones ya cargada; si esa lista no se ha podido cargar, se mantienen el error y el reintento existentes.
 - Los controles de búsqueda están colapsados por defecto para no ocupar espacio; el botón de búsqueda se sitúa a la izquierda del orden de suscripciones y, al ocultarlos, se limpia el término para no dejar la lista filtrada sin control visible.
 - La búsqueda de episodios no filtra por estado de escucha: aparecen pendientes, en curso y completados, con su estado visible.
+- La actualización por arrastre se limita a las pantallas **Inicio** y **Suscripciones** del modo Podcast; no se añade a otras listas ni al modo Radio.
+- La actualización sigue el modelo de recargar una pestaña del navegador: vuelve a pedir el contenido vigente de la vista actual, sin actualización automática periódica ni notificaciones push.
+- La actualización conserva el estado local (modo de vista, orden activo y manual, término y ámbito de búsqueda, reproducción, cola y descargas); solo se sustituyen los datos que provienen del servidor.
+- Con una búsqueda de episodios visible, la actualización repite la consulta vigente desde la primera página; las páginas adicionales cargadas se descartan y pueden recuperarse con «Cargar más».
+- El gesto no se exige en los estados vacío y de error, donde se mantienen las acciones existentes de descubrir o reintentar; tampoco durante la carga inicial.
+- Además del gesto, el contenido con datos ofrece una acción accesible «Actualizar» para que la recarga sea utilizable con lector de pantalla; no añade ningún botón visible ni altera la cabecera.
+- En modo lista y en modo tarjetas el gesto se comporta igual y conserva el modo elegido.
 - Fuera de alcance de la búsqueda en Suscripciones: buscar dentro de descripciones o notas, la búsqueda global del directorio (que sigue en Descubrir), los filtros por fecha o estado y una ordenación de resultados distinta de la fecha de publicación.
-- Fuera de alcance: eliminación de silencios, ecualizador manual, cambio de los intervalos de salto, potenciador en radio o Cast, rediseño completo de la navegación y cambios en el modo Radio más allá de la barra inferior y la cabecera compartidas.
+- Fuera de alcance: eliminación de silencios, ecualizador manual, cambio de los intervalos de salto, potenciador en radio o Cast, rediseño completo de la navegación, actualización por arrastre fuera de Inicio y Suscripciones, y cambios en el modo Radio más allá de la barra inferior y la cabecera compartidas.
 
 ## Dependencies
 
@@ -355,6 +394,7 @@ La persona usuaria, desde la pantalla de Suscripciones y con al menos una suscri
 - **Spec 0042/0044 — Motor y recuperación de reproducción**: la notificación y el estado del reproductor son la base de los controles de transporte.
 - **Spec 0035/0037 — Volumen y Cast**: el potenciador de voz debe convivir con el control de volumen y no aplicarse a la sesión remota.
 - **API de podcasts del servidor**: la búsqueda de episodios por título dentro de las suscripciones ya existe y la web la consume; esta extensión la incorpora a la app sin cambios de contrato.
+- **API de podcasts del servidor (actualización)**: las consultas que alimentan la portada de Inicio y la lista de suscripciones ya existen; la actualización por arrastre las reutiliza sin cambios de contrato.
 - **Constitución (v3.1.0)**: la guía de navegación ya reserva la barra inferior a contenido y sitúa Configuración y Servidores en el menú de hamburguesa; la enmienda está aplicada y no se requiere excepción.
 
 ## Extensión 2026-11-19 — Limpieza automática de descargas
@@ -394,3 +434,27 @@ Desarrolla la User Story 8. La búsqueda de podcasts se resuelve sobre la lista 
 - **SC-013**: El 100 % de los resultados de episodios pertenece a podcasts suscritos, el 100 % de los términos sin coincidencia muestra un mensaje claro en español y ninguna respuesta tardía sustituye a la búsqueda vigente.
 - **SC-014**: La búsqueda completa se puede usar con lector de pantalla y con tamaño de letra al 200 %, sin solapamientos, con etiquetas comprensibles y sin perder el término al cambiar de ámbito, rotar o volver del segundo plano.
 - **SC-015**: En el 100 % de las aperturas de Suscripciones los controles de búsqueda están ocultos; un solo toque en el botón de búsqueda los muestra y otro los oculta devolviendo la lista completa, sin dejar filtros activos.
+
+## Extensión 2026-11-21 — Actualización por arrastre en Inicio y Suscripciones
+
+Desarrolla la User Story 9. El gesto sigue el modelo de recargar una pestaña del navegador: vuelve a pedir el contenido vigente de la pantalla sin cambiar de contexto y conservando el estado local de la persona.
+
+### Functional Requirements
+
+- **FR-072**: Las pantallas de Inicio y Suscripciones MUST permitir actualizar el contenido arrastrando hacia abajo y soltando cuando la vista está al principio, tanto en modo lista como en tarjetas, con un umbral que evite activaciones accidentales.
+- **FR-073**: Con la vista desplazada, el arrastre MUST desplazar la lista y MUST NOT iniciar la actualización hasta que la vista esté al principio; una vez allí, seguir arrastrando hacia abajo MUST iniciar la actualización.
+- **FR-074**: Durante la actualización MUST mostrarse un indicador visible y comprensible; el contenido ya visible MUST permanecer en pantalla, sin sustituirse por una pantalla de carga completa, y el indicador MUST desaparecer al terminar.
+- **FR-075**: La actualización de Inicio MUST volver a obtener los datos de sus secciones (continuar escuchando, novedades, programas y resumen de la cola) y reflejar altas, bajas y cambios; la de Suscripciones MUST volver a obtener la lista de suscripciones.
+- **FR-076**: La actualización MUST conservar el modo de vista, el orden activo, el orden manual guardado, el término y el ámbito de búsqueda, y MUST NOT reiniciar la reproducción, la cola, las descargas ni el progreso local.
+- **FR-077**: Mientras haya una actualización en curso, una nueva solicitud MUST NOT lanzar otra consulta; el indicador MUST mantenerse hasta que termine la vigente y las solicitudes descartadas MUST NOT mostrar errores.
+- **FR-078**: Si la actualización falla, MUST conservarse el contenido previo, MUST informarse en español de forma accionable y MUST poder reintentarse; si no había contenido, MUST mantenerse el estado de error existente con su reintento.
+- **FR-079**: En Suscripciones con búsqueda activa, la actualización MUST respetar el término y el ámbito: en «Podcasts» MUST recargar la lista y reaplicar el filtro; en «Episodios» MUST repetir la búsqueda vigente desde la primera página, descartar las páginas anteriores y descartar respuestas obsoletas.
+- **FR-080**: Los cambios obtenidos MUST aplicarse sin cerrar la pantalla ni mover el foco; si la actualización elimina de la lista el programa o episodio en reproducción, la reproducción MUST continuar sin interrupción y MUST conservar título y posición.
+- **FR-081**: Con lector de pantalla activo, el inicio y el fin de la actualización MUST anunciarse, MUST NOT perderse el foco ni la posición de lectura, y, cuando la pantalla tenga contenido, MUST existir una acción accesible «Actualizar» que permita iniciar la recarga sin depender del gesto de arrastre.
+- **FR-082**: La actualización MUST NOT requerir cambios en el contrato del servidor ni credenciales nuevas, y MUST usar las consultas que ya alimentan ambas pantallas.
+
+### Success Criteria
+
+- **SC-016**: El 100 % de los arrastres deliberados desde el principio de Inicio o Suscripciones inicia exactamente una actualización; el indicador aparece en menos de 1 segundo y desaparece al terminar, sin duplicar consultas aunque se arrastre repetidamente.
+- **SC-017**: Tras una actualización correcta, el 100 % de altas, bajas y cambios del servidor se refleja en un máximo de 3 segundos con una conexión habitual, conservando el modo de vista, el orden, la búsqueda y la reproducción en curso.
+- **SC-018**: El 100 % de las actualizaciones fallidas conserva el contenido previo y muestra un mensaje claro en español con reintento, sin pantallas en blanco, pérdida de foco con lector de pantalla ni interrupción de descargas o reproducción.

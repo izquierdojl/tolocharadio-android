@@ -15,7 +15,7 @@ description: "Task list for Mejoras de experiencia podcast"
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no pending dependencies)
-- **[Story]**: User story label (`US1`…`US8`)
+- **[Story]**: User story label (`US1`…`US9`)
 - Every task includes an exact file path
 
 ## Path Conventions
@@ -246,6 +246,7 @@ description: "Task list for Mejoras de experiencia podcast"
   - US3 and US4 (P2) can run in parallel after foundational; US4 should start after US2 because both edit `PlaybackPlayerFactory.kt`.
   - US5, US6 and US7 (P3) depend on foundational; US5 and US6 integrate with files touched by US3, so run US3 first.
 - **Polish (Phase 10)**: depends on all selected stories.
+- **Extensiones 2026-11-19/2026-11-21 (Phases 11–13)**: la retención (Phase 11) depende de descargas, ajustes y player; la búsqueda (Phase 12) depende de las fases 1–11; la actualización por arrastre (Phase 13) depende de las fases 1–12, en especial de Inicio, Suscripciones y el estado de búsqueda.
 
 ### User Story Dependencies
 
@@ -256,6 +257,8 @@ description: "Task list for Mejoras de experiencia podcast"
 - **US5**: independent functionally; reuses US3's navigation bar/graph.
 - **US6**: independent; touches `EpisodeRow`, `EpisodeActionsViewModel` and podcast screens.
 - **US7**: independent; shares the podcast screens with US6, so run after US6 or coordinate the edits.
+- **US8 (búsqueda)**: depends on the subscription list, `EpisodeRow` and the episode actions/player; independent of US9.
+- **US9 (actualización por arrastre)**: depends on US8 for the search state and on the existing Inicio/Suscripciones screens; independent of the rest of the stories.
 
 ### Within Each User Story
 
@@ -272,6 +275,8 @@ description: "Task list for Mejoras de experiencia podcast"
 - US4 tests T027–T030 can run in parallel.
 - US5 tests T042–T044 can run in parallel.
 - US6 tests T049–T050 can run in parallel.
+- US8 tests T082–T085 can run in parallel.
+- US9 tests T099–T101 can run in parallel; T104/T106 (ViewModels) and T105/T107 (screens) touch different files and can run in parallel once the tests are red.
 - Different stories can be developed in parallel only if they do not edit the same file (see dependency notes above).
 
 ---
@@ -313,6 +318,7 @@ Task: "Extend InstancePrefsTest.kt for voiceBoost"
 6. US6 → validate download progress.
 7. US7 → validate cards.
 8. Polish → full gates, accessibility, quickstart.
+9. Extensiones: retención (3.8), búsqueda US8 (3.9) y actualización por arrastre US9 (3.10) → validar cada quickstart y repetir los gates.
 
 ### Parallel Team Strategy
 
@@ -320,6 +326,7 @@ Task: "Extend InstancePrefsTest.kt for voiceBoost"
 2. Developer A: US1 + US2 (playback and notification).
 3. Developer B: US3 (navigation) then US5 (badge).
 4. Developer C: US4 (voice) after US2; then US6 + US7 (download and cards).
+5. Developer D: extensiones; US8 (búsqueda) y después US9 (actualización por arrastre), que depende del estado de búsqueda de US8.
 
 ---
 
@@ -341,6 +348,7 @@ Task: "Extend InstancePrefsTest.kt for voiceBoost"
 - **Sin cambios** en `PodcastsApi.kt`, DTOs, `TolochaDb.kt`, `backup_rules.xml` ni `data_extraction_rules.xml` (T071 verificado).
 - **Extensión 2026-11-21**: T082–T098 completadas; T096 verificada manualmente en emulador por el usuario (2026-11-21).
 - **Gates de la extensión**: `assembleDebug`, `testDebugUnitTest`, `detekt`, `ktlintCheck`, `lintDebug`, `compileDebugAndroidTestKotlin` y `connectedDebugAndroidTest` en API 37 — en verde.
+- **Extensión 2026-11-21 (actualización por arrastre)**: T099–T110 completadas; 129/129 tests instrumentados en API 37 y T109 verificada manualmente en emulador por el usuario (2026-11-21).
 
 ---
 
@@ -391,3 +399,33 @@ Task: "Extend InstancePrefsTest.kt for voiceBoost"
 - [X] T098 [US8] Collapse the search controls behind a header search toggle placed to the left of subscription sorting, clear term/results on hide and animate the reveal in `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/subscriptions/SubscriptionsScreen.kt`.
 
 **Checkpoint**: User Story 8 funcional y testeable de forma independiente; gates en verde y quickstart 3.9 verificado manualmente en emulador (T096).
+
+---
+
+## Phase 13: Extensión 2026-11-21 — Actualización por arrastre en Inicio y Suscripciones (US9)
+
+**Goal**: recargar Inicio y Suscripciones arrastrando hacia abajo cuando la lista está al principio, mostrando un indicador, conservando el contenido y el estado local, y manejando errores y búsqueda activa sin duplicar consultas.
+
+**Independent Test**: en Inicio y Suscripciones, con contenido y al principio, arrastrar hacia abajo: aparece el indicador y los datos se actualizan; con la lista desplazada no se recarga hasta llegar al principio; con error se conserva el contenido y se puede reintentar; con búsqueda activa se conservan término y ámbito.
+
+**Dependencias**: fases 1–12 completadas (pantallas de Inicio y Suscripciones, búsqueda, player y acciones de episodio). No introduce API, DTOs, dependencias ni persistencia nuevos.
+
+### Tests for User Story 9
+
+- [X] T099 [P] [US9] Write failing ViewModel tests for Inicio manual refresh: success replaces the home data, error keeps `PodcastHomeUi.Content` and emits a Spanish message, error without content keeps `Error`, a second request is ignored while refreshing, and `refreshing` returns to `false` in `app/src/test/java/com/izquierdojl/tolocharadio/feature/podcasts/home/PodcastHomeViewModelTest.kt`. — 5 tests en verde.
+- [X] T100 [P] [US9] Extend failing ViewModel tests in `app/src/test/java/com/izquierdojl/tolocharadio/feature/podcasts/SubscriptionsViewModelTest.kt`: refresh success keeps content/order, error keeps content, concurrent request ignored, the Podcasts filter is reapplied, and Episodes search repeats from page 1 with `submittedTerm` and scope preserved (not the unconfirmed text). — 5 tests nuevos en verde.
+- [X] T101 [P] [US9] Write failing Compose tests for the shared refresh container: a valid swipe invokes `onRefresh` once, the indicator follows `refreshing`, no duplicate callback is emitted, semantics/live region are exposed, and the custom accessibility action «Actualizar» invokes `onRefresh` only when not refreshing in `app/src/androidTest/java/com/izquierdojl/tolocharadio/core/ui/components/PullToRefreshContentTest.kt`. — 3 tests en verde en API 37.
+
+### Implementation for User Story 9
+
+- [X] T102 [P] [US9] Add Spanish strings for the refresh indicator, error and accessibility action «Actualizar», plus test tags `home_pull_refresh`, `subscriptions_pull_refresh` and `pull_refresh_indicator`, in `app/src/main/res/values/strings.xml` and `app/src/main/java/com/izquierdojl/tolocharadio/core/ui/components/TolochaTestTags.kt`.
+- [X] T103 [US9] Create `PullToRefreshContent` with Material 3 `PullToRefreshBox`/`rememberPullToRefreshState`, using `data-model.md` `RefreshableContent.refreshing`, `RefreshableContent.onRefresh` and `RefreshableContent.content`; expose state/live-region semantics, a custom accessibility action «Actualizar» and keep the content visible in `app/src/main/java/com/izquierdojl/tolocharadio/core/ui/components/PullToRefreshContent.kt`.
+- [X] T104 [US9] Add `refreshing`/`message` StateFlows and `refreshManually()` to `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/home/PodcastHomeViewModel.kt`, using `data-model.md` `ManualRefreshState.refreshing` and `ManualRefreshState.message`; preserve `Content`, guard the job and map errors.
+- [X] T105 [US9] Wrap the Inicio content (list and grid) in `PullToRefreshContent`, collect the refresh state/message and show the error in the existing snackbar in `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/home/PodcastHomeScreen.kt`.
+- [X] T106 [US9] Add `refreshing`/`message` and `refreshManually()` to `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/SubscriptionsViewModel.kt`, using `data-model.md` `ManualRefreshState.refreshing`, `ManualRefreshState.message`, `SubscriptionSearchUi.term`, `SubscriptionSearchUi.submittedTerm`, `SubscriptionSearchUi.scope` and `SubscriptionSearchUi.showResults`; preserve `Content`, guard the job, reapply the Podcasts filter and repeat the Episodes search from page 1 using `submittedTerm`.
+- [X] T107 [US9] Wrap the Suscripciones content (list, grid and episode results) in `PullToRefreshContent` without covering the header or search bar, collect the refresh state/message and show the error in the existing snackbar in `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/subscriptions/SubscriptionsScreen.kt`.
+- [X] T108 [US9] Run `./gradlew assembleDebug testDebugUnitTest detekt ktlintCheck lintDebug compileDebugAndroidTestKotlin` and fix regressions. — gates en verde y 129/129 tests instrumentados en API 37.
+- [X] T109 [US9] Validate quickstart 3.10 on an emulator API 26+/37 with TalkBack and font scale 200 %, including the timing checks (indicator < 1 s; updated data ≤ 3 s, median of 3 runs), the accessibility action «Actualizar», and the FR-080 case where the refreshed response no longer contains the playing item. — verificado manualmente en emulador por el usuario (2026-11-21)
+- [X] T110 [US9] Verify no changes to `PodcastsApi.kt`, DTOs, auth, database schema or dependencies, and record the result in the PR notes.
+
+**Checkpoint**: User Story 9 implementada y testeable de forma independiente; gates en verde y quickstart 3.10 verificado manualmente en emulador por el usuario (T109).

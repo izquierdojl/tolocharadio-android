@@ -13,6 +13,7 @@ import com.izquierdojl.tolocharadio.data.repo.PodcastSubscriptionsRepo
 import com.izquierdojl.tolocharadio.domain.podcasts.SearchSubscriptionEpisodesUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.UnsubscribePodcastUseCase
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
@@ -244,5 +245,99 @@ class SubscriptionsViewModelTest {
             advanceUntilIdle()
 
             assertEquals(listOf(20L), viewModel.searchUi.value.results.map { it.episode.id })
+        }
+
+    @Test
+    fun `la recarga manual sustituye la lista sin perder el contenido`() =
+        runTest {
+            val viewModel = vm(listOf(podcast(1, "Uno")))
+            coEvery { repo.list() } returns
+                ApiResult.Ok(listOf(podcast(1, "Uno"), podcast(2, "Dos")))
+
+            viewModel.refreshManually()
+
+            val content = viewModel.ui.value as SubscriptionsUiState.Content
+            assertEquals(listOf(1L, 2L), content.items.map { it.id })
+            assertFalse(viewModel.refreshing.value)
+        }
+
+    @Test
+    fun `un error de recarga conserva la lista y publica el mensaje`() =
+        runTest {
+            val viewModel = vm(listOf(podcast(1, "Uno")))
+            coEvery { repo.list() } returns
+                ApiResult.Err(DomainError.Unavailable("Sin conexión"))
+
+            viewModel.refreshManually()
+
+            assertTrue(viewModel.ui.value is SubscriptionsUiState.Content)
+            assertEquals("Sin conexión", viewModel.message.value)
+            assertFalse(viewModel.refreshing.value)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `una segunda recarga se ignora mientras la primera esta en vuelo`() =
+        runTest {
+            val viewModel = vm(listOf(podcast(1, "Uno")))
+            val gate = CompletableDeferred<ApiResult<List<PodcastSummary>>>()
+            var calls = 0
+            coEvery { repo.list() } coAnswers {
+                calls++
+                gate.await()
+            }
+
+            viewModel.refreshManually()
+            assertTrue(viewModel.refreshing.value)
+            viewModel.refreshManually()
+
+            assertEquals(1, calls)
+
+            gate.complete(ApiResult.Ok(listOf(podcast(1, "Uno"), podcast(2, "Dos"))))
+            advanceUntilIdle()
+
+            assertFalse(viewModel.refreshing.value)
+            assertEquals(
+                listOf(1L, 2L),
+                (viewModel.ui.value as SubscriptionsUiState.Content).items.map { it.id },
+            )
+        }
+
+    @Test
+    fun `la recarga conserva el termino local de podcasts`() =
+        runTest {
+            val viewModel = vm(listOf(podcast(1, "Uno")))
+            viewModel.setSearchTerm("un")
+            coEvery { repo.list() } returns
+                ApiResult.Ok(listOf(podcast(1, "Uno"), podcast(2, "Dos")))
+
+            viewModel.refreshManually()
+
+            assertEquals("un", viewModel.searchUi.value.term)
+            assertEquals(SubscriptionSearchScope.PODCASTS, viewModel.searchUi.value.scope)
+            assertEquals(
+                2,
+                (viewModel.ui.value as SubscriptionsUiState.Content).items.size,
+            )
+        }
+
+    @Test
+    fun `la recarga repite la busqueda confirmada desde la primera pagina`() =
+        runTest {
+            val viewModel = vm()
+            coEvery { search("hola", 0, 20) } returns
+                ApiResult.Ok(page(listOf(item(10))))
+            searchFor(viewModel, "hola")
+
+            coEvery { search("hola", 0, 20) } returns
+                ApiResult.Ok(page(listOf(item(11))))
+            coEvery { repo.list() } returns ApiResult.Ok(listOf(podcast(1, "Uno")))
+
+            viewModel.refreshManually()
+
+            assertEquals(listOf(11L), viewModel.searchUi.value.results.map { it.episode.id })
+            assertEquals("hola", viewModel.searchUi.value.submittedTerm)
+            assertEquals(SubscriptionSearchScope.EPISODES, viewModel.searchUi.value.scope)
+            coVerify(exactly = 2) { search("hola", 0, 20) }
         }
 }
