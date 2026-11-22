@@ -152,6 +152,13 @@ fun EpisodeFullPlayerSheet(
                 enabled = voiceBoost,
                 onToggle = viewModel::setVoiceBoost,
             )
+            if (ui.recovering) {
+                Text(
+                    text = "Sin conexión. Reintentando…",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             ui.message?.let {
                 Text(it, color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = { viewModel.clearMessage() }) {

@@ -214,7 +214,7 @@ class RadioPlaybackService : MediaSessionService() {
         }
         serviceScope.launch {
             episodeController.state.collect { state ->
-                episodeActive = state is EpisodePlaybackController.State.Active
+                episodeActive = episodeController.isEpisodeActive()
                 updateMediaButtons()
             }
         }

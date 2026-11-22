@@ -20,6 +20,7 @@ import com.izquierdojl.tolocharadio.domain.playback.PlaybackFeatureFlags
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackRoute
 import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
 import com.izquierdojl.tolocharadio.domain.playback.RecoveryState
+import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackController
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -75,6 +76,10 @@ class PlaybackRecoveryManagerTest {
             every { applying } returns MutableStateFlow(false)
         }
     private val logger: PlaybackRecoveryLogger = mockk(relaxed = true)
+    private val episodes: EpisodePlaybackController =
+        mockk(relaxed = true) {
+            every { isEpisodeActive() } returns false
+        }
     private val station = StationDto(id = "u1", name = "Tolocha")
     private lateinit var schedulerForTest: RecoveryScheduler
 
@@ -105,6 +110,7 @@ class PlaybackRecoveryManagerTest {
             sessionState = sessionState,
             session = session,
             clock = clock,
+            episodes = episodes,
         )
     }
 
@@ -136,6 +142,53 @@ class PlaybackRecoveryManagerTest {
         every { cast.isCastConnected } returns true
         assertFalse(manager().manualRetry())
     }
+
+    @Test
+    fun `manualRetry con episodio activo devuelve false`() {
+        every { episodes.isEpisodeActive() } returns true
+        assertFalse(manager().manualRetry())
+    }
+
+    @Test
+    fun `un error de episodio no arranca la radio`() =
+        runTest {
+            every { episodes.isEpisodeActive() } returns true
+            val manager = managerForTest(this)
+            manager.start()
+            advanceUntilIdle()
+            captureListener().onPlayerError(httpError(500))
+            advanceUntilIdle()
+            coVerify(exactly = 0) { fallbackController.start(any(), any(), any(), any()) }
+            assertTrue(manager.status.value is RecoveryState.Idle)
+        }
+
+    @Test
+    fun `el fin de un episodio no reanuda la radio`() =
+        runTest {
+            every { episodes.isEpisodeActive() } returns true
+            val manager = managerForTest(this)
+            manager.start()
+            advanceUntilIdle()
+            val listener = captureListener()
+            listener.onIsPlayingChanged(true)
+            listener.onPlaybackStateChanged(Player.STATE_ENDED)
+            advanceUntilIdle()
+            coVerify(exactly = 0) { fallbackController.start(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun `un cambio de red no reconecta la radio con episodio activo`() =
+        runTest {
+            every { episodes.isEpisodeActive() } returns true
+            every { exoPlayer.isPlaying } returns true
+            every { exoPlayer.playWhenReady } returns true
+            val manager = managerForTest(this)
+            manager.start()
+            advanceUntilIdle()
+            connectivity.emitNetworkChange()
+            advanceUntilIdle()
+            coVerify(exactly = 0) { fallbackController.start(any(), any(), any(), any()) }
+        }
 
     @Test
     fun `causeForManualRetry conserva la causa de WaitingForNetwork`() {

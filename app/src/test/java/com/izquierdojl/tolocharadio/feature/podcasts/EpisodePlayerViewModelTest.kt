@@ -28,8 +28,12 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -103,6 +107,26 @@ class EpisodePlayerViewModelTest {
         positionsMs.forEach { state.value = activeState(episode, it) }
         advanceUntilIdle()
     }
+
+    @Test
+    fun `el estado de espera de red marca recovering`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(id = 1L)
+
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            state.value = EpisodePlaybackController.State.WaitingForNetwork(episode, null, 42_000L)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.ui.value.recovering)
+            assertEquals(42_000L, viewModel.ui.value.positionMs)
+
+            state.value = EpisodePlaybackController.State.Idle
+            runCurrent()
+
+            assertFalse(viewModel.ui.value.recovering)
+        }
 
     @Test
     fun `play usa el progreso embebido`() =
