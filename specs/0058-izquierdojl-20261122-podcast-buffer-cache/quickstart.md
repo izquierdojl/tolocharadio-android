@@ -95,3 +95,21 @@ Tests que deben existir y pasar:
 - `EpisodePrefetch`: `start`, `progress`, `completed`, `cancelled`.
 - `EpisodeCache`: `hit`, `miss`, `evicted`, `cleared` (sin URLs firmadas ni PII).
 - `EpisodePlayback`: se mantiene el tag existente para errores.
+
+## Resultado de la validación manual (2026-11-22)
+
+Emulador `Medium_Phone` (API 37) contra una instancia local de TolochaRadio
+(`adb reverse`), con Radio Ambulante suscrito desde la API.
+
+| Escenario | Observado |
+|-----------|-----------|
+| Buffer VOD | `buffered position` de 258 s (~4,3 min) en el primer episodio. |
+| Precarga Wi-Fi | Episodio de 49:36 completo en caché: 46,7 MB en ~20 s. |
+| Modo avión | 40 s sin red; posición 74,2 s → 112,2 s y estado `PLAYING`. |
+| Cambio a móvil | Caché 46,7 MB → 4,7 MB (LRU al límite de 50 MB); segundo episodio con 259 s de buffer. |
+| Ajustes | «Ocupa 4,6 MB», límites 500/50 MB y «Liberar espacio» → 0 KB. |
+| Defecto encontrado | Las stats mostraban 45,6 MB tras el desalojo; corregido con refresco cada 2 s mientras Ajustes está visible. |
+
+No se pudo validar Cast (sin receptor) ni la latencia de radio contra el
+directo. El resto de escenarios del quickstart quedan cubiertos por tests
+unitarios y por esta pasada manual.

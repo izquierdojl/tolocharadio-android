@@ -123,7 +123,7 @@ espacio» y comprobar que baja a 0 sin cortar la reproducción.
 
 - [x] T032 [P] Añadir logs estructurados `EpisodePrefetch` y `EpisodeCache` sin URLs ni PII en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/CacheWriterEpisodePrefetch.kt` y `SimpleCacheEpisodeCache.kt`
 - [x] T033 Ejecutar `./gradlew testDebugUnitTest detekt ktlintCheck lintDebug` y corregir lo que falle
-- [ ] T034 Ejecutar `quickstart.md` en dispositivo: escenarios 1–6 y regresión de radio, descargas y Cast
+- [x] T034 Ejecutar `quickstart.md` en dispositivo: escenarios 1–6 y regresión de radio, descargas y Cast
 - [ ] T035 [P] Actualizar `docs/RELEASE.md` si la feature cambia el comportamiento de reproducción o almacenamiento
 
 ---
