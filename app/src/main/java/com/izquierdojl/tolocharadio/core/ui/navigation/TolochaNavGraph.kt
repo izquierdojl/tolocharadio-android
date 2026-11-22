@@ -358,6 +358,7 @@ fun TolochaNavGraph(
                 composable(Routes.PODCAST_DISCOVER) {
                     DiscoverScreen(
                         onBrowseSubscriptions = { navController.navigate(Routes.PODCAST_SUBSCRIPTIONS) },
+                        onEditServer = editActiveServer,
                         snackbar = snackbar,
                     )
                 }

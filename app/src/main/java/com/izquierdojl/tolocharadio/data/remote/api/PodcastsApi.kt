@@ -97,6 +97,13 @@ interface PodcastsApi {
         @Query("limit") limit: Int = 20,
     ): Response<PodcastSearchPage>
 
+    @GET("podcasts/top")
+    suspend fun top(
+        @Query("country") country: String,
+        @Query("genre") genre: String? = null,
+        @Query("limit") limit: Int = 50,
+    ): Response<PodcastSearchPage>
+
     @GET("podcasts/episodes/search")
     suspend fun searchEpisodes(
         @Query("q") q: String,

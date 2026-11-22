@@ -66,13 +66,13 @@ class ModeViewModel
         /** Recarga las capacidades del servidor activo (puerta del modo). */
         fun refresh() {
             viewModelScope.launch {
-                val enabled = podcastCapabilitiesEnabled()
+                val enabled = podcastCapabilitiesEnabled(forceRefresh = true)
                 _ui.value = _ui.value.copy(podcastsEnabled = enabled, loading = false)
             }
         }
 
-        private suspend fun podcastCapabilitiesEnabled(): Boolean =
-            when (val r = system.podcastCapabilities()) {
+        private suspend fun podcastCapabilitiesEnabled(forceRefresh: Boolean = false): Boolean =
+            when (val r = system.podcastCapabilities(forceRefresh)) {
                 is ApiResult.Ok -> r.value.podcasts
                 is ApiResult.Err -> false
             }

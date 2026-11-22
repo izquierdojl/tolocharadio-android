@@ -53,6 +53,7 @@ fun PodcastSearchRow(
     subscribed: Boolean,
     onToggleSubscribe: () -> Unit,
     modifier: Modifier = Modifier,
+    position: Int? = null,
 ) {
     ListItem(
         modifier = modifier,
@@ -67,15 +68,25 @@ fun PodcastSearchRow(
             )
         },
         leadingContent = {
-            AsyncImage(
-                model = result.imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier =
-                    Modifier
-                        .size(56.dp)
-                        .clip(MaterialTheme.shapes.small),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (position != null) {
+                    Text(
+                        text = position.toString(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                }
+                AsyncImage(
+                    model = result.imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .size(56.dp)
+                            .clip(MaterialTheme.shapes.small),
+                )
+            }
         },
         trailingContent = {
             SubscribeButton(subscribed = subscribed, onToggle = onToggleSubscribe)

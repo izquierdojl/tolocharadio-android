@@ -13,6 +13,7 @@ Configura **una o varias instancias** propias (URL, alias y credenciales): la ap
 ## Características
 
 - **Catálogo global**: búsqueda de emisoras por nombre, país, idioma y género a través de RadioBrowser.
+- **Podcasts**: descubre programas por país y género con la sección «Populares», suscríbete y escucha episodios en segundo plano.
 - **Reproductor persistente**: la música no se interrumpe al navegar; controles de reproducir/pausar, silenciar y copiar enlace desde la barra flotante.
 - **Reproducción continua**: usa el flujo `/live` del servidor, reconecta solo ante cortes y conserva HLS únicamente como reserva para formatos no concatenables.
 - **Ficha de emisora**: carátula, país, idioma, género, códec, bitrate y estadísticas de cada emisora.

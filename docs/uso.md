@@ -34,6 +34,18 @@ Toca una emisora para abrir su **ficha**, con su carátula, país, idioma, etiqu
 | --- | --- |
 | <img src="assets/screenshots/explorar.png" width="240"> | <img src="assets/screenshots/buscar.png" width="240"> |
 
+## Podcasts
+
+El modo **Podcasts** (si tu instancia lo ofrece) añade el descubrimiento de programas:
+
+- **Descubrir**: busca podcasts por nombre o abre la sección **Populares** para ver el ranking por país y género. España y «Todas las categorías» son los valores por defecto; la selección se recuerda en el dispositivo.
+- **Suscripciones**: guarda tus programas y consulta sus últimos episodios.
+- **Inicio**: continúa la escucha, revisa los episodios recientes y accede a la cola.
+- **Cola y favoritos**: organiza episodios y guárdalos para después.
+- **Estadísticas**: consulta tu tiempo de escucha y tus programas más escuchados.
+
+El ranking «Populares» requiere que la instancia tenga activado el descubrimiento de podcasts de Apple (`PODCAST_DISCOVERY_PROVIDER=itunes`). Si la instancia no lo ofrece, la sección se oculta y la búsqueda manual sigue disponible.
+
 ## Reproductor
 
 El reproductor es **flotante y persistente**: la música sigue sonando al cambiar de sección. Desde la barra inferior puedes pausar/reanudar, **silenciar** y **copiar el enlace** del stream.

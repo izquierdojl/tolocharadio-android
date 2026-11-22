@@ -14,6 +14,7 @@ class PodcastCapabilitiesDtoTest {
         assertEquals("Tolocha", c.appName)
         assertFalse(c.podcastsEnabled())
         assertFalse(c.podcastDownloadsEnabled())
+        assertFalse(c.podcastTopChartsEnabled())
         assertEquals(200, c.podcastQueueMax())
     }
 
@@ -22,12 +23,32 @@ class PodcastCapabilitiesDtoTest {
         val raw =
             """
             {"appName":"Tolocha","features":{"podcasts":true,"podcastDownloads":true,
-             "podcastQueue":true,"podcastFavorites":true,"podcastStats":true,"podcastOpml":true},
+             "podcastQueue":true,"podcastFavorites":true,"podcastStats":true,"podcastOpml":true,
+             "podcastDiscovery":"itunes"},
              "limits":{"podcastQueueMax":50}}
             """.trimIndent()
         val c = TolochaJson.decodeFromString<AppConfigDto>(raw)
         assertTrue(c.podcastsEnabled())
         assertTrue(c.podcastDownloadsEnabled())
+        assertTrue(c.podcastTopChartsEnabled())
         assertEquals(50, c.podcastQueueMax())
+    }
+
+    @Test
+    fun `el ranking solo esta disponible con podcasts e itunes`() {
+        fun config(
+            provider: String?,
+            podcasts: Boolean = true,
+        ): AppConfigDto =
+            AppConfigDto(
+                appName = "Tolocha",
+                features = PodcastFeaturesDto(podcasts = podcasts, podcastDiscovery = provider),
+            )
+
+        assertTrue(config("itunes").podcastTopChartsEnabled())
+        assertFalse(config("podcastindex").podcastTopChartsEnabled())
+        assertFalse(config("none").podcastTopChartsEnabled())
+        assertFalse(config(null).podcastTopChartsEnabled())
+        assertFalse(config("itunes", podcasts = false).podcastTopChartsEnabled())
     }
 }

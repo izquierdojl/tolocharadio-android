@@ -88,4 +88,44 @@ class PodcastSubscriptionsRepoTest {
             assertTrue(r is ApiResult.Ok)
             assertEquals("<opml></opml>", (r as ApiResult.Ok).value)
         }
+
+    @Test
+    fun `top envia pais genero y limite y mapea items`() =
+        runTest {
+            val r1 = PodcastSearchResult("A", "Autor", "https://a.example/f.xml")
+            coEvery { api.top("es", "1303", 50) } returns
+                Response.success(PodcastSearchPage(listOf(r1)))
+
+            val r = repo.top("es", "1303", 50)
+
+            assertTrue(r is ApiResult.Ok)
+            assertEquals("https://a.example/f.xml", (r as ApiResult.Ok).value.single().feedUrl)
+        }
+
+    @Test
+    fun `top general no envia genero`() =
+        runTest {
+            val r1 = PodcastSearchResult("A", null, "https://a.example/f.xml")
+            coEvery { api.top("es", null, 50) } returns
+                Response.success(PodcastSearchPage(listOf(r1)))
+
+            val r = repo.top("es")
+
+            assertTrue(r is ApiResult.Ok)
+            assertEquals(listOf(r1), (r as ApiResult.Ok).value)
+        }
+
+    @Test
+    fun `top propaga errores`() =
+        runTest {
+            coEvery { api.top("es", null, 50) } returns
+                Response.error(
+                    503,
+                    """{"error":{"code":"DISCOVERY_UNAVAILABLE","message":"x","status":503}}""".toResponseBody(),
+                )
+
+            val r = repo.top("es")
+
+            assertTrue((r as ApiResult.Err).error is DomainError.Unavailable)
+        }
 }

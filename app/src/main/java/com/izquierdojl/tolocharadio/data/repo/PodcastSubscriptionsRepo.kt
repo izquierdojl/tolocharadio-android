@@ -10,6 +10,7 @@ import com.izquierdojl.tolocharadio.data.remote.dto.BulkSubscriptionResult
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSearchResult
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.data.remote.dto.SubscribePodcastBody
+import com.izquierdojl.tolocharadio.domain.podcasts.TOP_CHARTS_LIMIT
 import com.izquierdojl.tolocharadio.domain.podcasts.isValidFeedUrl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +23,7 @@ import javax.inject.Singleton
  * los flujos exponen suscripciones e ids para el marcado coherente.
  */
 @Singleton
+@Suppress("TooManyFunctions")
 class PodcastSubscriptionsRepo
     @Inject
     constructor(private val api: PodcastsApi) {
@@ -41,6 +43,21 @@ class PodcastSubscriptionsRepo
         ): ApiResult<List<PodcastSearchResult>> {
             if (query.isBlank()) return ApiResult.Err(DomainError.Validation(emptyList()))
             return when (val r = safeCall { api.search(query.trim(), limit) }) {
+                is ApiResult.Ok -> ApiResult.Ok(r.value.items)
+                is ApiResult.Err -> r
+            }
+        }
+
+        /**
+         * Ranking de podcasts populares. `genre` nulo pide el general;
+         * `limit` se acota al máximo del contrato.
+         */
+        suspend fun top(
+            country: String,
+            genre: String? = null,
+            limit: Int = TOP_CHARTS_LIMIT,
+        ): ApiResult<List<PodcastSearchResult>> {
+            return when (val r = safeCall { api.top(country, genre, limit) }) {
                 is ApiResult.Ok -> ApiResult.Ok(r.value.items)
                 is ApiResult.Err -> r
             }
