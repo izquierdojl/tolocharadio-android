@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-01
 
-**Status**: Draft (implementación completa; 6 tareas de validación manual pendientes)
+**Status**: Done (2026-11-22; validación manual del usuario)
 
 **Input**: User description: "Adoptar el endpoint continuo de reproducción del backend (versión 0.29.0) para todas las emisoras, de forma que la app reciba audio progresivo también cuando el origen es HLS y no tenga que gestionar manifiestos ni caducidades. Incluye fallback para HLS no concatenable, supervisor de reconexión con espera acotada, comprobación de disponibilidad antes de reproducir, estados de interfaz claros, funcionamiento en segundo plano, diagnóstico estructurado y despliegue por fases."
 

@@ -110,6 +110,6 @@ Emulador `Medium_Phone` (API 37) contra una instancia local de TolochaRadio
 | Ajustes | «Ocupa 4,6 MB», límites 500/50 MB y «Liberar espacio» → 0 KB. |
 | Defecto encontrado | Las stats mostraban 45,6 MB tras el desalojo; corregido con refresco cada 2 s mientras Ajustes está visible. |
 
-No se pudo validar Cast (sin receptor) ni la latencia de radio contra el
-directo. El resto de escenarios del quickstart quedan cubiertos por tests
-unitarios y por esta pasada manual.
+Cast y latencia de radio confirmados por el usuario (2026-11-22). El resto de
+escenarios del quickstart quedan cubiertos por tests unitarios y por esta pasada
+manual.
