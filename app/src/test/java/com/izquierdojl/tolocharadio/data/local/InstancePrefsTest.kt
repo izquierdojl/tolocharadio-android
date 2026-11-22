@@ -8,6 +8,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.podcasts.TopCountry
+import com.izquierdojl.tolocharadio.domain.podcasts.TopGenre
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -129,5 +131,39 @@ class InstancePrefsTest {
             store.state.value = mutablePreferencesOf(stringPreferencesKey("podcast_start_screen") to "XXX")
             val prefs = InstancePrefs(store)
             assertEquals(PodcastStartScreen.HOME, prefs.podcastStartScreen.first())
+        }
+
+    @Test
+    fun `top charts tiene defaults Espana y todas`() =
+        runTest {
+            val prefs = InstancePrefs(FakeDataStore())
+            assertEquals(TopCountry.SPAIN, prefs.topChartsCountry.first())
+            assertEquals(TopGenre.ALL, prefs.topChartsGenre.first())
+        }
+
+    @Test
+    fun `top charts persiste pais y genero`() =
+        runTest {
+            val prefs = InstancePrefs(FakeDataStore())
+            prefs.setTopChartsCountry(TopCountry.MEXICO)
+            prefs.setTopChartsGenre(TopGenre.COMEDY)
+
+            assertEquals(TopCountry.MEXICO, prefs.topChartsCountry.first())
+            assertEquals(TopGenre.COMEDY, prefs.topChartsGenre.first())
+        }
+
+    @Test
+    fun `top charts corrupto cae a los defaults`() =
+        runTest {
+            val store = FakeDataStore()
+            store.state.value =
+                mutablePreferencesOf(
+                    stringPreferencesKey("top_charts_country") to "XX",
+                    stringPreferencesKey("top_charts_genre") to "nope",
+                )
+            val prefs = InstancePrefs(store)
+
+            assertEquals(TopCountry.SPAIN, prefs.topChartsCountry.first())
+            assertEquals(TopGenre.ALL, prefs.topChartsGenre.first())
         }
 }

@@ -11,6 +11,7 @@ import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisodeProgress
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastHabitEntryDto
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastQueue
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastRecentEntryDto
+import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSearchResult
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastStatsSummaryDto
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastTimelineDto
@@ -135,4 +136,22 @@ fun testPodcastTopEpisodes(vararg entries: Pair<PodcastEpisode, Long>): PodcastT
                 totalMs = it.second,
             )
         },
+    )
+
+/** Resultado de ranking de prueba con todos los campos del contrato. */
+fun testPodcastSearchResult(
+    title: String = "Podcast",
+    author: String? = "Autor",
+    feedUrl: String = "https://example.com/feed.xml",
+    imageUrl: String? = null,
+    categories: List<String> = emptyList(),
+    description: String? = null,
+): PodcastSearchResult =
+    PodcastSearchResult(
+        title = title,
+        author = author,
+        feedUrl = feedUrl,
+        imageUrl = imageUrl,
+        categories = categories,
+        description = description,
     )

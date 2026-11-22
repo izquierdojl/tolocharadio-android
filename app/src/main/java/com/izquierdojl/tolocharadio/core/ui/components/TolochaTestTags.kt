@@ -83,4 +83,31 @@ object TolochaTestTags {
 
     /** Indicador de progreso de la recarga por arrastre. */
     const val PULL_REFRESH_INDICATOR = "tolocha_pull_refresh_indicator"
+
+    /** Contenedor de la sección «Populares». */
+    const val TOP_CHARTS_SECTION = "tolocha_top_charts_section"
+
+    /** Selector de país del ranking. */
+    const val TOP_CHARTS_COUNTRY = "tolocha_top_charts_country"
+
+    /** Selector de género del ranking. */
+    const val TOP_CHARTS_GENRE = "tolocha_top_charts_genre"
+
+    /** Lista de resultados del ranking. */
+    const val TOP_CHARTS_LIST = "tolocha_top_charts_list"
+
+    /** Estado anunciado de la sección (carga/error/vacío/aviso). */
+    const val TOP_CHARTS_STATUS = "tolocha_top_charts_status"
+
+    /** Acción de reintento del ranking. */
+    const val TOP_CHARTS_RETRY = "tolocha_top_charts_retry"
+
+    /** Acción «Editar servidor» ante error de credenciales. */
+    const val TOP_CHARTS_AUTH_ACTION = "tolocha_top_charts_auth_action"
+
+    /** Aviso de fallback de categoría con su reintento. */
+    const val TOP_CHARTS_NOTICE = "tolocha_top_charts_notice"
+
+    /** Estado vacío del ranking. */
+    const val TOP_CHARTS_EMPTY = "tolocha_top_charts_empty"
 }

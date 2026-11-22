@@ -14,6 +14,8 @@ import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 import com.izquierdojl.tolocharadio.domain.podcasts.DownloadRetention
+import com.izquierdojl.tolocharadio.domain.podcasts.TopCountry
+import com.izquierdojl.tolocharadio.domain.podcasts.TopGenre
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -108,6 +110,14 @@ class InstancePrefs
         val downloadRetentionDays: Flow<Int> =
             store.data.map { it[KEY_DOWNLOAD_RETENTION_DAYS] ?: DownloadRetention.DEFAULT_DAYS }
 
+        /** País del ranking de podcasts; valor desconocido cae a España. */
+        val topChartsCountry: Flow<TopCountry> =
+            store.data.map { TopCountry.fromId(it[KEY_TOP_CHARTS_COUNTRY]) }
+
+        /** Género del ranking de podcasts; valor desconocido cae a «Todas». */
+        val topChartsGenre: Flow<TopGenre> =
+            store.data.map { TopGenre.fromId(it[KEY_TOP_CHARTS_GENRE]) }
+
         suspend fun setBaseUrl(url: String) {
             store.edit { it[KEY_BASE_URL] = url }
         }
@@ -176,6 +186,16 @@ class InstancePrefs
             store.edit { it[KEY_DOWNLOAD_RETENTION_DAYS] = days.coerceAtLeast(DownloadRetention.NEVER) }
         }
 
+        /** Persiste el país del ranking de podcasts. */
+        suspend fun setTopChartsCountry(country: TopCountry) {
+            store.edit { it[KEY_TOP_CHARTS_COUNTRY] = country.id }
+        }
+
+        /** Persiste el género del ranking (`ALL` como cadena vacía). */
+        suspend fun setTopChartsGenre(genre: TopGenre) {
+            store.edit { it[KEY_TOP_CHARTS_GENRE] = genre.id ?: "" }
+        }
+
         private companion object {
             val KEY_BASE_URL = stringPreferencesKey("base_url")
             val KEY_SETUP_DONE = booleanPreferencesKey("setup_done")
@@ -191,5 +211,7 @@ class InstancePrefs
             val KEY_RESUME_ON_CONNECTIVITY = booleanPreferencesKey("resume_on_connectivity")
             val KEY_VOICE_BOOST = booleanPreferencesKey("voice_boost")
             val KEY_DOWNLOAD_RETENTION_DAYS = intPreferencesKey("download_retention_days")
+            val KEY_TOP_CHARTS_COUNTRY = stringPreferencesKey("top_charts_country")
+            val KEY_TOP_CHARTS_GENRE = stringPreferencesKey("top_charts_genre")
         }
     }

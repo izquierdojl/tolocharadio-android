@@ -19,6 +19,7 @@ import javax.inject.Inject
 /** UI de Descubrir: búsqueda, alta manual e importación (US2). */
 data class DiscoverUi(
     val query: String = "",
+    val submittedQuery: String = "",
     val searching: Boolean = false,
     val results: List<PodcastSearchResult> = emptyList(),
     val subscribedFeedUrls: Set<String> = emptySet(),
@@ -48,17 +49,24 @@ class DiscoverViewModel
         }
 
         fun onQueryChange(query: String) {
-            _ui.value = _ui.value.copy(query = query, message = null)
+            _ui.value =
+                _ui.value.copy(
+                    query = query,
+                    message = null,
+                    // Vaciar el campo devuelve el turno al ranking; teclear
+                    // sin buscar no oculta la sección.
+                    submittedQuery = if (query.isBlank()) "" else _ui.value.submittedQuery,
+                )
         }
 
         /** Busca en el directorio; el texto vacío solo avisa (FR-006). */
         fun search() {
-            val query = _ui.value.query
-            if (query.isBlank()) {
+            val query = _ui.value.query.trim()
+            if (query.isEmpty()) {
                 _ui.value = _ui.value.copy(message = "Escribe un texto para buscar.")
                 return
             }
-            _ui.value = _ui.value.copy(searching = true, message = null)
+            _ui.value = _ui.value.copy(searching = true, submittedQuery = query, message = null)
             viewModelScope.launch {
                 when (val r = repo.search(query)) {
                     is ApiResult.Ok ->
