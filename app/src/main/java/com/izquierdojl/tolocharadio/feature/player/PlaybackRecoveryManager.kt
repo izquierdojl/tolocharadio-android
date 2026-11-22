@@ -19,6 +19,7 @@ import com.izquierdojl.tolocharadio.domain.playback.PlaybackRoutePolicy
 import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
 import com.izquierdojl.tolocharadio.domain.playback.RecoveryPolicy
 import com.izquierdojl.tolocharadio.domain.playback.RecoveryState
+import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -58,6 +59,7 @@ class PlaybackRecoveryManager
         private val sessionState: PlaybackSessionState,
         private val session: SessionManager,
         private val clock: PlaybackClock,
+        private val episodes: EpisodePlaybackController,
     ) {
         private val policy = RecoveryPolicy()
         private val scope: CoroutineScope
@@ -85,6 +87,7 @@ class PlaybackRecoveryManager
         private val listener =
             object : Player.Listener {
                 override fun onPlayerError(error: PlaybackException) {
+                    if (episodeOwnsPlayer()) return
                     if (castPlayerManager.isCastConnected || userPaused) return
                     if (profileController.applying.value) return
                     cancelStabilityWindow()
@@ -118,6 +121,7 @@ class PlaybackRecoveryManager
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (episodeOwnsPlayer()) return
                     when (playbackState) {
                         Player.STATE_READY -> {
                             lastPosition = engine.player.currentPosition
@@ -152,6 +156,7 @@ class PlaybackRecoveryManager
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (episodeOwnsPlayer()) return
                     if (isPlaying) {
                         hasPlayedOnce = true
                         lastPosition = engine.player.currentPosition
@@ -168,6 +173,7 @@ class PlaybackRecoveryManager
                     playWhenReady: Boolean,
                     reason: Int,
                 ) {
+                    if (episodeOwnsPlayer()) return
                     if (playWhenReady) {
                         userPaused = false
                         startWatchdog()
@@ -185,6 +191,7 @@ class PlaybackRecoveryManager
             }
 
         /** Arranca los colectores; lo llama el servicio en `onCreate`. */
+        @Suppress("CyclomaticComplexMethod")
         fun start() {
             if (started) return
             started = true
@@ -204,6 +211,7 @@ class PlaybackRecoveryManager
             collectorJobs +=
                 scope.launch {
                     connectivity.isOnline.collect { online ->
+                        if (episodeOwnsPlayer()) return@collect
                         val waiting = _status.value as? RecoveryState.WaitingForNetwork ?: return@collect
                         if (!online) return@collect
                         if (prefs.resumeOnConnectivity.first()) {
@@ -216,6 +224,7 @@ class PlaybackRecoveryManager
             collectorJobs +=
                 scope.launch {
                     connectivity.networkChanges.collect {
+                        if (episodeOwnsPlayer()) return@collect
                         if (castPlayerManager.isCastConnected ||
                             userPaused ||
                             !connectivity.isOnline.value
@@ -262,6 +271,7 @@ class PlaybackRecoveryManager
 
         /** Reintento manual desde la UI o la notificación. */
         fun manualRetry(): Boolean {
+            if (episodeOwnsPlayer()) return false
             val station = activeStationHolder.station ?: return false
             if (castPlayerManager.isCastConnected) return false
             userPaused = false
@@ -288,6 +298,7 @@ class PlaybackRecoveryManager
 
         /** El servicio no pudo arrancar la emisora al aplicar un perfil. */
         fun onPlaybackStartFailed() {
+            if (episodeOwnsPlayer()) return
             startRecovery(PlaybackFailure(InterruptionCause.NETWORK_ERROR))
         }
 
@@ -308,6 +319,7 @@ class PlaybackRecoveryManager
 
         /** El sistema reanudó el player (nueva reproducción o foco recuperado). */
         fun onPlaybackResumedBySystem() {
+            if (episodeOwnsPlayer()) return
             userPaused = false
             startWatchdog()
         }
@@ -378,6 +390,7 @@ class PlaybackRecoveryManager
 
         @Suppress("ReturnCount")
         private fun startRecovery(failure: PlaybackFailure) {
+            if (episodeOwnsPlayer()) return
             if (userPaused || castPlayerManager.isCastConnected || profileController.applying.value) return
             cancelStabilityWindow()
             if (recoveryJob?.isActive == true) return
@@ -573,6 +586,12 @@ class PlaybackRecoveryManager
             return castPlayerManager.isCastConnected || profileController.applying.value
         }
 
+        /**
+         * El VOD es dueño del player mientras haya un episodio cargado: la
+         * recuperación de radio no debe reaccionar a sus eventos (bug 0057).
+         */
+        private fun episodeOwnsPlayer(): Boolean = episodes.isEpisodeActive()
+
         /** Detiene el audio local si Cast tomó el control y cierra el ciclo. */
         private fun stopRecoveryForExternalOwner(): Boolean {
             if (castPlayerManager.isCastConnected) {
@@ -654,6 +673,7 @@ class PlaybackRecoveryManager
 
         @Suppress("CyclomaticComplexMethod", "LoopWithTooManyJumpStatements")
         private fun startWatchdog() {
+            if (episodeOwnsPlayer()) return
             if (!scheduler.watchdogEnabled) return
             if (watchdogJob?.isActive == true) return
             watchdogJob =

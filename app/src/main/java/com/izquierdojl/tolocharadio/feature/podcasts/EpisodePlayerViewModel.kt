@@ -50,6 +50,7 @@ data class EpisodePlayerUi(
     val durationMs: Long = 0,
     val rate: Float = 1f,
     val downloaded: Boolean = false,
+    val recovering: Boolean = false,
     val message: String? = null,
 )
 
@@ -99,8 +100,25 @@ class EpisodePlayerViewModel
                                 }
                             is EpisodePlaybackController.State.Loading ->
                                 current.copy(loading = true)
+                            is EpisodePlaybackController.State.WaitingForNetwork ->
+                                current.copy(
+                                    loading = false,
+                                    playing = false,
+                                    positionMs = state.positionMs,
+                                    message = null,
+                                    recovering = true,
+                                )
+                            is EpisodePlaybackController.State.Reconnecting ->
+                                current.copy(
+                                    loading = false,
+                                    playing = false,
+                                    positionMs = state.positionMs,
+                                    message = null,
+                                    recovering = true,
+                                )
                             is EpisodePlaybackController.State.Active -> {
                                 listening.onProgress(state.positionMs, state.playing)
+                                if (state.playing && current.recovering) startTicker(state.episode.id)
                                 current.copy(
                                     playing = state.playing,
                                     loading = false,
@@ -108,10 +126,17 @@ class EpisodePlayerViewModel
                                     durationMs = state.durationMs,
                                     rate = state.rate,
                                     downloaded = state.local,
+                                    recovering = false,
                                 )
                             }
                             is EpisodePlaybackController.State.Error ->
-                                current.copy(loading = false, playing = false, message = state.message)
+                                current.copy(
+                                    loading = false,
+                                    playing = false,
+                                    positionMs = state.positionMs,
+                                    message = state.message,
+                                    recovering = false,
+                                )
                         }
                 }
             }
