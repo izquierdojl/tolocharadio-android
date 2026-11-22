@@ -1,6 +1,7 @@
 package com.izquierdojl.tolocharadio.data.local.podcasts
 
 import android.content.Context
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.StandaloneDatabaseProvider
@@ -53,14 +54,18 @@ class SimpleCacheEpisodeCache
 
         init {
             scope.launch(Dispatchers.IO) {
-                val cache =
+                val result =
                     runCatching {
                         SimpleCache(
                             File(context.cacheDir, CACHE_DIR),
                             evictor,
                             StandaloneDatabaseProvider(context),
                         )
-                    }.getOrNull()
+                    }
+                val cache = result.getOrNull()
+                if (cache == null) {
+                    Log.w(TAG, "unavailable cause=${result.exceptionOrNull()?.javaClass?.simpleName}")
+                }
                 cacheRef.set(cache)
                 refreshStats()
             }
@@ -107,6 +112,8 @@ class SimpleCacheEpisodeCache
                     cache.keys.toList().forEach { cache.removeResource(it) }
                 }
                 refreshStats()
+                Log.i(TAG, "cleared")
+                Unit
             }
 
         private fun refreshStats() {
@@ -119,6 +126,7 @@ class SimpleCacheEpisodeCache
         }
 
         private companion object {
+            const val TAG = "EpisodeCache"
             const val CACHE_DIR = "episode-cache"
         }
     }
