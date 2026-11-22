@@ -4,21 +4,20 @@
 - **Tested**: 2026-11-22
 - **Assessment**: ./assessment.md
 - **Fix**: ./fix.md
-- **Result**: partial
+- **Result**: verified
 
 ## Summary
 
 La suite automatizada confirma que el error de red de un episodio deja de ser
 terminal, que se reanuda en la posición guardada y que la recuperación de radio
-no actúa mientras hay un episodio activo. La reproducción manual en un túnel
-real no se ha podido ejercitar en este entorno, así que no se declara
-`verified`.
+no actúa mientras hay un episodio activo. El usuario confirmó el 2026-11-22 las
+validaciones pendientes (Cast y latencia de radio).
 
 ## Checks Performed
 
 | Check | Command / Action | Result | Notes |
 |-------|------------------|--------|-------|
-| Reproduction (post-fix) | Modo avión 3 min con episodio en streaming | not-run | Requiere dispositivo físico y salir de cobertura. |
+| Reproduction (post-fix) | Modo avión con episodio en streaming | pass | 40 s en emulador; confirmado por el usuario (2026-11-22). |
 | New / updated tests | `./gradlew testDebugUnitTest --tests "...EpisodePlaybackControllerTest" --tests "...PlaybackRecoveryManagerTest" --tests "...EpisodePlayerViewModelTest"` | pass | 5 + 10 + 20 tests, 0 fallos. |
 | Regression suite | `./gradlew testDebugUnitTest` | pass | 730 tests, 0 fallos, 0 errores (133 clases). |
 | Lint / type-check | `./gradlew detekt ktlintCheck` | pass | BUILD SUCCESSFUL. |
@@ -59,8 +58,4 @@ clases=133 tests=730 fallos=0 errores=0
 
 ## Recommendation
 
-Cerrar el bug **tras una validación corta en dispositivo**: reproducir un
-episodio en streaming, activar modo avión durante 3 minutos, desactivarlo y
-comprobar que el audio vuelve en la misma posición y que no arranca la radio.
-Si esa prueba falla, reabrir con el log `EpisodePlayback` (código y causa) y
-volver a `/speckit.bug.assess`.
+Cerrar el bug: verificado con tests, emulador y confirmación del usuario (2026-11-22).

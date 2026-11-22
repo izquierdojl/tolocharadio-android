@@ -4,13 +4,12 @@
 - **Tested**: 2026-11-22
 - **Assessment**: ./assessment.md
 - **Fix**: ./fix.md
-- **Result**: partial
+- **Result**: verified
 
 ## Summary
 
-El fix está aplicado en el código, pero no se ha podido validar con hardware
-Cast real en este entorno. La verificación queda pendiente de un dispositivo
-Chromecast en la misma red.
+El fix está aplicado y el usuario confirmó el descubrimiento en su red el
+2026-11-22.
 
 ## Checks Performed
 
@@ -18,7 +17,7 @@ Chromecast en la misma red.
 |-------|------------------|--------|-------|
 | Compilación | `./gradlew assembleDebug` | not-run | El entorno de la sesión original no tenía `JAVA_HOME`; el código compila en `main`. |
 | Tests | `./gradlew testDebugUnitTest detekt ktlintCheck lintDebug` | pass | El fix está integrado y los gates pasan. |
-| Descubrimiento real | Chromecast físico en la red local | not-run | Requiere hardware Cast. |
+| Descubrimiento real | Chromecast físico en la red local | pass | Confirmado por el usuario (2026-11-22); no se registró modelo. |
 | Permiso Android 13+ | Diálogo «dispositivos cercanos» | pass | Verificado en emulador al arrancar la app. |
 
 ## Output Excerpts
@@ -30,9 +29,8 @@ Chromecast en la misma red.
 - El descubrimiento depende de mDNS/SSDP en la red local; una red con
   aislamiento de clientes puede impedirlo aunque el fix sea correcto.
 - El receptor puede requerir permisos de red local en versiones recientes.
-- No hay verificación de usuario registrada para este bug.
+- La verificación se limita a la red del usuario; no se registró el modelo de receptor.
 
 ## Recommendation
 
-Mantener abierto hasta validar con un Chromecast físico. Si el usuario confirma
-el descubrimiento en su red, cerrar con la fecha y el modelo del dispositivo.
+Cerrar el bug: confirmado por el usuario. Si reaparece en otra red, abrir un bug nuevo con el modelo y la red.

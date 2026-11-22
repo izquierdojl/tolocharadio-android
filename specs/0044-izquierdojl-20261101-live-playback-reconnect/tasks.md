@@ -86,7 +86,7 @@ probar un servidor que responde 404/405 en `/live`.
 - [X] T015 [US1] Crear `PlaybackFallbackController` en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlaybackFallbackController.kt` y engancharlo en `PlaybackRecoveryManager.onPlayerError` antes de `startRecovery`: 404/405 cambian a legacy y continúan; 415 hace un único intento legacy; no se cambia `RecoveryPolicy`, watchdog ni estados de 0042. Extender `PlaybackRecoveryLogger` con `live_fallback` (httpStatus, playerErrorCode, intento y station hasheada) para este camino.
 - [X] T016 [US1] Ajustar `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerViewModel.kt` para que el arranque local use la ruta por defecto de `LocalPlaybackStarter`, conserve el camino Cast y no duplique historial.
 - [X] T017 [US1] Actualizar `app/src/test/java/com/izquierdojl/tolocharadio/feature/player/PlaybackRecoveryManagerTest.kt` con el doble de `PlaybackFallbackController` y verificar que el fallback único no entra en la recuperación 0042; debe pasar con T015.
-- [ ] T018 [US1] Validar en dispositivo/emulador los escenarios 1, 2, 6 y 7 de `specs/0044-izquierdojl-20261101-live-playback-reconnect/quickstart.md` y anotar el resultado.
+- [x] T018 [US1] Validar en dispositivo/emulador los escenarios 1, 2, 6 y 7 de `specs/0044-izquierdojl-20261101-live-playback-reconnect/quickstart.md` y anotar el resultado. — verificado por el usuario (2026-11-22)
 
 **Checkpoint**: US1 funcional y validable de forma independiente; es el MVP.
 
@@ -122,7 +122,7 @@ Wi-Fi↔datos, token caducado y pantalla apagada.
 - [X] T029 [US2] Crear `app/src/test/java/com/izquierdojl/tolocharadio/feature/player/PlaybackRecoveryLoggerTest.kt` para verificar que `recovery_attempt`/`recovery_success`/`recovery_failed`/`live_fallback` incluyen httpStatus, playerErrorCode, intento y station hasheada, sin PII.
 - [X] T030 [US2] Añadir `start()`/`stop()` a `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlaybackRecoveryManager.kt` y llamarlos desde `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/RadioPlaybackService.kt` en `onCreate`/`onDestroy`; los colectores no se inician en el constructor y el `ViewModel` solo observa/delega. La recuperación debe funcionar con pantalla apagada/background.
 - [X] T031 [US2] Actualizar `app/src/test/java/com/izquierdojl/tolocharadio/feature/player/PlaybackRecoveryManagerTest.kt` para el constructor/`timeProvider` final y dejar la batería en verde.
-- [ ] T032 [US2] Validar en dispositivo/emulador los escenarios 3, 4, 5, 8 y 9 de `specs/0044-izquierdojl-20261101-live-playback-reconnect/quickstart.md` y anotar el resultado.
+- [x] T032 [US2] Validar en dispositivo/emulador los escenarios 3, 4, 5, 8 y 9 de `specs/0044-izquierdojl-20261101-live-playback-reconnect/quickstart.md` y anotar el resultado. — verificado por el usuario (2026-11-22)
 
 **Checkpoint**: US1 y US2 funcionan de forma independiente y combinada.
 
@@ -154,7 +154,7 @@ que no hay conexiones paralelas.
 - [X] T037 [US3] Actualizar `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerUi.kt` y `app/src/main/java/com/izquierdojl/tolocharadio/feature/explore/StationDetail.kt` con los subtítulos «Reintentando…», «Reconectando (n/6)…», «Sin conexión…» y el mensaje de 415; la ficha usa el mismo `PlayerState`, añade la acción de reintento, extrae `StationDetailContent` sin estado para tests y añade `contentDescription`/anuncios de TalkBack sin repetir ticks.
 - [X] T038 [US3] Ajustar `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/RadioPlaybackService.kt` para mostrar «Reintentar» solo en `FAILED(RETRY)` y mantener stop/mute en el resto; la notificación refleja buffering/playing/paused y no duplica el texto detallado. Sin player nuevo.
 - [X] T039 [US3] Crear/actualizar `app/src/test/java/com/izquierdojl/tolocharadio/feature/player/PlayerViewModelTest.kt`, `app/src/androidTest/java/com/izquierdojl/tolocharadio/feature/player/RecoveryUiTest.kt`, `app/src/androidTest/java/com/izquierdojl/tolocharadio/feature/player/MiniPlayerTest.kt` y `app/src/androidTest/java/com/izquierdojl/tolocharadio/feature/explore/StationDetailPlaybackStateTest.kt` para que pasen con T036–T038, usando `StationDetailContent` sin estado, y verificar la idempotencia de pulsaciones repetidas y la coherencia de la ficha.
-- [ ] T040 [US3] Validar los estados, la ficha y la notificación con los escenarios 3, 6 y 11 de `specs/0044-izquierdojl-20261101-live-playback-reconnect/quickstart.md` y anotar el resultado.
+- [x] T040 [US3] Validar los estados, la ficha y la notificación con los escenarios 3, 6 y 11 de `specs/0044-izquierdojl-20261101-live-playback-reconnect/quickstart.md` y anotar el resultado. — verificado por el usuario (2026-11-22)
 
 **Checkpoint**: US1, US2 y US3 funcionan de forma independiente y combinada.
 
@@ -179,7 +179,7 @@ reproducir; en una emisora disponible, el precheck no añade más de 2 s.
 
 - [X] T042 [US4] Actualizar `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlayerViewModel.kt` con `checkAvailability(station)` y `availability`/TTL de 5 s (sin cambiar el `PlayerState` global; `play` aplica `Error` si `playable=false`), y `app/src/main/java/com/izquierdojl/tolocharadio/feature/explore/StationDetail.kt` para invocarlo al abrir la ficha, mostrar el aviso y deshabilitar/sustituir «Reproducir» cuando `playable=false`; `StationDetailContent` recibe `availability`/`PlayerState`/callbacks, se limpia `availability` al cambiar de emisora/stop y se reutilizan `PlaybackStatusReason`/`PlaybackMessages`.
 - [X] T043 [US4] Actualizar `app/src/test/java/com/izquierdojl/tolocharadio/feature/player/PlayerViewModelTest.kt` y `app/src/androidTest/java/com/izquierdojl/tolocharadio/feature/explore/StationDetailAvailabilityTest.kt` para que pasen con T042, usando `StationDetailContent`, y verificar que la consulta se reutiliza durante 5 s y se cancela al cambiar de emisora o cerrar la ficha.
-- [ ] T044 [US4] Validar el escenario 10 de `specs/0044-izquierdojl-20261101-live-playback-reconnect/quickstart.md`, incluida la apertura de la ficha, y anotar el resultado.
+- [x] T044 [US4] Validar el escenario 10 de `specs/0044-izquierdojl-20261101-live-playback-reconnect/quickstart.md`, incluida la apertura de la ficha, y anotar el resultado. — verificado por el usuario (2026-11-22)
 
 **Checkpoint**: las cuatro historias son independientes y el precheck no bloquea la UI.
 
@@ -196,8 +196,8 @@ reproducir; en una emisora disponible, el precheck no añade más de 2 s.
 - [X] T049 Ejecutar `detekt`, `ktlintCheck` y `lintDebug` sobre `app/build.gradle.kts` y corregir los warnings nuevos.
 - [X] T050 Ejecutar `assembleDebug` sobre `app/build.gradle.kts` con `-PlivePlayback=true` y `-PlivePlayback=false`.
 - [X] T051 Ejecutar `connectedDebugAndroidTest` sobre `app/src/androidTest/java/com/izquierdojl/tolocharadio/` con dispositivo/emulador y corregir las pruebas de UI.
-- [ ] T052 Ejecutar los escenarios 1–11 y los protocolos SC-001..SC-008 de `specs/0044-izquierdojl-20261101-live-playback-reconnect/quickstart.md` y registrar los resultados.
-- [ ] T053 Verificar no regresiones de foco de audio, auriculares/Bluetooth, temporizador de apagado, Cast, notificación e historial con la batería existente y el escenario 11 de `quickstart.md`.
+- [x] T052 Ejecutar los escenarios 1–11 y los protocolos SC-001..SC-008 de `specs/0044-izquierdojl-20261101-live-playback-reconnect/quickstart.md` y registrar los resultados. — verificado por el usuario (2026-11-22)
+- [x] T053 Verificar no regresiones de foco de audio, auriculares/Bluetooth, temporizador de apagado, Cast, notificación e historial con la batería existente y el escenario 11 de `quickstart.md`. — verificado por el usuario (2026-11-22)
 - [X] T054 Verificar que no se añaden dependencias, módulos Gradle, endpoints, claves de DataStore ni tablas Room; revisar `app/build.gradle.kts` y `app/src/main/java/com/izquierdojl/tolocharadio/di/`.
 - [X] T055 Revisar la trazabilidad FR-001..FR-025 / SC-001..SC-010 en `specs/0044-izquierdojl-20261101-live-playback-reconnect/spec.md`, `plan.md`, `tasks.md` y los tests.
 - [X] T056 Fase 3: cambiar el valor por defecto de release a `LIVE_PLAYBACK_ENABLED=true` en `app/build.gradle.kts`, verificar que HLS solo se usa como reserva y que el camino de manifiesto deja de ser la ruta principal.
