@@ -127,8 +127,9 @@ fun TolochaNavGraph(
     var episodeFullPlayer by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         sleepTimerVm.setStopPlayerCallback {
-            playerVm.stop()
+            // El episodio reporta su posición antes de que la radio pare el player compartido.
             episodeVm.stop()
+            playerVm.stop()
         }
     }
     LaunchedEffect(podcastMode) {

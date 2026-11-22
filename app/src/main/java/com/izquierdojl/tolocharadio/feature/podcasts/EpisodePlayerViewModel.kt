@@ -89,7 +89,14 @@ class EpisodePlayerViewModel
                     _ui.value =
                         when (state) {
                             is EpisodePlaybackController.State.Idle ->
-                                if (current.episode == null) current else current.copy(playing = false, loading = false)
+                                if (current.episode == null) {
+                                    current
+                                } else {
+                                    // Idle = el controlador ya no tiene el episodio
+                                    // (radio, temporizador o parada externa). Se cierra
+                                    // la tarjeta para no reportar la posición 0.
+                                    EpisodePlayerUi(rate = current.rate)
+                                }
                             is EpisodePlaybackController.State.Loading ->
                                 current.copy(loading = true)
                             is EpisodePlaybackController.State.Active -> {
@@ -245,6 +252,8 @@ class EpisodePlayerViewModel
             episodeId: Long,
             durationSec: Long,
         ) {
+            // Se captura antes de suspender: el estado Idle limpia la tarjeta.
+            val podcast = _ui.value.podcast
             viewModelScope.launch {
                 ticker?.cancel()
                 complete(episodeId, durationSec)
@@ -256,7 +265,7 @@ class EpisodePlayerViewModel
                     return@launch
                 }
                 val item = queue.queue.value.items.firstOrNull { it.id == nextId } ?: return@launch
-                val sameShow = _ui.value.podcast?.takeIf { it.id == item.podcastId }
+                val sameShow = podcast?.takeIf { it.id == item.podcastId }
                 play(item, sameShow)
             }
         }

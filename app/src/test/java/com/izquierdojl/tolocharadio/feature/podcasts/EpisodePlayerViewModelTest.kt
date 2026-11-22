@@ -4,6 +4,7 @@ import com.izquierdojl.tolocharadio.MainDispatcherRule
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.DomainError
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
+import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.data.repo.ProgressRepo
 import com.izquierdojl.tolocharadio.data.repo.QueueRepo
 import com.izquierdojl.tolocharadio.data.repo.QueueState
@@ -221,6 +222,76 @@ class EpisodePlayerViewModelTest {
             advanceUntilIdle()
 
             verify(exactly = 1) { controller.play(any(), second, null, 0L, any()) }
+        }
+
+    @Test
+    fun `una parada externa cierra la tarjeta y no reporta posicion cero`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            emitPlayback(episode, 0L, 60_000L)
+            // La radio toma el reproductor compartido: PlayerViewModel.play() llama a
+            // EpisodePlaybackController.stop() sin pasar por este ViewModel.
+            state.value = EpisodePlaybackController.State.Idle
+            advanceUntilIdle()
+            every { controller.positionMs() } returns 0L
+
+            viewModel.onAppBackground()
+            advanceUntilIdle()
+
+            assertNull(viewModel.ui.value.episode)
+            coVerify(exactly = 0) { progress.keepalive(any(), any(), any(), 0L, any(), any()) }
+        }
+
+    @Test
+    fun `parar tras una parada externa no reporta cero`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            emitPlayback(episode, 0L, 60_000L)
+            state.value = EpisodePlaybackController.State.Idle
+            advanceUntilIdle()
+            every { controller.stop() } returns 0L
+
+            viewModel.stop()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) {
+                progress.report(any(), any(), any(), 0L, any(), any(), any())
+            }
+        }
+
+    @Test
+    fun `el auto-avance conserva el programa aunque el controlador pase a idle`() =
+        runTest {
+            prepareResolve()
+            val first = testEpisode(id = 1L, progress = null)
+            val second = testEpisode(id = 2L, progress = null)
+            val show =
+                PodcastSummary(
+                    id = 7L,
+                    feedUrl = "https://feeds/7",
+                    title = "Programa",
+                )
+            prepareQueue(first, second)
+            coEvery { next(1L) } returns 2L
+            // El reporte de fin tarda: da tiempo a que el controlador emita Idle.
+            coEvery { progress.report(any(), any(), any(), any(), any(), any(), any()) } coAnswers {
+                kotlinx.coroutines.delay(1_000L)
+                ApiResult.Err(DomainError.Unavailable("offline"))
+            }
+            viewModel.play(first, show)
+            advanceUntilIdle()
+
+            events.tryEmit(EpisodePlayerEvent.Ended(episodeId = 1L, durationSec = 1_800L))
+            state.value = EpisodePlaybackController.State.Idle
+            advanceUntilIdle()
+
+            verify { controller.play(any(), second, show, any(), any()) }
         }
 
     @Test
