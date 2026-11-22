@@ -15,11 +15,18 @@ class FakeConnectivityMonitor(
     private val _isOnline = MutableStateFlow(initialOnline)
     override val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
 
+    private val _isMetered = MutableStateFlow(false)
+    override val isMetered: StateFlow<Boolean> = _isMetered.asStateFlow()
+
     private val _networkChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     override val networkChanges: Flow<Unit> = _networkChanges.asSharedFlow()
 
     fun setOnline(online: Boolean) {
         _isOnline.value = online
+    }
+
+    fun setMetered(metered: Boolean) {
+        _isMetered.value = metered
     }
 
     fun emitNetworkChange() {

@@ -196,6 +196,7 @@ class RadioPlaybackService : MediaSessionService() {
         castPlayerManager.setMediaSession(session!!)
         updateMediaButtons()
         recoveryManager.start()
+        observeLocalPlayer()
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider(this).apply {
                 setSmallIcon(R.drawable.sierra_emblem_mono)
@@ -220,7 +221,29 @@ class RadioPlaybackService : MediaSessionService() {
         }
     }
 
+    /**
+     * Un solo punto de cambio de player: el swap por tipo de contenido
+     * (spec 0058) actualiza la sesión y libera el anterior después.
+     */
+    private fun observeLocalPlayer() {
+        serviceScope.launch {
+            engine.playerFlow.collect { player ->
+                recoveryAwarePlayer.updateDelegate(player)
+                if (!castPlayerManager.isCastConnected) {
+                    session?.setPlayer(recoveryAwarePlayer)
+                }
+                engine.takePendingRelease()?.let { old ->
+                    old.stop()
+                    old.release()
+                }
+            }
+        }
+    }
+
     private suspend fun applyProfile(profile: BufferProfile) {
+        // El perfil es de radio: durante un episodio se aplicará al volver a
+        // la radio (LocalPlaybackStarter.ensure) sin interrumpirlo.
+        if (episodeController.isEpisodeActive()) return
         if (profile == engine.currentProfile) return
         profileController.setApplying(true)
         var startFailed = false

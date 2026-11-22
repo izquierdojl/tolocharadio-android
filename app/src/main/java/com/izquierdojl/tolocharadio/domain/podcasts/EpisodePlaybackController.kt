@@ -12,11 +12,12 @@ import com.izquierdojl.tolocharadio.core.network.ConnectivityMonitor
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.di.ApplicationScope
+import com.izquierdojl.tolocharadio.domain.playback.ContentKind
 import com.izquierdojl.tolocharadio.domain.playback.RecoveryPolicy
+import com.izquierdojl.tolocharadio.feature.player.EpisodeMediaSourceFactory
 import com.izquierdojl.tolocharadio.feature.player.PlaybackClock
 import com.izquierdojl.tolocharadio.feature.player.PlaybackEngine
 import com.izquierdojl.tolocharadio.feature.player.PlaybackErrorClassifier
-import com.izquierdojl.tolocharadio.feature.player.StationMediaItemFactory
 import com.izquierdojl.tolocharadio.feature.player.VoiceBoostController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -69,7 +70,8 @@ class EpisodePlaybackController
     constructor(
         private val engine: PlaybackEngine,
         private val cast: CastPlayerManager,
-        private val mediaItems: StationMediaItemFactory,
+        private val episodeSources: EpisodeMediaSourceFactory,
+        private val episodePrefetch: EpisodePrefetch,
         private val voiceBoost: VoiceBoostController,
         private val connectivity: ConnectivityMonitor,
         private val clock: PlaybackClock,
@@ -167,6 +169,7 @@ class EpisodePlaybackController
                 ) {
                     if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST) {
                         userPaused = true
+                        episodePrefetch.stop()
                         cancelRecovery()
                         markPaused()
                         reattach()
@@ -214,7 +217,9 @@ class EpisodePlaybackController
                 cast.connectToEpisode(source.uri, episode.title, podcast?.title, startMs)
                 attach(activePlayer())
             } else {
+                engine.ensureKind(ContentKind.VOD)
                 loadLocally(source, episode, podcast, startMs)
+                episodePrefetch.start(source, episode.id, startMs)
             }
             applyRate(rate, casting)
             activePlayer().playWhenReady = true
@@ -225,6 +230,7 @@ class EpisodePlaybackController
 
         fun pause() {
             userPaused = true
+            episodePrefetch.stop()
             cancelRecovery()
             markPaused()
             activePlayer().playWhenReady = false
@@ -248,7 +254,11 @@ class EpisodePlaybackController
             }
             reattach()
             activePlayer().playWhenReady = true
-            (_state.value as? State.Active)?.let { _state.value = it.copy(playing = true) }
+            (_state.value as? State.Active)?.let {
+                _state.value = it.copy(playing = true)
+                val source = lastSource
+                if (source != null) episodePrefetch.start(source, it.episode.id, knownPosition())
+            }
         }
 
         fun seekTo(positionMs: Long) {
@@ -300,6 +310,7 @@ class EpisodePlaybackController
             finalized = true
             userPaused = true
             pendingReload = false
+            episodePrefetch.stop()
             cancelRecovery()
             stopTicker()
             detach()
@@ -369,6 +380,7 @@ class EpisodePlaybackController
             if (finalized) return
             finalized = true
             pendingReload = false
+            episodePrefetch.stop()
             cancelRecovery()
             stopTicker()
             val durationSec = (durationOf() / MS_PER_SEC).coerceAtLeast(0)
@@ -390,6 +402,7 @@ class EpisodePlaybackController
             (_state.value as? State.Active)?.let {
                 val position = knownPosition()
                 lastPositionMs = position
+                episodePrefetch.update(position)
                 _state.value = it.copy(positionMs = position, durationMs = durationOf())
             }
         }
@@ -420,7 +433,9 @@ class EpisodePlaybackController
             podcast: PodcastSummary?,
             positionMs: Long,
         ) {
-            engine.player.setMediaSource(mediaItems.createEpisodeSource(mediaItemFor(source, episode, podcast)))
+            engine.player.setMediaSource(
+                episodeSources.create(mediaItemFor(source, episode, podcast), episode.id, source.local),
+            )
             engine.player.prepare()
             if (positionMs > 0) engine.player.seekTo(positionMs)
             attach(engine.player)
@@ -485,6 +500,7 @@ class EpisodePlaybackController
             val episode = lastEpisode ?: return
             val podcast = lastPodcast
             pendingReload = true
+            episodePrefetch.stop()
             stopTicker()
             recoveryJob =
                 scope.launch(Dispatchers.Main.immediate) {
@@ -512,6 +528,7 @@ class EpisodePlaybackController
                         if (userPaused || finalized) return@launch
                         if (!connectivity.isOnline.value) continue
                         val source = lastSource ?: break
+                        engine.ensureKind(ContentKind.VOD)
                         loadLocally(source, episode, podcast, position)
                         engine.player.playWhenReady = true
                         attach(engine.player)
@@ -545,6 +562,7 @@ class EpisodePlaybackController
             pendingReload = false
             _state.value =
                 stateFrom(episode, podcast, position, playing = true)
+            lastSource?.let { episodePrefetch.start(it, episode.id, position) }
             startTicker()
         }
 
@@ -571,6 +589,7 @@ class EpisodePlaybackController
             message: String,
         ) {
             pendingReload = true
+            episodePrefetch.stop()
             cancelRecovery()
             stopTicker()
             detach()

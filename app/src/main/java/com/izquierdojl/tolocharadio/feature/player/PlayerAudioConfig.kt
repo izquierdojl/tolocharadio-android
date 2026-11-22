@@ -7,6 +7,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfileSpec
+import com.izquierdojl.tolocharadio.domain.playback.EpisodeBufferSpec
 
 /**
  * Configuración de audio del reproductor local (spec 0019, FR-001..FR-005).
@@ -41,18 +42,46 @@ object PlayerAudioConfig {
 
     /** Construye el `LoadControl` del perfil (spec 0042, R1). */
     fun loadControlFor(spec: BufferProfileSpec): DefaultLoadControl =
+        buildLoadControl(
+            spec.minBufferMs,
+            spec.maxBufferMs,
+            spec.bufferForPlaybackMs,
+            spec.bufferForPlaybackAfterRebufferMs,
+        )
+
+    /** Construye el `LoadControl` profundo de episodios (spec 0058, FR-002). */
+    fun loadControlFor(spec: EpisodeBufferSpec): DefaultLoadControl =
+        buildLoadControl(
+            spec.minBufferMs,
+            spec.maxBufferMs,
+            spec.bufferForPlaybackMs,
+            spec.bufferForPlaybackAfterRebufferMs,
+        )
+
+    private fun buildLoadControl(
+        minBufferMs: Long,
+        maxBufferMs: Long,
+        bufferForPlaybackMs: Long,
+        bufferForPlaybackAfterRebufferMs: Long,
+    ): DefaultLoadControl =
         DefaultLoadControl
             .Builder()
             .setBufferDurationsMs(
-                spec.minBufferMs.toInt(),
-                spec.maxBufferMs.toInt(),
-                spec.bufferForPlaybackMs.toInt(),
-                spec.bufferForPlaybackAfterRebufferMs.toInt(),
+                minBufferMs.toInt(),
+                maxBufferMs.toInt(),
+                bufferForPlaybackMs.toInt(),
+                bufferForPlaybackAfterRebufferMs.toInt(),
             ).build()
 
     /** Aplica atributos de audio y el buffer del perfil. */
     fun applyTo(
         builder: ExoPlayer.Builder,
         spec: BufferProfileSpec,
+    ): ExoPlayer.Builder = applyTo(builder).setLoadControl(loadControlFor(spec))
+
+    /** Aplica atributos de audio y el buffer profundo de episodios. */
+    fun applyTo(
+        builder: ExoPlayer.Builder,
+        spec: EpisodeBufferSpec,
     ): ExoPlayer.Builder = applyTo(builder).setLoadControl(loadControlFor(spec))
 }

@@ -27,6 +27,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -52,6 +53,7 @@ import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 import com.izquierdojl.tolocharadio.domain.podcasts.DownloadRetention
+import java.util.Locale
 
 /**
  * Configuración (sustituye a Perfil, FR-005): tema claro/oscuro y
@@ -84,6 +86,7 @@ fun SettingsScreen(
                     onBufferProfileChange = viewModel::onBufferProfileChange,
                     onResumeOnConnectivityChange = viewModel::onResumeOnConnectivityChange,
                     onDownloadRetentionChange = viewModel::onDownloadRetentionChange,
+                    onClearEpisodeCache = viewModel::onClearCache,
                     onStats = onStats,
                     onAbout = viewModel::showAppInfoDialog,
                 ),
@@ -110,6 +113,7 @@ internal data class SettingsActions(
     val onBufferProfileChange: (BufferProfile) -> Unit = {},
     val onResumeOnConnectivityChange: (Boolean) -> Unit = {},
     val onDownloadRetentionChange: (Int) -> Unit = {},
+    val onClearEpisodeCache: () -> Unit = {},
     val onStats: () -> Unit = {},
     val onAbout: () -> Unit = {},
 )
@@ -239,6 +243,14 @@ internal fun SettingsContent(
             onRetentionChange = actions.onDownloadRetentionChange,
         )
 
+        Spacer(Modifier.height(16.dp))
+        EpisodeCacheSettingsSection(
+            sizeBytes = ui.cacheSizeBytes,
+            limitUnmeteredBytes = ui.cacheLimitUnmeteredBytes,
+            limitMeteredBytes = ui.cacheLimitMeteredBytes,
+            onClear = actions.onClearEpisodeCache,
+        )
+
         ui.message?.let {
             Spacer(Modifier.height(8.dp))
             Text(it)
@@ -356,6 +368,48 @@ internal fun DownloadSettingsSection(
         )
     }
 }
+
+/**
+ * Sección de caché de episodios (spec 0058, FR-012/SC-005).
+ * Muestra el espacio ocupado, los límites por tipo de red y permite liberarla.
+ */
+@Composable
+internal fun EpisodeCacheSettingsSection(
+    sizeBytes: Long,
+    limitUnmeteredBytes: Long,
+    limitMeteredBytes: Long,
+    onClear: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Text("Caché de episodios", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Ocupa ${formatCacheBytes(sizeBytes)}",
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Text(
+            "Límite: ${formatCacheBytes(limitUnmeteredBytes)} en Wi-Fi y " +
+                "${formatCacheBytes(limitMeteredBytes)} en datos móviles.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        TextButton(onClick = onClear) {
+            Text("Liberar espacio")
+        }
+    }
+}
+
+/** Tamaño legible para la sección de caché. */
+internal fun formatCacheBytes(bytes: Long): String {
+    val mebibytes = bytes.toDouble() / BYTES_PER_MEBIBYTE
+    return if (mebibytes >= 1.0) {
+        String.format(Locale.getDefault(), "%.1f MB", mebibytes)
+    } else {
+        String.format(Locale.getDefault(), "%.0f KB", bytes.toDouble() / BYTES_PER_KIBIBYTE)
+    }
+}
+
+private const val BYTES_PER_KIBIBYTE = 1_024.0
+private const val BYTES_PER_MEBIBYTE = 1_048_576.0
 
 /**
  * Sección "Reproducción" sin estado (spec 0042, FR-010/FR-011/FR-023).

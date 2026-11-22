@@ -11,6 +11,8 @@ import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 import com.izquierdojl.tolocharadio.domain.podcasts.CleanupDownloadsUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.DownloadRetention
+import com.izquierdojl.tolocharadio.domain.podcasts.EpisodeCache
+import com.izquierdojl.tolocharadio.domain.podcasts.EpisodeCachePolicy
 import com.izquierdojl.tolocharadio.domain.servers.GetServersUseCase
 import com.izquierdojl.tolocharadio.feature.player.PlaybackProfileController
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,6 +34,9 @@ data class SettingsUi(
     val bufferProfile: BufferProfile = BufferProfile.DEFAULT,
     val resumeOnConnectivity: Boolean = true,
     val downloadRetentionDays: Int = DownloadRetention.DEFAULT_DAYS,
+    val cacheSizeBytes: Long = 0L,
+    val cacheLimitUnmeteredBytes: Long = EpisodeCachePolicy.LIMIT_UNMETERED_BYTES,
+    val cacheLimitMeteredBytes: Long = EpisodeCachePolicy.LIMIT_METERED_BYTES,
     val activeServerAlias: String? = null,
     val message: String? = null,
 )
@@ -69,6 +74,7 @@ class SettingsViewModel
         private val buildInfo: AppBuildInfo,
         private val profileController: PlaybackProfileController,
         private val cleanupDownloads: CleanupDownloadsUseCase,
+        private val episodeCache: EpisodeCache,
     ) : ViewModel() {
         private val _ui = MutableStateFlow(SettingsUi())
         val ui: StateFlow<SettingsUi> = _ui.asStateFlow()
@@ -121,6 +127,11 @@ class SettingsViewModel
                     _ui.value = _ui.value.copy(downloadRetentionDays = days)
                 }
             }
+            viewModelScope.launch {
+                episodeCache.stats.collect { stats ->
+                    _ui.value = _ui.value.copy(cacheSizeBytes = stats.sizeBytes)
+                }
+            }
         }
 
         /** Selector Sistema/Claro/Oscuro (spec 002, FR-010). SYSTEM es solo local. */
@@ -168,6 +179,14 @@ class SettingsViewModel
             viewModelScope.launch {
                 prefs.setDownloadRetentionDays(days)
                 cleanupDownloads()
+            }
+        }
+
+        /** Libera la caché de episodios (spec 0058, FR-012). */
+        fun onClearCache() {
+            viewModelScope.launch {
+                episodeCache.clear()
+                _messages.tryEmit("Caché de episodios liberada")
             }
         }
 

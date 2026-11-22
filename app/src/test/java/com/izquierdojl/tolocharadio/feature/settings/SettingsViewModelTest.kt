@@ -9,6 +9,8 @@ import com.izquierdojl.tolocharadio.core.util.AppBuildInfo
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 import com.izquierdojl.tolocharadio.domain.podcasts.CleanupDownloadsUseCase
+import com.izquierdojl.tolocharadio.domain.podcasts.EpisodeCache
+import com.izquierdojl.tolocharadio.domain.podcasts.EpisodeCacheStats
 import com.izquierdojl.tolocharadio.domain.servers.GetServersUseCase
 import com.izquierdojl.tolocharadio.domain.servers.SavedServer
 import com.izquierdojl.tolocharadio.feature.player.PlaybackProfileController
@@ -30,6 +32,10 @@ class SettingsViewModelTest {
     private val getServers: GetServersUseCase = mockk()
     private val profileController: PlaybackProfileController = mockk(relaxed = true)
     private val cleanupDownloads: CleanupDownloadsUseCase = mockk(relaxed = true)
+    private val episodeCache: EpisodeCache =
+        mockk(relaxed = true) {
+            every { stats } returns flowOf(EpisodeCacheStats.EMPTY)
+        }
 
     private val buildInfo =
         AppBuildInfo(
@@ -68,7 +74,7 @@ class SettingsViewModelTest {
         every { prefs.resumeOnConnectivity } returns flowOf(true)
         every { prefs.downloadRetentionDays } returns flowOf(30)
         every { getServers() } returns flowOf(servers)
-        return SettingsViewModel(prefs, getServers, info, profileController, cleanupDownloads)
+        return SettingsViewModel(prefs, getServers, info, profileController, cleanupDownloads, episodeCache)
     }
 
     @Test
