@@ -177,3 +177,11 @@ T018 EpisodePrefetchPolicyTest.kt
 - No se añaden dependencias nuevas: `SimpleCache`, `CacheDataSource` y
   `CacheWriter` vienen con Media3.
 - La caché no guarda credenciales ni URLs firmadas; la clave es el episodio.
+
+---
+
+## Phase 7: Convergence
+
+- [x] T037 [P] [US2] Añadir tests de degradación y `passthrough` de `SimpleCacheEpisodeCache` y del ciclo de `CacheWriterEpisodePrefetch` por Constitution III (`partial`)
+- [x] T038 [P] [US2] Extraer la decisión de red medida a una política pura y testearla (NOT_METERED, roaming y Ahorro de datos) por FR-017 (`partial`)
+- [x] T039 Actualizar `docs/uso.md` con la caché de episodios y la escucha sin conexión por T035 (`partial`)

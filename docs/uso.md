@@ -46,6 +46,18 @@ El modo **Podcasts** (si tu instancia lo ofrece) añade el descubrimiento de pro
 
 El ranking «Populares» requiere que la instancia tenga activado el descubrimiento de podcasts de Apple (`PODCAST_DISCOVERY_PROVIDER=itunes`). Si la instancia no lo ofrece, la sección se oculta y la búsqueda manual sigue disponible.
 
+## Escucha sin conexión
+
+Los episodios se pueden seguir escuchando sin cobertura sin descargarlos a mano:
+
+- Con **Wi-Fi**, la app precarga el episodio en curso completo.
+- Con **datos móviles**, mantiene unos 5 minutos por delante para no gastar la tarifa.
+- La caché guarda hasta **500 MB en Wi-Fi** y **50 MB en datos móviles**; cuando se llena, descarta primero lo que hace más tiempo que no escuchas.
+- En **Configuración → Caché de episodios** puedes ver el espacio ocupado y liberarlo.
+- Las **descargas completas** siguen disponibles para viajes largos o para escuchar en modo avión sin haber reproducido antes el episodio.
+
+La caché vive en el almacenamiento interno de la app y solo contiene audio: no guarda credenciales ni URLs firmadas, porque la clave es el propio episodio.
+
 ## Reproductor
 
 El reproductor es **flotante y persistente**: la música sigue sonando al cambiar de sección. Desde la barra inferior puedes pausar/reanudar, **silenciar** y **copiar el enlace** del stream.
