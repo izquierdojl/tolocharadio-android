@@ -22,7 +22,7 @@ Parámetros de `DefaultLoadControl` para el reproductor VOD.
 
 | Campo | Tipo | Restricciones |
 |-------|------|---------------|
-| `minBufferMs` | `Long` | `>= 60_000`; `>= bufferForPlaybackMs`; `>= bufferForPlaybackAfterRebufferMs` |
+| `minBufferMs` | `Long` | `>= 120_000`; `>= bufferForPlaybackMs`; `>= bufferForPlaybackAfterRebufferMs` |
 | `maxBufferMs` | `Long` | `>= minBufferMs`; valor de producto `240_000` |
 | `bufferForPlaybackMs` | `Long` | `> 0`; valor de producto `2_000` |
 | `bufferForPlaybackAfterRebufferMs` | `Long` | `> 0`; `<= 2_500`; valor de producto `2_500` |

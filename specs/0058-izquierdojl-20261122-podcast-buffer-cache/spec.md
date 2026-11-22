@@ -150,8 +150,10 @@ los que se descartan.
   usar el archivo local y MUST NOT duplicarlo en la caché.
 - **FR-010**: La caché MUST contener solo audio; MUST NOT almacenar credenciales,
   tokens ni cabeceras de autorización.
-- **FR-011**: Las operaciones de caché y precarga MUST NOT bloquear el hilo
-  principal ni provocar cortes en la reproducción.
+- **FR-011**: Las operaciones de caché y precarga MUST ejecutarse en un
+  dispatcher de E/S (nunca en el hilo del player) y MUST NOT añadir más de
+  100 ms al arranque del episodio; se valida con un test de dispatcher y con la
+  reproducción sin cortes del escenario 4.
 - **FR-012**: La persona usuaria MUST poder consultar el espacio ocupado y
   liberarlo desde Ajustes.
 - **FR-013**: El reporte de progreso de escucha MUST seguir funcionando igual con

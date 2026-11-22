@@ -38,7 +38,7 @@ Reglas:
   está en roaming y el Ahorro de datos no está activo.
 - MUST emitir al cambiar de red o de capacidades.
 
-## `EpisodeCache` (data/local/podcasts)
+## `EpisodeCache` (interfaz en `domain/podcasts`, implementación en `data/local/podcasts`)
 
 ```kotlin
 val stats: Flow<EpisodeCacheStats>
@@ -58,7 +58,7 @@ Reglas:
 - MUST NOT escribir en caché para URIs `content://` o `file://`.
 - `stats.sizeBytes` MUST NOT superar el límite de la red activa.
 
-## `EpisodePrefetchManager` (domain/podcasts)
+## `EpisodePrefetch` (interfaz en `domain/podcasts`, implementación en `data/local/podcasts`)
 
 ```kotlin
 val state: StateFlow<PrefetchState>

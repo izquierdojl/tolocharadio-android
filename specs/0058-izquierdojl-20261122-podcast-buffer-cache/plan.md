@@ -7,7 +7,7 @@
 ## Summary
 
 Se separa el buffer del reproductor por tipo de contenido: la radio en directo
-conserva su perfil actual y los episodios usan un `LoadControl` de 60 s–240 s.
+conserva su perfil actual y los episodios usan un `LoadControl` de 2–4 min.
 Encima de eso, se añade una caché en disco con `SimpleCache` de Media3, con
 límites de 500 MB en redes no medidas y 50 MB en medidas, y una precarga
 adaptativa: episodio completo en Wi-Fi, 5 minutos por delante en datos móviles.
@@ -97,11 +97,13 @@ app/src/main/java/com/izquierdojl/tolocharadio/
 │   ├── ContentKind.kt                      # nuevo: LIVE | VOD
 │   └── EpisodeBufferSpec.kt                # nuevo: 60 s / 4 min
 ├── domain/podcasts/
+│   ├── EpisodeCache.kt                     # nuevo: interfaz de caché
 │   ├── EpisodeCachePolicy.kt               # nuevo: 500/50 MB, 5 min
-│   ├── EpisodePrefetchPolicy.kt            # nuevo: objetivo por red
-│   └── EpisodePrefetchManager.kt           # nuevo: CacheWriter
+│   ├── EpisodePrefetchPolicy.kt            # nuevo: objetivo por red + PrefetchState
+│   └── EpisodePrefetch.kt                  # nuevo: interfaz de precarga
 ├── data/local/podcasts/
-│   ├── EpisodeCache.kt                     # nuevo: SimpleCache + factories
+│   ├── SimpleCacheEpisodeCache.kt          # nuevo: SimpleCache + factories
+│   ├── CacheWriterEpisodePrefetch.kt       # nuevo: CacheWriter
 │   ├── QuotaCacheEvictor.kt                # nuevo: LRU con límite dinámico
 │   └── EpisodeCacheEntry.kt                # nuevo: modelo de entrada
 ├── feature/player/
@@ -156,7 +158,7 @@ la política de red y de precarga es lógica de dominio pura y testeable.
 ### Slice C — Precarga adaptativa (P2, FR-014–FR-018, SC-008, SC-009)
 
 1. `EpisodePrefetchPolicy` (objetivo por red).
-2. `EpisodePrefetchManager` con `CacheWriter`: inicio al reproducir, progreso,
+2. `EpisodePrefetch` (interfaz) y `CacheWriterEpisodePrefetch` con `CacheWriter`: inicio al reproducir, progreso,
    cancelación en pausa/parada/cambio/pérdida de red, reajuste al cambiar de red.
 3. Cableado en `EpisodePlaybackController` y observación de `isMetered`.
 

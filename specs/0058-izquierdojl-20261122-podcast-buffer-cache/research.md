@@ -27,7 +27,7 @@ perfil de buffer (spec 0042).
 
 ## R2 — Valores del buffer de episodios
 
-**Decision**: `minBufferMs = 60_000`, `maxBufferMs = 240_000`,
+**Decision**: `minBufferMs = 120_000`, `maxBufferMs = 240_000`,
 `bufferForPlaybackMs = 2_000`, `bufferForPlaybackAfterRebufferMs = 2_500`.
 
 **Rationale**: Pocket Casts usa 2 min / 4 min solo en streaming y deja el
@@ -76,7 +76,7 @@ la URL, cada renovación invalidaría el audio ya descargado.
 
 ## R6 — Precarga
 
-**Decision**: `EpisodePrefetchManager` con `CacheWriter` de Media3, corriendo en
+**Decision**: `EpisodePrefetch` (interfaz) y `CacheWriterEpisodePrefetch` con `CacheWriter` de Media3, corriendo en
 el `@ApplicationScope` mientras el `MediaSessionService` está vivo. Sin
 WorkManager.
 
