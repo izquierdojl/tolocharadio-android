@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-18
 
-**Status**: Ready
+**Status**: Done (2026-11-22; normalizado en la limpieza de cierre)
 
 **Input**: User description: "Quiero que el control de volumen funcione como en Pocket Cast: si suena la aplicación es el volumen del teléfono y si está conectado por cast, tiene que ser sólo el volumen del cast. Ahora muestra los dos y cuando se conecta al cast sube de golpe al 100% y aunque funciona es muy incómodo y se siguen viendo las dos franjas de volumen." Referencia de comportamiento: app Pocket Casts (Android).
 

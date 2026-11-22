@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-04
 
-**Status**: Draft
+**Status**: Done (2026-11-22; normalizado en la limpieza de cierre)
 
 > **Nota de gobernanza (actualizada 2026-09-20)**: el **modelo de UI** de autenticación de usuario definido en esta spec (pantallas de login/registro/Perfil, `GET`/`PATCH /users/me`, registro/recuperación de contraseña y logout desde la app) queda **retirado**: la constitución 2.0.0 y la spec `0022-jlizquierdo-20260912-server-only-access` lo eliminaron. **Sin embargo, la constitución 3.0.0 y la spec `0024-jlizquierdo-20260912-per-server-credentials` reintrodujeron las credenciales por servidor** (email/contraseña cifrada) con **login automático JWT/`Bearer`** — incluida la reproducción por proxy (ver también 0021) —; lo que sigue retirado es únicamente el modelo de UI anterior, no el uso de credenciales. El resto de la spec se conserva como histórico.
 
