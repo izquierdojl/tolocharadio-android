@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-22
 
-**Status**: Draft
+**Status**: Done (2026-11-22; núcleo verificado en emulador; Cast y latencia de radio pendientes de verificación del usuario)
 
 **Input**: User description: "Al entrar en una zona sin conexión se corta la reproducción de un podcast. Queremos ampliar el buffer de los episodios para evitar cortes en zonas de poca cobertura, sin empeorar la radio en directo. En Wi-Fi se puede cachear el episodio completo; con datos móviles, solo un margen pequeño."
 

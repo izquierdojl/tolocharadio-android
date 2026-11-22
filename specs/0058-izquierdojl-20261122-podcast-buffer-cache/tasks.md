@@ -20,8 +20,8 @@ implementable y verificable por separado.
 
 **Purpose**: confirmar el punto de partida y la rama.
 
-- [ ] T001 Confirmar rama `0058-izquierdojl-20261122-podcast-buffer-cache` y baseline verde con `./gradlew testDebugUnitTest detekt ktlintCheck`
-- [ ] T002 [P] Verificar que el fix del bug 0057 está presente en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePlaybackController.kt` (estados `WaitingForNetwork`/`Reconnecting`)
+- [x] T001 Confirmar rama `0058-izquierdojl-20261122-podcast-buffer-cache` y baseline verde con `./gradlew testDebugUnitTest detekt ktlintCheck`
+- [x] T002 [P] Verificar que el fix del bug 0057 está presente en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePlaybackController.kt` (estados `WaitingForNetwork`/`Reconnecting`)
 
 ---
 
@@ -31,14 +31,14 @@ implementable y verificable por separado.
 
 **⚠️ CRITICAL**: ninguna historia puede empezar antes de completar esta fase.
 
-- [ ] T003 [P] Crear el enum `ContentKind` con los valores `ContentKind.LIVE` y `ContentKind.VOD` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/playback/ContentKind.kt`
-- [ ] T004 [P] Crear `EpisodeBufferSpec` según `data-model.md` con `EpisodeBufferSpec.minBufferMs = 120_000`, `EpisodeBufferSpec.maxBufferMs = 240_000`, `EpisodeBufferSpec.bufferForPlaybackMs = 2_000` y `EpisodeBufferSpec.bufferForPlaybackAfterRebufferMs = 2_500`, validando `maxBufferMs >= minBufferMs` y `minBufferMs >= bufferForPlaybackMs` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/playback/EpisodeBufferSpec.kt`
-- [ ] T005 [P] Crear `EpisodeCachePolicy` y `NetworkKind` según `data-model.md` con `EpisodeCachePolicy.limitUnmeteredBytes = 524_288_000`, `EpisodeCachePolicy.limitMeteredBytes = 52_428_800` y `EpisodeCachePolicy.prefetchAheadMeteredMs = 300_000`, validando `limitUnmeteredBytes >= limitMeteredBytes` y los valores `NetworkKind.UNMETERED`/`NetworkKind.METERED` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodeCachePolicy.kt`
-- [ ] T006 [P] Crear `EpisodeCacheEntry` con `EpisodeCacheEntry.episodeId > 0`, `EpisodeCacheEntry.bytes >= 0` y `EpisodeCacheEntry.lastUsedAt >= 0` en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/EpisodeCacheEntry.kt`
-- [ ] T007 [P] Crear `EpisodeCacheStats` con `EpisodeCacheStats.sizeBytes >= 0` y `EpisodeCacheStats.entryCount >= 0` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodeCachePolicy.kt`, y `PrefetchState` con `PrefetchState.episodeId`, `PrefetchState.cachedBytes`, `PrefetchState.targetBytes` y `PrefetchState.running` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePrefetchPolicy.kt`
-- [ ] T008 Añadir `isMetered: StateFlow<Boolean>` a `ConnectivityMonitor` y su implementación en `AndroidConnectivityMonitor` (capabilities, roaming y Ahorro de datos) en `app/src/main/java/com/izquierdojl/tolocharadio/core/network/` y en `app/src/test/java/com/izquierdojl/tolocharadio/core/network/FakeConnectivityMonitor.kt`
-- [ ] T009 Extender `PlaybackPlayerFactory` con `create(profile, kind)` y `PlaybackEngine` con `ensureKind(kind: ContentKind)` y `takePendingRelease()` en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlaybackPlayerFactory.kt` y `PlaybackEngine.kt`
-- [ ] T010 Centralizar en `RadioPlaybackService` el cambio de sesión al recibir `engine.playerFlow` (actualizar `RecoveryAwarePlayer`, `MediaSession.setPlayer` y liberar el player pendiente) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/RadioPlaybackService.kt`
+- [x] T003 [P] Crear el enum `ContentKind` con los valores `ContentKind.LIVE` y `ContentKind.VOD` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/playback/ContentKind.kt`
+- [x] T004 [P] Crear `EpisodeBufferSpec` según `data-model.md` con `EpisodeBufferSpec.minBufferMs = 120_000`, `EpisodeBufferSpec.maxBufferMs = 240_000`, `EpisodeBufferSpec.bufferForPlaybackMs = 2_000` y `EpisodeBufferSpec.bufferForPlaybackAfterRebufferMs = 2_500`, validando `maxBufferMs >= minBufferMs` y `minBufferMs >= bufferForPlaybackMs` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/playback/EpisodeBufferSpec.kt`
+- [x] T005 [P] Crear `EpisodeCachePolicy` y `NetworkKind` según `data-model.md` con `EpisodeCachePolicy.limitUnmeteredBytes = 524_288_000`, `EpisodeCachePolicy.limitMeteredBytes = 52_428_800` y `EpisodeCachePolicy.prefetchAheadMeteredMs = 300_000`, validando `limitUnmeteredBytes >= limitMeteredBytes` y los valores `NetworkKind.UNMETERED`/`NetworkKind.METERED` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodeCachePolicy.kt`
+- [x] T006 [P] Crear `EpisodeCacheEntry` con `EpisodeCacheEntry.episodeId > 0`, `EpisodeCacheEntry.bytes >= 0` y `EpisodeCacheEntry.lastUsedAt >= 0` en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/EpisodeCacheEntry.kt`
+- [x] T007 [P] Crear `EpisodeCacheStats` con `EpisodeCacheStats.sizeBytes >= 0` y `EpisodeCacheStats.entryCount >= 0` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodeCachePolicy.kt`, y `PrefetchState` con `PrefetchState.episodeId`, `PrefetchState.cachedBytes`, `PrefetchState.targetBytes` y `PrefetchState.running` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePrefetchPolicy.kt`
+- [x] T008 Añadir `isMetered: StateFlow<Boolean>` a `ConnectivityMonitor` y su implementación en `AndroidConnectivityMonitor` (capabilities, roaming y Ahorro de datos) en `app/src/main/java/com/izquierdojl/tolocharadio/core/network/` y en `app/src/test/java/com/izquierdojl/tolocharadio/core/network/FakeConnectivityMonitor.kt`
+- [x] T009 Extender `PlaybackPlayerFactory` con `create(profile, kind)` y `PlaybackEngine` con `ensureKind(kind: ContentKind)` y `takePendingRelease()` en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlaybackPlayerFactory.kt` y `PlaybackEngine.kt`
+- [x] T010 Centralizar en `RadioPlaybackService` el cambio de sesión al recibir `engine.playerFlow` (actualizar `RecoveryAwarePlayer`, `MediaSession.setPlayer` y liberar el player pendiente) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/RadioPlaybackService.kt`
 
 **Checkpoint**: entidades, contratos y motor listos; las historias pueden empezar.
 
@@ -54,14 +54,14 @@ activar modo avión 3 minutos y comprobar que el audio sigue.
 
 ### Tests for User Story 1 (write first, must fail)
 
-- [ ] T011 [P] [US1] Test de `EpisodeBufferSpec` (invariantes y valores, incluido `maxBufferMs` dentro del objetivo de 8 MB) en `app/src/test/java/com/izquierdojl/tolocharadio/domain/playback/EpisodeBufferSpecTest.kt`
-- [ ] T012 [P] [US1] Test de `PlaybackEngine.ensureKind`: `VOD` usa `EpisodeBufferSpec`, `LIVE` conserva el `BufferProfile` y el cambio es idempotente, en `app/src/test/java/com/izquierdojl/tolocharadio/feature/player/PlaybackEngineKindTest.kt`
+- [x] T011 [P] [US1] Test de `EpisodeBufferSpec` (invariantes y valores, incluido `maxBufferMs` dentro del objetivo de 8 MB) en `app/src/test/java/com/izquierdojl/tolocharadio/domain/playback/EpisodeBufferSpecTest.kt`
+- [x] T012 [P] [US1] Test de `PlaybackEngine.ensureKind`: `VOD` usa `EpisodeBufferSpec`, `LIVE` conserva el `BufferProfile` y el cambio es idempotente, en `app/src/test/java/com/izquierdojl/tolocharadio/feature/player/PlaybackEngineKindTest.kt`
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Llamar `engine.ensureKind(ContentKind.VOD)` en `EpisodePlaybackController.play()` antes de crear la fuente, y `ensureKind(ContentKind.LIVE)` en `LocalPlaybackStarter.start()` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePlaybackController.kt` y `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/LocalPlaybackStarter.kt`
-- [ ] T014 [US1] Mantener el `BufferProfile` del usuario para `ContentKind.LIVE` y no aplicarlo a `ContentKind.VOD` en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlaybackEngine.kt`
-- [ ] T015 [US1] Verificar que un cambio de perfil de buffer durante un episodio no reinicia la radio en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/RadioPlaybackService.kt`
+- [x] T013 [US1] Llamar `engine.ensureKind(ContentKind.VOD)` en `EpisodePlaybackController.play()` antes de crear la fuente, y `ensureKind(ContentKind.LIVE)` en `LocalPlaybackStarter.start()` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePlaybackController.kt` y `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/LocalPlaybackStarter.kt`
+- [x] T014 [US1] Mantener el `BufferProfile` del usuario para `ContentKind.LIVE` y no aplicarlo a `ContentKind.VOD` en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/PlaybackEngine.kt`
+- [x] T015 [US1] Verificar que un cambio de perfil de buffer durante un episodio no reinicia la radio en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/RadioPlaybackService.kt`
 
 **Checkpoint**: US1 funcional y medible (SC-001, SC-002, SC-004, SC-006).
 
@@ -77,21 +77,21 @@ minutos; con Wi-Fi, esperar la precarga y reproducir el episodio completo sin re
 
 ### Tests for User Story 2 (write first, must fail)
 
-- [ ] T016 [P] [US2] Test de `QuotaCacheEvictor` (LRU y recorte al bajar de 500 MB a 50 MB) en `app/src/test/java/com/izquierdojl/tolocharadio/data/local/podcasts/QuotaCacheEvictorTest.kt`
-- [ ] T017 [P] [US2] Test de `EpisodeMediaSourceFactory` (clave `episode-<id>`, `FLAG_IGNORE_CACHE_ON_ERROR`, sin caché para `content://`) en `app/src/test/java/com/izquierdojl/tolocharadio/feature/player/EpisodeMediaSourceFactoryTest.kt`
-- [ ] T018 [P] [US2] Test de `EpisodePrefetchPolicy` (completo en no medida, 5 min en medida, cancelación) en `app/src/test/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePrefetchPolicyTest.kt`
-- [ ] T036 [P] [US2] Test de `EpisodeCachePolicy` (`limitUnmeteredBytes >= limitMeteredBytes`, `prefetchAheadMeteredMs <= 300_000` y `NetworkKind`) en `app/src/test/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodeCachePolicyTest.kt`
+- [x] T016 [P] [US2] Test de `QuotaCacheEvictor` (LRU y recorte al bajar de 500 MB a 50 MB) en `app/src/test/java/com/izquierdojl/tolocharadio/data/local/podcasts/QuotaCacheEvictorTest.kt`
+- [x] T017 [P] [US2] Test de `EpisodeMediaSourceFactory` (clave `episode-<id>`, `FLAG_IGNORE_CACHE_ON_ERROR`, sin caché para `content://`) en `app/src/test/java/com/izquierdojl/tolocharadio/feature/player/EpisodeMediaSourceFactoryTest.kt`
+- [x] T018 [P] [US2] Test de `EpisodePrefetchPolicy` (completo en no medida, 5 min en medida, cancelación) en `app/src/test/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePrefetchPolicyTest.kt`
+- [x] T036 [P] [US2] Test de `EpisodeCachePolicy` (`limitUnmeteredBytes >= limitMeteredBytes`, `prefetchAheadMeteredMs <= 300_000` y `NetworkKind`) en `app/src/test/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodeCachePolicyTest.kt`
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Implementar `QuotaCacheEvictor` con límite dinámico y orden LRU usando `EpisodeCacheEntry.lastUsedAt` en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/QuotaCacheEvictor.kt`
-- [ ] T020 [US2] Implementar la interfaz `EpisodeCache` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodeCache.kt` y su implementación `SimpleCacheEpisodeCache` con `SimpleCache` singleton, `factoryFor(episodeId)`, `passthrough()`, `clear()` y `stats` (poblando `EpisodeCacheStats.sizeBytes` y `EpisodeCacheStats.entryCount`), aplicando `EpisodeCachePolicy.limitFor(NetworkKind)`, ejecutando la E/S en `Dispatchers.IO` (FR-011) y degradando a `passthrough()` si `SimpleCache` no se puede crear (U1) en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/SimpleCacheEpisodeCache.kt`
-- [ ] T021 [US2] Crear `EpisodeMediaSourceFactory` con `CacheDataSource` y clave `episode-<EpisodeCacheEntry.episodeId>`, sin caché para `content://`/`file://` y sin persistir cabeceras ni tokens (FR-010) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/EpisodeMediaSourceFactory.kt`
-- [ ] T022 [US2] Usar `EpisodeMediaSourceFactory` en `EpisodePlaybackController.play()` y en la recuperación, actualizando `EpisodeCacheEntry.lastUsedAt` y manteniendo el reporte de progreso (FR-013) en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePlaybackController.kt`
-- [ ] T023 [US2] Implementar `EpisodePrefetchPolicy` con el objetivo de `EpisodePrefetchPolicy.prefetchAheadMeteredMs = 300_000` en red medida y episodio completo en no medida en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePrefetchPolicy.kt`
-- [ ] T024 [US2] Implementar la interfaz `EpisodePrefetch` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePrefetch.kt` y su implementación `CacheWriterEpisodePrefetch` con `CacheWriter` en `Dispatchers.IO`, publicando `PrefetchState.episodeId`, `PrefetchState.cachedBytes`, `PrefetchState.targetBytes` y `PrefetchState.running`, y cancelando al pausar/parar/cerrar (FR-011, FR-018) en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/CacheWriterEpisodePrefetch.kt`
-- [ ] T025 [US2] Cablear la precarga en `EpisodePlaybackController` (inicio al reproducir, `update(positionMs)` en el ticker, cancelación en pausa/stop/error) en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePlaybackController.kt`
-- [ ] T026 [US2] Reaccionar a `ConnectivityMonitor.isMetered` para reajustar límite y precarga sin cortar el audio en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/SimpleCacheEpisodeCache.kt` y `CacheWriterEpisodePrefetch.kt`
+- [x] T019 [US2] Implementar `QuotaCacheEvictor` con límite dinámico y orden LRU usando `EpisodeCacheEntry.lastUsedAt` en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/QuotaCacheEvictor.kt`
+- [x] T020 [US2] Implementar la interfaz `EpisodeCache` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodeCache.kt` y su implementación `SimpleCacheEpisodeCache` con `SimpleCache` singleton, `factoryFor(episodeId)`, `passthrough()`, `clear()` y `stats` (poblando `EpisodeCacheStats.sizeBytes` y `EpisodeCacheStats.entryCount`), aplicando `EpisodeCachePolicy.limitFor(NetworkKind)`, ejecutando la E/S en `Dispatchers.IO` (FR-011) y degradando a `passthrough()` si `SimpleCache` no se puede crear (U1) en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/SimpleCacheEpisodeCache.kt`
+- [x] T021 [US2] Crear `EpisodeMediaSourceFactory` con `CacheDataSource` y clave `episode-<EpisodeCacheEntry.episodeId>`, sin caché para `content://`/`file://` y sin persistir cabeceras ni tokens (FR-010) en `app/src/main/java/com/izquierdojl/tolocharadio/feature/player/EpisodeMediaSourceFactory.kt`
+- [x] T022 [US2] Usar `EpisodeMediaSourceFactory` en `EpisodePlaybackController.play()` y en la recuperación, actualizando `EpisodeCacheEntry.lastUsedAt` y manteniendo el reporte de progreso (FR-013) en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePlaybackController.kt`
+- [x] T023 [US2] Implementar `EpisodePrefetchPolicy` con el objetivo de `EpisodePrefetchPolicy.prefetchAheadMeteredMs = 300_000` en red medida y episodio completo en no medida en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePrefetchPolicy.kt`
+- [x] T024 [US2] Implementar la interfaz `EpisodePrefetch` en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePrefetch.kt` y su implementación `CacheWriterEpisodePrefetch` con `CacheWriter` en `Dispatchers.IO`, publicando `PrefetchState.episodeId`, `PrefetchState.cachedBytes`, `PrefetchState.targetBytes` y `PrefetchState.running`, y cancelando al pausar/parar/cerrar (FR-011, FR-018) en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/CacheWriterEpisodePrefetch.kt`
+- [x] T025 [US2] Cablear la precarga en `EpisodePlaybackController` (inicio al reproducir, `update(positionMs)` en el ticker, cancelación en pausa/stop/error) en `app/src/main/java/com/izquierdojl/tolocharadio/domain/podcasts/EpisodePlaybackController.kt`
+- [x] T026 [US2] Reaccionar a `ConnectivityMonitor.isMetered` para reajustar límite y precarga sin cortar el audio en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/SimpleCacheEpisodeCache.kt` y `CacheWriterEpisodePrefetch.kt`
 
 **Checkpoint**: US2 funcional (SC-003, SC-005, SC-008, SC-009).
 
@@ -113,7 +113,7 @@ espacio» y comprobar que baja a 0 sin cortar la reproducción.
 - [x] T028 [US3] Añadir `CacheSettingsUi` y las acciones `onClearCache` en `app/src/main/java/com/izquierdojl/tolocharadio/feature/settings/SettingsViewModel.kt`
 - [x] T029 [US3] Añadir la sección plegable «Caché de episodios» con espacio, límites 500/50 MB y «Liberar espacio» en `app/src/main/java/com/izquierdojl/tolocharadio/feature/settings/SettingsScreen.kt`
 - [x] T030 [P] [US3] Añadir textos de la sección en `app/src/main/java/com/izquierdojl/tolocharadio/feature/settings/SettingsLabels.kt`
-- [ ] T031 [US3] Recortar la caché al límite de la red activa al cambiar de no medida a medida en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/SimpleCacheEpisodeCache.kt`
+- [x] T031 [US3] Recortar la caché al límite de la red activa al cambiar de no medida a medida en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/SimpleCacheEpisodeCache.kt`
 
 **Checkpoint**: las tres historias funcionan por separado.
 
@@ -124,7 +124,7 @@ espacio» y comprobar que baja a 0 sin cortar la reproducción.
 - [x] T032 [P] Añadir logs estructurados `EpisodePrefetch` y `EpisodeCache` sin URLs ni PII en `app/src/main/java/com/izquierdojl/tolocharadio/data/local/podcasts/CacheWriterEpisodePrefetch.kt` y `SimpleCacheEpisodeCache.kt`
 - [x] T033 Ejecutar `./gradlew testDebugUnitTest detekt ktlintCheck lintDebug` y corregir lo que falle
 - [x] T034 Ejecutar `quickstart.md` en dispositivo: escenarios 1–6 y regresión de radio, descargas y Cast
-- [ ] T035 [P] Actualizar `docs/RELEASE.md` si la feature cambia el comportamiento de reproducción o almacenamiento
+- [x] T035 [P] Actualizar `docs/RELEASE.md` si la feature cambia el comportamiento de reproducción o almacenamiento — sin cambios necesarios; documentación de usuario en T039 (2026-11-22)
 
 ---
 
