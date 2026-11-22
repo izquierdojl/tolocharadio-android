@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
+import kotlin.math.log10
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -47,6 +48,18 @@ class VoiceBoostDspTest {
         VoiceBoostDsp(sampleRate, channels = 1).process(output, output.size)
 
         assertTrue(rms(output, 4_096, output.size) > rms(input, 4_096, input.size))
+    }
+
+    @Test
+    fun `una voz a nivel de podcast gana al menos cinco decibelios`() {
+        // Pico a -18 dBFS, el nivel habitual de una voz ya normalizada.
+        val input = sine(amplitude = 0.125, frames = 48_000)
+        val output = input.copyOf()
+        VoiceBoostDsp(sampleRate, channels = 1).process(output, output.size)
+
+        val gainDb = 20.0 * log10(rms(output, 24_000, output.size) / rms(input, 24_000, input.size))
+
+        assertTrue("ganancia insuficiente: $gainDb dB", gainDb >= 5.5)
     }
 
     @Test

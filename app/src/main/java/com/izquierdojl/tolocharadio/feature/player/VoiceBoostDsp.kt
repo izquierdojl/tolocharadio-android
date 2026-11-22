@@ -106,7 +106,7 @@ class VoiceBoostDsp(
         const val GAIN_SMOOTH_SECONDS = 0.005
         const val THRESHOLD_DB = -24.0
         const val RATIO = 3.0
-        const val MAKEUP_DB = 6.0
+        const val MAKEUP_DB = 10.0
         const val LIMIT_THRESHOLD = 0.95
         const val OUTPUT_CEILING = 0.99
         const val FULL_SCALE = 32_768.0
