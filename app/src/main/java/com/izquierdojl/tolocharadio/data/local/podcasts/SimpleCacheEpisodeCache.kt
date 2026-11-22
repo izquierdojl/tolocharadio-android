@@ -17,9 +17,11 @@ import com.izquierdojl.tolocharadio.domain.podcasts.NetworkKind
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -50,7 +52,14 @@ class SimpleCacheEpisodeCache
         private val limitBytes = AtomicLong(policy.limitFor(NetworkKind.UNMETERED))
         private val evictor = QuotaCacheEvictor(limitProvider = { limitBytes.get() })
         private val _stats = MutableStateFlow(EpisodeCacheStats.EMPTY)
-        override val stats: Flow<EpisodeCacheStats> = _stats.asStateFlow()
+        override val stats: Flow<EpisodeCacheStats> =
+            flow {
+                while (true) {
+                    refreshStats()
+                    emit(_stats.value)
+                    delay(STATS_REFRESH_MS)
+                }
+            }.flowOn(Dispatchers.IO)
 
         init {
             scope.launch(Dispatchers.IO) {
@@ -128,5 +137,6 @@ class SimpleCacheEpisodeCache
         private companion object {
             const val TAG = "EpisodeCache"
             const val CACHE_DIR = "episode-cache"
+            const val STATS_REFRESH_MS = 2_000L
         }
     }
