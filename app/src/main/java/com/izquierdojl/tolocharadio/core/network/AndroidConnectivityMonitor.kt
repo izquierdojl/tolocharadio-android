@@ -125,19 +125,22 @@ class AndroidConnectivityMonitor
          * Medida si falta `NOT_METERED`, si hay roaming o si el Ahorro de datos
          * está activo (spec 0058, R7).
          */
-        private fun NetworkCapabilities.isMeteredNetwork(): Boolean {
-            val unmetered = hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
-            val roaming =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    !hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
-                } else {
-                    telephony?.isNetworkRoaming == true
-                }
-            val dataSaver =
-                manager.restrictBackgroundStatus ==
-                    ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED
-            return !unmetered || roaming || dataSaver
-        }
+        private fun NetworkCapabilities.isMeteredNetwork(): Boolean =
+            MeteredNetworkPolicy.isMetered(
+                NetworkSignals(
+                    notMettered = hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED),
+                    notRoaming =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
+                        } else {
+                            null
+                        },
+                    legacyRoaming = telephony?.isNetworkRoaming == true,
+                    dataSaver =
+                        manager.restrictBackgroundStatus ==
+                            ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED,
+                ),
+            )
 
         private fun NetworkCapabilities.hasInternet(): Boolean =
             hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
