@@ -150,12 +150,6 @@ class StationMediaItemFactory
                 .setAlbumTitle("Tolocha Radio")
                 .build()
 
-        /** `MediaSource` VOD de episodio (URL firmada o archivo local, research D3). */
-        fun createEpisodeSource(item: MediaItem): MediaSource {
-            val factory = ProgressiveMediaSource.Factory(plainDataSource)
-            return factory.createMediaSource(item)
-        }
-
         /** `mimeType` para un audio sin extensión conocida (URLs firmadas). */
         fun audioMimeTypeForUrl(url: String): String = audioMimeTypeFor(url)
 

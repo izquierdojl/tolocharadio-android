@@ -13,6 +13,9 @@ interface ConnectivityMonitor {
     /** `true` si hay una red con Internet validado. */
     val isOnline: StateFlow<Boolean>
 
+    /** `true` si la red activa es medida (móvil, roaming o Ahorro de datos). */
+    val isMetered: StateFlow<Boolean>
+
     /** Emite cuando cambia la red o el transporte (Wi-Fi ↔ datos móviles). */
     val networkChanges: Flow<Unit>
 

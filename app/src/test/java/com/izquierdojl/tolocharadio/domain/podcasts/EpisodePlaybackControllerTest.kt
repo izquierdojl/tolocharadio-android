@@ -8,9 +8,9 @@ import com.izquierdojl.tolocharadio.cast.CastConnectionState
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
 import com.izquierdojl.tolocharadio.core.network.FakeConnectivityMonitor
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
+import com.izquierdojl.tolocharadio.feature.player.EpisodeMediaSourceFactory
 import com.izquierdojl.tolocharadio.feature.player.PlaybackClock
 import com.izquierdojl.tolocharadio.feature.player.PlaybackEngine
-import com.izquierdojl.tolocharadio.feature.player.StationMediaItemFactory
 import com.izquierdojl.tolocharadio.feature.player.VoiceBoostController
 import com.izquierdojl.tolocharadio.support.testEpisode
 import io.mockk.every
@@ -35,7 +35,8 @@ class EpisodePlaybackControllerTest {
     private val cast = mockk<CastPlayerManager>(relaxed = true)
     private val localPlayer = mockk<ExoPlayer>(relaxed = true)
     private val engine = mockk<PlaybackEngine>(relaxed = true)
-    private val mediaItems = mockk<StationMediaItemFactory>(relaxed = true)
+    private val episodeSources = mockk<EpisodeMediaSourceFactory>(relaxed = true)
+    private val episodePrefetch = mockk<EpisodePrefetch>(relaxed = true)
     private val voiceBoost = mockk<VoiceBoostController>(relaxed = true)
     private val connectivity = FakeConnectivityMonitor(initialOnline = true)
 
@@ -52,7 +53,8 @@ class EpisodePlaybackControllerTest {
         return EpisodePlaybackController(
             engine = engine,
             cast = cast,
-            mediaItems = mediaItems,
+            episodeSources = episodeSources,
+            episodePrefetch = episodePrefetch,
             voiceBoost = voiceBoost,
             connectivity = connectivity,
             clock = PlaybackClock { testScheduler.currentTime },
@@ -86,7 +88,8 @@ class EpisodePlaybackControllerTest {
                 EpisodePlaybackController(
                     engine = engine,
                     cast = cast,
-                    mediaItems = mediaItems,
+                    episodeSources = episodeSources,
+                    episodePrefetch = episodePrefetch,
                     voiceBoost = voiceBoost,
                     connectivity = connectivity,
                     clock = PlaybackClock { testScheduler.currentTime },
@@ -123,7 +126,7 @@ class EpisodePlaybackControllerTest {
             val active = controller.state.value as EpisodePlaybackController.State.Active
             assertTrue(active.playing)
             assertEquals(90_000L, active.positionMs)
-            verify(exactly = 2) { mediaItems.createEpisodeSource(any()) }
+            verify(exactly = 2) { episodeSources.create(any(), any(), any()) }
         }
 
     @Test
@@ -143,7 +146,7 @@ class EpisodePlaybackControllerTest {
             val paused = controller.state.value as EpisodePlaybackController.State.Active
             assertFalse(paused.playing)
             assertEquals(60_000L, paused.positionMs)
-            verify(exactly = 1) { mediaItems.createEpisodeSource(any()) }
+            verify(exactly = 1) { episodeSources.create(any(), any(), any()) }
         }
 
     @Test
@@ -156,7 +159,7 @@ class EpisodePlaybackControllerTest {
             advanceUntilIdle()
 
             assertTrue(controller.state.value is EpisodePlaybackController.State.Error)
-            verify(exactly = 1) { mediaItems.createEpisodeSource(any()) }
+            verify(exactly = 1) { episodeSources.create(any(), any(), any()) }
         }
 
     @Test
@@ -174,6 +177,6 @@ class EpisodePlaybackControllerTest {
             val active = controller.state.value as EpisodePlaybackController.State.Active
             assertTrue(active.playing)
             assertEquals(30_000L, active.positionMs)
-            verify(exactly = 2) { mediaItems.createEpisodeSource(any()) }
+            verify(exactly = 2) { episodeSources.create(any(), any(), any()) }
         }
 }

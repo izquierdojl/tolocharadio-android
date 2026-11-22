@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.os.Build
+import android.telephony.TelephonyManager
 import com.izquierdojl.tolocharadio.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -36,9 +38,14 @@ class AndroidConnectivityMonitor
         @ApplicationScope scope: CoroutineScope,
     ) : ConnectivityMonitor {
         private val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        private val telephony: TelephonyManager? =
+            context.getSystemService(TelephonyManager::class.java)
 
         private val _isOnline = MutableStateFlow(isCurrentlyOnline())
         override val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
+
+        private val _isMetered = MutableStateFlow(isCurrentlyMetered())
+        override val isMetered: StateFlow<Boolean> = _isMetered.asStateFlow()
 
         private val _networkChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
         override val networkChanges: Flow<Unit> = _networkChanges.asSharedFlow()
@@ -69,6 +76,8 @@ class AndroidConnectivityMonitor
                         object : ConnectivityManager.NetworkCallback() {
                             override fun onAvailable(network: Network) {
                                 emitNetworkChangeIfNeeded(network, manager.getNetworkCapabilities(network))
+                                _isMetered.value =
+                                    manager.getNetworkCapabilities(network)?.isMeteredNetwork() ?: true
                                 trySend(isCurrentlyOnline())
                             }
 
@@ -77,6 +86,7 @@ class AndroidConnectivityMonitor
                                     lastNetwork = null
                                     lastTransports = emptySet()
                                 }
+                                _isMetered.value = isCurrentlyMetered()
                                 trySend(isCurrentlyOnline())
                             }
 
@@ -85,6 +95,7 @@ class AndroidConnectivityMonitor
                                 networkCapabilities: NetworkCapabilities,
                             ) {
                                 emitNetworkChangeIfNeeded(network, networkCapabilities)
+                                _isMetered.value = networkCapabilities.isMeteredNetwork()
                                 trySend(networkCapabilities.hasInternet())
                             }
                         }
@@ -102,6 +113,30 @@ class AndroidConnectivityMonitor
             val network = manager.activeNetwork ?: return false
             val caps = manager.getNetworkCapabilities(network) ?: return false
             return caps.hasInternet()
+        }
+
+        private fun isCurrentlyMetered(): Boolean {
+            val network = manager.activeNetwork ?: return true
+            val caps = manager.getNetworkCapabilities(network) ?: return true
+            return caps.isMeteredNetwork()
+        }
+
+        /**
+         * Medida si falta `NOT_METERED`, si hay roaming o si el Ahorro de datos
+         * está activo (spec 0058, R7).
+         */
+        private fun NetworkCapabilities.isMeteredNetwork(): Boolean {
+            val unmetered = hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+            val roaming =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    !hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
+                } else {
+                    telephony?.isNetworkRoaming == true
+                }
+            val dataSaver =
+                manager.restrictBackgroundStatus ==
+                    ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED
+            return !unmetered || roaming || dataSaver
         }
 
         private fun NetworkCapabilities.hasInternet(): Boolean =
