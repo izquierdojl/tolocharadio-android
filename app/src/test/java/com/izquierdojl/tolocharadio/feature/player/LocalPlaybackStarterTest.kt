@@ -6,6 +6,7 @@ import androidx.media3.exoplayer.source.MediaSource
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.data.repo.HistoryRepo
+import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackFeatureFlags
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackRoute
 import com.izquierdojl.tolocharadio.domain.playback.ResolvePlaybackSourceUseCase
@@ -22,11 +23,13 @@ class LocalPlaybackStarterTest {
     private val engine: PlaybackEngine =
         mockk {
             every { player } returns exoPlayer
+            every { ensure(any(), any()) } returns exoPlayer
         }
     private val factory: StationMediaItemFactory = mockk(relaxed = true)
     private val prefs: InstancePrefs =
         mockk {
             every { baseUrl } returns flowOf("https://radio.test/")
+            every { bufferProfile } returns flowOf(BufferProfile.BALANCED)
         }
     private val history: HistoryRepo = mockk(relaxed = true)
     private val sessionState = PlaybackSessionState(PlaybackFeatureFlags(livePlaybackEnabled = true))

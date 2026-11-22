@@ -5,6 +5,7 @@ import androidx.media3.common.util.UnstableApi
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.data.repo.HistoryRepo
+import com.izquierdojl.tolocharadio.domain.playback.ContentKind
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackRoute
 import com.izquierdojl.tolocharadio.domain.playback.ResolvePlaybackSourceUseCase
 import kotlinx.coroutines.flow.first
@@ -54,6 +55,7 @@ class LocalPlaybackStarter
             recordHistory: Boolean = false,
             playWhenReady: Boolean = true,
         ) {
+            engine.ensure(prefs.bufferProfile.first(), ContentKind.LIVE)
             val source = resolveSource(station)
             val baseUrl = prefs.baseUrl.first()
             val effectiveSequence = sequence ?: sessionState.nextSequence()

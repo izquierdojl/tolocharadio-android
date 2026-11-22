@@ -12,6 +12,7 @@ import com.izquierdojl.tolocharadio.core.network.ConnectivityMonitor
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.di.ApplicationScope
+import com.izquierdojl.tolocharadio.domain.playback.ContentKind
 import com.izquierdojl.tolocharadio.domain.playback.RecoveryPolicy
 import com.izquierdojl.tolocharadio.feature.player.PlaybackClock
 import com.izquierdojl.tolocharadio.feature.player.PlaybackEngine
@@ -214,6 +215,7 @@ class EpisodePlaybackController
                 cast.connectToEpisode(source.uri, episode.title, podcast?.title, startMs)
                 attach(activePlayer())
             } else {
+                engine.ensureKind(ContentKind.VOD)
                 loadLocally(source, episode, podcast, startMs)
             }
             applyRate(rate, casting)
@@ -512,6 +514,7 @@ class EpisodePlaybackController
                         if (userPaused || finalized) return@launch
                         if (!connectivity.isOnline.value) continue
                         val source = lastSource ?: break
+                        engine.ensureKind(ContentKind.VOD)
                         loadLocally(source, episode, podcast, position)
                         engine.player.playWhenReady = true
                         attach(engine.player)
