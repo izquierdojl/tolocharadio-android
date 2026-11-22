@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-20
 
-**Status**: Draft
+**Status**: Done (2026-11-22; normalizado en la limpieza de cierre)
 
 **Input**: User description: "Hola, vamos a hacer unas mejoras estéticas para organizar mejor el espacio: en la pantalla de favoritos, el menú de la derecha que permite seleccionar mover arriba y mover abajo es redundante ya que el arrastrar funciona muy bien (ocultarlo o eliminarlo directamente); en el panel de reproductor, trasladar el botón para compartir el enlace de la emisora real a la pantalla donde se ve la información de la emisora al hacer click, dejando sólo el botón de play/pause y el de silenciar; debajo del texto historial aparece un texto descriptivo 'Lo último que has escuchado', proponer dos textos sencillos similares y explicativos debajo de Explorar y Tus favoritos."
 

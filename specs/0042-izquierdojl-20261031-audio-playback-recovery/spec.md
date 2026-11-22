@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-31
 
-**Status**: Draft
+**Status**: Done (2026-11-22; normalizado en la limpieza de cierre)
 
 **Input**: User description: "En esta aplicación, uno de los problemas que existe es que a veces se pierde el sonido de la emisora que está sonando, y para volver a recuperarlo, hay que volver a reconectar o incluso volver a salir o entrar de la aplicación. Explora si es posible mejorarlo aumentando buffer, o cambiando alguna configuración, incluso añadiéndola en la propia configuración de la aplicación para que el propio usuario pueda ajustársela"
 

@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-13
 
-**Status**: Draft
+**Status**: Done (2026-11-22; normalizado en la limpieza de cierre)
 
 **Input**: User description: "Vamos a mejorar un aspecto del programa en la opción de favoritos. Ahora mismo se pueden mover con un selector, pero es muy poco intuitivo, no tiene animación y solo se ve el movimiento cuando se suelta al final."
 

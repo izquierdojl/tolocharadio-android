@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-08
 
-**Status**: Draft
+**Status**: Done (2026-11-22; normalizado en la limpieza de cierre)
 
 **Input**: User description: "en configuración poner info, repo, versión, etc. que muestre en un dialogo modal datos generales de la aplicación."
 
