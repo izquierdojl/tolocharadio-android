@@ -144,7 +144,7 @@ class EpisodePlaybackController
             voiceBoost.setEpisodeActive(true)
             voiceBoost.setCastConnected(casting)
             if (casting) {
-                cast.connectToEpisode(source.uri, episode.title, podcast?.title)
+                cast.connectToEpisode(source.uri, episode.title, podcast?.title, startMs)
                 attach(activePlayer())
             } else {
                 val item =

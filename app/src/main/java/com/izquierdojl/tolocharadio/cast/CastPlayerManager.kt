@@ -423,12 +423,16 @@ class CastPlayerManager
             uri: String,
             title: String,
             artist: String?,
+            startMs: Long,
         ) {
             if (!isCastConnected) return
             val player = castPlayer ?: return
 
             castError = null
-            player.setMediaItem(mediaItemFactory.createEpisodeCastItem(uri, title, artist))
+            player.setMediaItem(
+                mediaItemFactory.createEpisodeCastItem(uri, title, artist),
+                startMs.coerceAtLeast(0),
+            )
             player.prepare()
             player.playWhenReady = true
         }
