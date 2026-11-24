@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -47,6 +48,9 @@ import com.izquierdojl.tolocharadio.feature.podcasts.TopChartsUi
  * Sección «Populares» sin estado. La visibilidad la decide `DiscoverContent`;
  * esta composición solo renderiza carga, contenido, vacío, error y aviso de
  * fallback. Toda la interacción se delega en callbacks.
+ *
+ * Expone [topChartsItems] para que `DiscoverContent` pueda integrarla en un
+ * único `LazyColumn` y desplazar toda la pantalla junta (bug 0059).
  */
 @Suppress("LongParameterList")
 @Composable
@@ -60,17 +64,55 @@ fun TopChartsSection(
     onEditServer: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Box(
         modifier =
             modifier
                 .fillMaxWidth()
                 .testTag(TolochaTestTags.TOP_CHARTS_SECTION),
     ) {
+        LazyColumn(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(TolochaTestTags.TOP_CHARTS_LIST),
+            contentPadding = PaddingValues(bottom = 16.dp),
+        ) {
+            topChartsItems(
+                ui = ui,
+                subscribedFeedUrls = subscribedFeedUrls,
+                onCountryChange = onCountryChange,
+                onGenreChange = onGenreChange,
+                onToggleSubscribe = onToggleSubscribe,
+                onRetry = onRetry,
+                onEditServer = onEditServer,
+            )
+        }
+    }
+}
+
+/**
+ * Ítems de «Populares» dentro del `LazyListScope` de la pantalla. No usan
+ * `weight`: el alto lo marca el contenido y el scroll lo gestiona quien
+ * contiene la lista. La longitud es declarativa, como la de un `@Composable`.
+ */
+@Suppress("LongMethod")
+fun LazyListScope.topChartsItems(
+    ui: TopChartsUi,
+    subscribedFeedUrls: Set<String>,
+    onCountryChange: (TopCountry) -> Unit,
+    onGenreChange: (TopGenre) -> Unit,
+    onToggleSubscribe: (PodcastSearchResult) -> Unit,
+    onRetry: () -> Unit,
+    onEditServer: () -> Unit = {},
+) {
+    item {
         Text(
             text = "Populares",
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
         )
+    }
+    item {
         Row(
             modifier =
                 Modifier
@@ -89,21 +131,22 @@ fun TopChartsSection(
                 modifier = Modifier.weight(1f),
             )
         }
+    }
 
-        if (ui.genreUnavailable) {
-            GenreUnavailableNotice(onRetry = onRetry)
-        }
+    if (ui.genreUnavailable) {
+        item { GenreUnavailableNotice(onRetry = onRetry) }
+    }
 
-        when {
-            ui.loading -> {
+    when {
+        ui.loading -> {
+            item {
                 Column(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .weight(1f)
+                            .padding(32.dp)
                             .semantics { liveRegion = LiveRegionMode.Polite },
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
                 ) {
                     CircularProgressIndicator()
                     Spacer(Modifier.height(8.dp))
@@ -114,8 +157,10 @@ fun TopChartsSection(
                     )
                 }
             }
+        }
 
-            ui.error != null -> {
+        ui.error != null -> {
+            item {
                 TopChartsError(
                     message = ui.error,
                     isAuthError = ui.isAuthError,
@@ -123,38 +168,31 @@ fun TopChartsSection(
                     onEditServer = onEditServer,
                 )
             }
+        }
 
-            ui.items.isEmpty() -> {
+        ui.items.isEmpty() -> {
+            item {
                 Box(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .weight(1f)
+                            .padding(16.dp)
                             .semantics { liveRegion = LiveRegionMode.Polite }
                             .testTag(TolochaTestTags.TOP_CHARTS_EMPTY),
                 ) {
                     EmptyState(title = "No hay ranking disponible para esta selección.")
                 }
             }
+        }
 
-            else -> {
-                LazyColumn(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .testTag(TolochaTestTags.TOP_CHARTS_LIST),
-                    contentPadding = PaddingValues(bottom = 16.dp),
-                ) {
-                    itemsIndexed(ui.items, key = { _, result -> result.feedUrl }) { index, result ->
-                        PodcastSearchRow(
-                            result = result,
-                            subscribed = result.feedUrl in subscribedFeedUrls,
-                            onToggleSubscribe = { onToggleSubscribe(result) },
-                            position = index + 1,
-                        )
-                    }
-                }
+        else -> {
+            itemsIndexed(ui.items, key = { _, result -> result.feedUrl }) { index, result ->
+                PodcastSearchRow(
+                    result = result,
+                    subscribed = result.feedUrl in subscribedFeedUrls,
+                    onToggleSubscribe = { onToggleSubscribe(result) },
+                    position = index + 1,
+                )
             }
         }
     }
