@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
 import androidx.annotation.OptIn
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -12,14 +13,18 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.izquierdojl.tolocharadio.R
 import com.izquierdojl.tolocharadio.cast.CastPlayerManager
+import com.izquierdojl.tolocharadio.data.local.HeadsetControlSettingsCache
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.playback.HeadsetControlSettings
 import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
 import com.izquierdojl.tolocharadio.domain.playback.RecoveryState
+import com.izquierdojl.tolocharadio.domain.playback.SkipSource
 import com.izquierdojl.tolocharadio.domain.playback.isTransportBuffering
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackController
 import com.tolocharadio.ui.notification.NotificationNavigation
@@ -74,15 +79,24 @@ class RadioPlaybackService : MediaSessionService() {
     @Inject
     lateinit var episodeController: EpisodePlaybackController
 
+    @Inject
+    lateinit var headsetControls: HeadsetControlsController
+
+    @Inject
+    lateinit var headsetSettingsCache: HeadsetControlSettingsCache
+
     private var session: MediaSession? = null
     private var episodeActive = false
     private var lastRecovery: RecoveryState = RecoveryState.Idle
+    private var headsetSettings: HeadsetControlSettings = HeadsetControlSettings.DEFAULT
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     companion object {
         const val CUSTOM_COMMAND_STOP = "com.izquierdojl.tolocharadio.STOP"
         const val CUSTOM_COMMAND_MUTE = "com.izquierdojl.tolocharadio.MUTE"
         const val CUSTOM_COMMAND_RETRY = "com.izquierdojl.tolocharadio.RETRY"
+        const val CUSTOM_COMMAND_SEEK_BACK = "com.izquierdojl.tolocharadio.SEEK_BACK"
+        const val CUSTOM_COMMAND_SEEK_FORWARD = "com.izquierdojl.tolocharadio.SEEK_FORWARD"
         private const val TAG = "RadioPlaybackService"
     }
 
@@ -110,19 +124,31 @@ class RadioPlaybackService : MediaSessionService() {
             .build()
     }
 
-    private val seekBackButton by lazy {
-        CommandButton.Builder(CommandButton.ICON_SKIP_BACK_15)
-            .setPlayerCommand(Player.COMMAND_SEEK_BACK)
-            .setDisplayName(getString(R.string.media_seek_back_15))
+    private fun seekBackButton(seconds: Int): CommandButton =
+        CommandButton.Builder(
+            if (seconds == HeadsetControlSettings.DEFAULT_SKIP_BACK_SECONDS) {
+                CommandButton.ICON_SKIP_BACK_15
+            } else {
+                CommandButton.ICON_SKIP_BACK
+            },
+        )
+            .setSlots(CommandButton.SLOT_BACK)
+            .setSessionCommand(SessionCommand(CUSTOM_COMMAND_SEEK_BACK, Bundle.EMPTY))
+            .setDisplayName(getString(R.string.media_seek_back_seconds, seconds))
             .build()
-    }
 
-    private val seekForwardButton by lazy {
-        CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD_30)
-            .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
-            .setDisplayName(getString(R.string.media_seek_forward_30))
+    private fun seekForwardButton(seconds: Int): CommandButton =
+        CommandButton.Builder(
+            if (seconds == HeadsetControlSettings.DEFAULT_SKIP_FORWARD_SECONDS) {
+                CommandButton.ICON_SKIP_FORWARD_30
+            } else {
+                CommandButton.ICON_SKIP_FORWARD
+            },
+        )
+            .setSlots(CommandButton.SLOT_FORWARD)
+            .setSessionCommand(SessionCommand(CUSTOM_COMMAND_SEEK_FORWARD, Bundle.EMPTY))
+            .setDisplayName(getString(R.string.media_seek_forward_seconds, seconds))
             .build()
-    }
 
     private val sessionCallback =
         object : MediaSession.Callback {
@@ -136,6 +162,8 @@ class RadioPlaybackService : MediaSessionService() {
                         .add(SessionCommand(CUSTOM_COMMAND_STOP, Bundle.EMPTY))
                         .add(SessionCommand(CUSTOM_COMMAND_MUTE, Bundle.EMPTY))
                         .add(SessionCommand(CUSTOM_COMMAND_RETRY, Bundle.EMPTY))
+                        .add(SessionCommand(CUSTOM_COMMAND_SEEK_BACK, Bundle.EMPTY))
+                        .add(SessionCommand(CUSTOM_COMMAND_SEEK_FORWARD, Bundle.EMPTY))
                         .build()
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                     .setAvailableSessionCommands(sessionCommands)
@@ -160,8 +188,57 @@ class RadioPlaybackService : MediaSessionService() {
                     CUSTOM_COMMAND_RETRY -> {
                         recoveryManager.manualRetry()
                     }
+                    CUSTOM_COMMAND_SEEK_BACK -> {
+                        headsetControls.skipBack(SkipSource.ExplicitControl, "notification_skip")
+                    }
+                    CUSTOM_COMMAND_SEEK_FORWARD -> {
+                        headsetControls.skipForward(SkipSource.ExplicitControl, "notification_skip")
+                    }
                 }
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+
+            override fun onMediaButtonEvent(
+                session: MediaSession,
+                controllerInfo: MediaSession.ControllerInfo,
+                intent: Intent,
+            ): Boolean {
+                @Suppress("DEPRECATION")
+                val event = intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT) as? KeyEvent ?: return false
+                return headsetControls.onMediaButton(
+                    keyCode = event.keyCode,
+                    action = event.action,
+                    repeatCount = event.repeatCount,
+                )
+            }
+
+            @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+            override fun onPlayerCommandRequest(
+                session: MediaSession,
+                controller: MediaSession.ControllerInfo,
+                playerCommand: Int,
+            ): Int {
+                val handled =
+                    when (playerCommand) {
+                        Player.COMMAND_SEEK_BACK,
+                        Player.COMMAND_SEEK_TO_PREVIOUS,
+                        Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+                        -> {
+                            headsetControls.skipBack(SkipSource.ExplicitControl, "system_skip_back")
+                            true
+                        }
+
+                        Player.COMMAND_SEEK_FORWARD,
+                        Player.COMMAND_SEEK_TO_NEXT,
+                        Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+                        -> {
+                            headsetControls.skipForward(SkipSource.ExplicitControl, "system_skip_forward")
+                            true
+                        }
+
+                        else -> false
+                    }
+                return if (handled) SessionError.INFO_CANCELLED else SessionResult.RESULT_SUCCESS
             }
         }
 
@@ -170,6 +247,7 @@ class RadioPlaybackService : MediaSessionService() {
 
         engine.ensureProfile(runBlocking { prefs.bufferProfile.first() })
         recoveryAwarePlayer.updateDelegate(engine.player)
+        applySkipIncrements(engine.player)
 
         val sessionActivityIntent =
             Intent(this, com.izquierdojl.tolocharadio.MainActivity::class.java).apply {
@@ -219,6 +297,13 @@ class RadioPlaybackService : MediaSessionService() {
                 updateMediaButtons()
             }
         }
+        serviceScope.launch {
+            headsetSettingsCache.settings.collect { settings ->
+                headsetSettings = settings
+                applySkipIncrements(engine.player)
+                updateMediaButtons()
+            }
+        }
     }
 
     /**
@@ -229,6 +314,7 @@ class RadioPlaybackService : MediaSessionService() {
         serviceScope.launch {
             engine.playerFlow.collect { player ->
                 recoveryAwarePlayer.updateDelegate(player)
+                applySkipIncrements(player)
                 if (!castPlayerManager.isCastConnected) {
                     session?.setPlayer(recoveryAwarePlayer)
                 }
@@ -255,6 +341,7 @@ class RadioPlaybackService : MediaSessionService() {
             swap.old.stop()
             swap.old.clearMediaItems()
             recoveryAwarePlayer.updateDelegate(swap.new)
+            applySkipIncrements(swap.new)
             if (!castConnected) {
                 session?.setPlayer(recoveryAwarePlayer)
                 if (station != null) {
@@ -284,11 +371,22 @@ class RadioPlaybackService : MediaSessionService() {
         val layout =
             when (MediaButtonPolicy.layout(episodeActive = episodeActive, radioRetry = retry)) {
                 MediaButtonLayout.EPISODE ->
-                    listOf(seekBackButton, seekForwardButton, stopButton, muteButton)
+                    listOf(
+                        seekBackButton(headsetSettings.skipBackSeconds),
+                        seekForwardButton(headsetSettings.skipForwardSeconds),
+                        stopButton,
+                        muteButton,
+                    )
                 MediaButtonLayout.RADIO_RETRY -> listOf(retryButton, stopButton, muteButton)
                 MediaButtonLayout.RADIO -> listOf(stopButton, muteButton)
             }
         session?.setMediaButtonPreferences(layout)
+    }
+
+    /** Aplica los incrementos configurados al player local (spec 0060). */
+    private fun applySkipIncrements(player: androidx.media3.exoplayer.ExoPlayer) {
+        player.setSeekBackIncrementMs(headsetSettings.skipBackMs)
+        player.setSeekForwardIncrementMs(headsetSettings.skipForwardMs)
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.izquierdojl.tolocharadio.di
 
 import android.content.Context
+import android.media.AudioManager
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -10,6 +11,8 @@ import com.izquierdojl.tolocharadio.core.session.SessionManager
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.domain.playback.PlaybackFeatureFlags
 import com.izquierdojl.tolocharadio.feature.player.ActiveStationHolder
+import com.izquierdojl.tolocharadio.feature.player.HeadsetControlsController
+import com.izquierdojl.tolocharadio.feature.player.HeadsetVolumeGestureHandler
 import com.izquierdojl.tolocharadio.feature.player.PlaybackClock
 import com.izquierdojl.tolocharadio.feature.player.PlaybackEngine
 import com.izquierdojl.tolocharadio.feature.player.PlaybackHttpClient
@@ -25,6 +28,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import javax.inject.Singleton
@@ -36,6 +42,7 @@ private const val PLAIN_READ_TIMEOUT_SEC = 20L
 /** ExoPlayer compartido + datasource del proxy autenticado del servidor. */
 @Module
 @InstallIn(SingletonComponent::class)
+@Suppress("TooManyFunctions")
 object PlayerModule {
     @Provides
     @Singleton
@@ -95,6 +102,24 @@ object PlayerModule {
     @Provides
     @Singleton
     fun playbackVolumeController(engine: PlaybackEngine): PlaybackVolumeController = PlaybackVolumeController(engine)
+
+    @Provides
+    @Singleton
+    fun audioManager(
+        @ApplicationContext context: Context,
+    ): AudioManager = context.getSystemService(AudioManager::class.java)
+
+    @Provides
+    @Singleton
+    fun headsetVolumeGestureHandler(
+        controller: HeadsetControlsController,
+        audioManager: AudioManager,
+    ): HeadsetVolumeGestureHandler =
+        HeadsetVolumeGestureHandler(
+            controller = controller,
+            audioManager = audioManager,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
 
     @Provides
     @Singleton

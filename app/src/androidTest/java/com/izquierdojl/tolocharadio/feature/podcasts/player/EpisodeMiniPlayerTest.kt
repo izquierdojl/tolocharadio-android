@@ -82,6 +82,14 @@ class EpisodeMiniPlayerTest {
     }
 
     @Test
+    fun lasEtiquetasDeSaltoReflejanLosSegundosConfigurados() {
+        content(ui().copy(skipBackSeconds = 5, skipForwardSeconds = 60))
+
+        compose.onNodeWithContentDescription("Retroceder 5 segundos").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Avanzar 60 segundos").assertIsDisplayed()
+    }
+
+    @Test
     fun elBotonDetenerInvocaElCierreYNoAbreElReproductor() {
         var stopped = false
         var opened = false

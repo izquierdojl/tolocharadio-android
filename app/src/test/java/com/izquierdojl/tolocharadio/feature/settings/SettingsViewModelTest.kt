@@ -6,8 +6,10 @@ import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.core.util.AppBuildInfo
+import com.izquierdojl.tolocharadio.data.local.HeadsetControlSettingsCache
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.playback.HeadsetControlSettings
 import com.izquierdojl.tolocharadio.domain.podcasts.CleanupDownloadsUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodeCache
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodeCacheStats
@@ -18,6 +20,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -35,6 +38,11 @@ class SettingsViewModelTest {
     private val episodeCache: EpisodeCache =
         mockk(relaxed = true) {
             every { stats } returns flowOf(EpisodeCacheStats.EMPTY)
+        }
+    private val headsetSettings = MutableStateFlow(HeadsetControlSettings.DEFAULT)
+    private val headsetSettingsCache: HeadsetControlSettingsCache =
+        mockk {
+            every { settings } returns headsetSettings
         }
 
     private val buildInfo =
@@ -74,7 +82,15 @@ class SettingsViewModelTest {
         every { prefs.resumeOnConnectivity } returns flowOf(true)
         every { prefs.downloadRetentionDays } returns flowOf(30)
         every { getServers() } returns flowOf(servers)
-        return SettingsViewModel(prefs, getServers, info, profileController, cleanupDownloads, episodeCache)
+        return SettingsViewModel(
+            prefs,
+            getServers,
+            info,
+            profileController,
+            cleanupDownloads,
+            episodeCache,
+            headsetSettingsCache,
+        )
     }
 
     @Test
@@ -225,5 +241,25 @@ class SettingsViewModelTest {
                 assertEquals("No se pudo copiar la información", awaitItem())
             }
             assert(v.appInfoUiState.value is AppInfoUiState.Showing)
+        }
+
+    @Test
+    fun `headset controls reflejan los defaults y persisten cambios`() =
+        runTest {
+            val v = vm()
+            assertEquals(15, v.ui.value.headsetSkipBackSeconds)
+            assertEquals(30, v.ui.value.headsetSkipForwardSeconds)
+            assertEquals(true, v.ui.value.headsetSkipGesturesEnabled)
+
+            v.onHeadsetSkipBackSecondsChange(5)
+            v.onHeadsetSkipForwardSecondsChange(60)
+            v.onHeadsetSkipGesturesEnabledChange(false)
+
+            coVerify { prefs.setHeadsetSkipBackSeconds(5) }
+            coVerify { prefs.setHeadsetSkipForwardSeconds(60) }
+            coVerify { prefs.setHeadsetSkipGesturesEnabled(false) }
+            assertEquals(5, v.ui.value.headsetSkipBackSeconds)
+            assertEquals(60, v.ui.value.headsetSkipForwardSeconds)
+            assertEquals(false, v.ui.value.headsetSkipGesturesEnabled)
         }
 }

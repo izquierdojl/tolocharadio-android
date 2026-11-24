@@ -7,8 +7,10 @@ import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.core.util.AppBuildInfo
+import com.izquierdojl.tolocharadio.data.local.HeadsetControlSettingsCache
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.playback.HeadsetControlSettings
 import com.izquierdojl.tolocharadio.domain.podcasts.CleanupDownloadsUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.DownloadRetention
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodeCache
@@ -37,6 +39,9 @@ data class SettingsUi(
     val cacheSizeBytes: Long = 0L,
     val cacheLimitUnmeteredBytes: Long = EpisodeCachePolicy.LIMIT_UNMETERED_BYTES,
     val cacheLimitMeteredBytes: Long = EpisodeCachePolicy.LIMIT_METERED_BYTES,
+    val headsetSkipBackSeconds: Int = HeadsetControlSettings.DEFAULT_SKIP_BACK_SECONDS,
+    val headsetSkipForwardSeconds: Int = HeadsetControlSettings.DEFAULT_SKIP_FORWARD_SECONDS,
+    val headsetSkipGesturesEnabled: Boolean = true,
     val activeServerAlias: String? = null,
     val message: String? = null,
 )
@@ -65,7 +70,7 @@ sealed interface AppInfoUiState {
 
 /** Configuración: tema claro/oscuro y pantalla de arranque (todo local, sin sesión). */
 @HiltViewModel
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LongParameterList")
 class SettingsViewModel
     @Inject
     constructor(
@@ -75,6 +80,7 @@ class SettingsViewModel
         private val profileController: PlaybackProfileController,
         private val cleanupDownloads: CleanupDownloadsUseCase,
         private val episodeCache: EpisodeCache,
+        private val headsetSettingsCache: HeadsetControlSettingsCache,
     ) : ViewModel() {
         private val _ui = MutableStateFlow(SettingsUi())
         val ui: StateFlow<SettingsUi> = _ui.asStateFlow()
@@ -132,6 +138,16 @@ class SettingsViewModel
                     _ui.value = _ui.value.copy(cacheSizeBytes = stats.sizeBytes)
                 }
             }
+            viewModelScope.launch {
+                headsetSettingsCache.settings.collect { settings ->
+                    _ui.value =
+                        _ui.value.copy(
+                            headsetSkipBackSeconds = settings.skipBackSeconds,
+                            headsetSkipForwardSeconds = settings.skipForwardSeconds,
+                            headsetSkipGesturesEnabled = settings.gesturesEnabled,
+                        )
+                }
+            }
         }
 
         /** Selector Sistema/Claro/Oscuro (spec 002, FR-010). SYSTEM es solo local. */
@@ -180,6 +196,26 @@ class SettingsViewModel
                 prefs.setDownloadRetentionDays(days)
                 cleanupDownloads()
             }
+        }
+
+        /** Salto atrás de los controles de auricular (spec 0060, FR-008). */
+        fun onHeadsetSkipBackSecondsChange(seconds: Int) {
+            val sanitized = HeadsetControlSettings.sanitizeBackSeconds(seconds)
+            _ui.value = _ui.value.copy(headsetSkipBackSeconds = sanitized)
+            viewModelScope.launch { prefs.setHeadsetSkipBackSeconds(sanitized) }
+        }
+
+        /** Salto adelante de los controles de auricular (spec 0060, FR-008). */
+        fun onHeadsetSkipForwardSecondsChange(seconds: Int) {
+            val sanitized = HeadsetControlSettings.sanitizeForwardSeconds(seconds)
+            _ui.value = _ui.value.copy(headsetSkipForwardSeconds = sanitized)
+            viewModelScope.launch { prefs.setHeadsetSkipForwardSeconds(sanitized) }
+        }
+
+        /** Activa/desactiva los gestos de salto del auricular (FR-012). */
+        fun onHeadsetSkipGesturesEnabledChange(enabled: Boolean) {
+            _ui.value = _ui.value.copy(headsetSkipGesturesEnabled = enabled)
+            viewModelScope.launch { prefs.setHeadsetSkipGesturesEnabled(enabled) }
         }
 
         /** Libera la caché de episodios (spec 0058, FR-012). */

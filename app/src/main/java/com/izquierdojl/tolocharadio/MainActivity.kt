@@ -1,7 +1,9 @@
 package com.izquierdojl.tolocharadio
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -13,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.izquierdojl.tolocharadio.core.session.SessionManager
@@ -32,6 +35,7 @@ import com.izquierdojl.tolocharadio.data.local.servers.MigrationHelper
 import com.izquierdojl.tolocharadio.data.repo.servers.ServerRepository
 import com.izquierdojl.tolocharadio.domain.auth.AuthenticateServerUseCase
 import com.izquierdojl.tolocharadio.domain.servers.StartupGate
+import com.izquierdojl.tolocharadio.feature.player.HeadsetVolumeGestureHandler
 import com.tolocharadio.domain.notification.AppState
 import com.tolocharadio.ui.notification.NotificationNavigation
 import com.tolocharadio.ui.notification.NotificationViewModel
@@ -62,6 +66,9 @@ class MainActivity : FragmentActivity() {
 
     @Inject
     lateinit var pendingShortcutHolder: PendingShortcutHolder
+
+    @Inject
+    lateinit var headsetVolumeGestureHandler: HeadsetVolumeGestureHandler
 
     private val notificationNavigation = NotificationNavigation()
 
@@ -147,6 +154,24 @@ class MainActivity : FragmentActivity() {
         if (sessionManager.state.value == SessionState.Idle) {
             lifecycleScope.launch { authenticateServer() }
         }
+    }
+
+    /**
+     * Intercepta las teclas de volumen para distinguir pulsación corta/larga
+     * (spec 0060). Si el handler no captura, el sistema gestiona el volumen.
+     */
+    @SuppressLint("RestrictedApi")
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+        headsetVolumeGestureHandler.handle(
+            keyCode = event.keyCode,
+            action = event.action,
+            repeatCount = event.repeatCount,
+            hostResumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED),
+        ) || super.dispatchKeyEvent(event)
+
+    override fun onPause() {
+        headsetVolumeGestureHandler.cancel()
+        super.onPause()
     }
 
     override fun onStart() {

@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.izquierdojl.tolocharadio.core.ui.theme.TolochaTheme
+import com.izquierdojl.tolocharadio.feature.player.EpisodePlayerControls
 import com.izquierdojl.tolocharadio.feature.podcasts.FavoriteFailureBanner
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -81,5 +82,27 @@ class EpisodeFullPlayerSheetTest {
         compose.onNodeWithText("No se pudo guardar el favorito.").assertIsDisplayed()
         compose.onNodeWithText("Reintentar").performClick()
         assertTrue(retried)
+    }
+
+    @Test
+    fun losControlesDeSaltoMuestranLosSegundosConfigurados() {
+        compose.setContent {
+            TolochaTheme {
+                EpisodePlayerControls(
+                    playing = false,
+                    rate = 1f,
+                    casting = false,
+                    skipBackSeconds = 5,
+                    skipForwardSeconds = 60,
+                    onToggle = {},
+                    onSkipBack = {},
+                    onSkipForward = {},
+                    onCycleRate = {},
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Retroceder 5 segundos").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Avanzar 60 segundos").assertIsDisplayed()
     }
 }
