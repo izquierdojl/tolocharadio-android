@@ -143,6 +143,8 @@ fun EpisodeFullPlayerSheet(
                 playing = ui.playing,
                 rate = ui.rate,
                 casting = false,
+                skipBackSeconds = ui.skipBackSeconds,
+                skipForwardSeconds = ui.skipForwardSeconds,
                 onToggle = viewModel::toggle,
                 onSkipBack = viewModel::skipBack,
                 onSkipForward = viewModel::skipForward,

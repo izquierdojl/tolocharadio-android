@@ -45,6 +45,18 @@ object TolochaTestTags {
     /** Selector de pantalla de arranque de podcast en Configuración. */
     const val PODCAST_START_SCREEN = "tolocha_podcast_start_screen"
 
+    /** Sección de controles de auriculares. */
+    const val HEADSET_CONTROLS = "tolocha_headset_controls"
+
+    /** Selector de segundos de retroceso. */
+    const val HEADSET_SKIP_BACK = "tolocha_headset_skip_back"
+
+    /** Selector de segundos de avance. */
+    const val HEADSET_SKIP_FORWARD = "tolocha_headset_skip_forward"
+
+    /** Interruptor de gestos de salto del auricular. */
+    const val HEADSET_GESTURES_SWITCH = "tolocha_headset_gestures_switch"
+
     /** Campo de búsqueda de Suscripciones. */
     const val SUBSCRIPTIONS_SEARCH_FIELD = "tolocha_subscriptions_search_field"
 

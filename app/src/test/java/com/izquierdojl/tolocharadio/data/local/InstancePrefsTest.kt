@@ -2,12 +2,15 @@ package com.izquierdojl.tolocharadio.data.local
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
 import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.playback.HeadsetControlSettings
 import com.izquierdojl.tolocharadio.domain.podcasts.TopCountry
 import com.izquierdojl.tolocharadio.domain.podcasts.TopGenre
 import kotlinx.coroutines.flow.Flow
@@ -165,5 +168,56 @@ class InstancePrefsTest {
 
             assertEquals(TopCountry.SPAIN, prefs.topChartsCountry.first())
             assertEquals(TopGenre.ALL, prefs.topChartsGenre.first())
+        }
+
+    @Test
+    fun `headset controls tiene defaults 15 30 y gestos activos`() =
+        runTest {
+            val prefs = InstancePrefs(FakeDataStore())
+            assertEquals(HeadsetControlSettings.DEFAULT, prefs.headsetControlSettings.first())
+        }
+
+    @Test
+    fun `headset controls persiste opciones validas`() =
+        runTest {
+            val prefs = InstancePrefs(FakeDataStore())
+            prefs.setHeadsetSkipBackSeconds(5)
+            prefs.setHeadsetSkipForwardSeconds(60)
+            prefs.setHeadsetSkipGesturesEnabled(false)
+
+            val settings = prefs.headsetControlSettings.first()
+            assertEquals(5, settings.skipBackSeconds)
+            assertEquals(60, settings.skipForwardSeconds)
+            assertEquals(false, settings.gesturesEnabled)
+        }
+
+    @Test
+    fun `headset controls sanea valores invalidos`() =
+        runTest {
+            val prefs = InstancePrefs(FakeDataStore())
+            prefs.setHeadsetSkipBackSeconds(7)
+            prefs.setHeadsetSkipForwardSeconds(120)
+
+            val settings = prefs.headsetControlSettings.first()
+            assertEquals(HeadsetControlSettings.DEFAULT_SKIP_BACK_SECONDS, settings.skipBackSeconds)
+            assertEquals(HeadsetControlSettings.DEFAULT_SKIP_FORWARD_SECONDS, settings.skipForwardSeconds)
+        }
+
+    @Test
+    fun `headset controls corrupto cae a los defaults`() =
+        runTest {
+            val store = FakeDataStore()
+            store.state.value =
+                mutablePreferencesOf(
+                    intPreferencesKey("headset_skip_back_sec") to 7,
+                    intPreferencesKey("headset_skip_forward_sec") to 120,
+                    booleanPreferencesKey("headset_skip_enabled") to false,
+                )
+            val prefs = InstancePrefs(store)
+
+            val settings = prefs.headsetControlSettings.first()
+            assertEquals(HeadsetControlSettings.DEFAULT_SKIP_BACK_SECONDS, settings.skipBackSeconds)
+            assertEquals(HeadsetControlSettings.DEFAULT_SKIP_FORWARD_SECONDS, settings.skipForwardSeconds)
+            assertEquals(false, settings.gesturesEnabled)
         }
 }

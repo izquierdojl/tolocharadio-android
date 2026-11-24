@@ -3,11 +3,14 @@ package com.izquierdojl.tolocharadio.feature.podcasts
 import com.izquierdojl.tolocharadio.MainDispatcherRule
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.DomainError
+import com.izquierdojl.tolocharadio.data.local.HeadsetControlSettingsCache
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.data.repo.ProgressRepo
 import com.izquierdojl.tolocharadio.data.repo.QueueRepo
 import com.izquierdojl.tolocharadio.data.repo.QueueState
+import com.izquierdojl.tolocharadio.domain.playback.HeadsetControlSettings
+import com.izquierdojl.tolocharadio.domain.playback.SkipSource
 import com.izquierdojl.tolocharadio.domain.podcasts.DismissEpisodeUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackController
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackSource
@@ -15,6 +18,7 @@ import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlayerEvent
 import com.izquierdojl.tolocharadio.domain.podcasts.LoadEpisodeProgressUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.NextEpisodeUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.ResolveEpisodePlaybackUseCase
+import com.izquierdojl.tolocharadio.feature.player.HeadsetControlsController
 import com.izquierdojl.tolocharadio.feature.player.VoiceBoostController
 import com.izquierdojl.tolocharadio.support.testEpisode
 import com.izquierdojl.tolocharadio.support.testProgress
@@ -52,12 +56,19 @@ class EpisodePlayerViewModelTest {
     private val dismiss = mockk<DismissEpisodeUseCase>(relaxed = true)
     private val loadProgress = mockk<LoadEpisodeProgressUseCase>(relaxed = true)
     private val voiceBoost = mockk<VoiceBoostController>(relaxed = true)
+    private val headsetControls = mockk<HeadsetControlsController>(relaxed = true)
+    private val headsetSettings = MutableStateFlow(HeadsetControlSettings.DEFAULT)
+    private val headsetSettingsCache =
+        mockk<HeadsetControlSettingsCache> {
+            every { settings } returns headsetSettings
+        }
 
     init {
         every { controller.state } returns state
         every { controller.events } returns events
         every { controller.positionMs() } returns 0L
         every { voiceBoost.enabled } returns MutableStateFlow(false)
+        every { headsetControls.canSkip(any()) } returns true
     }
 
     private val viewModel by lazy {
@@ -70,6 +81,8 @@ class EpisodePlayerViewModelTest {
             dismiss = dismiss,
             loadProgress = loadProgress,
             voiceBoost = voiceBoost,
+            headsetControls = headsetControls,
+            headsetSettingsCache = headsetSettingsCache,
         )
     }
 
@@ -556,5 +569,45 @@ class EpisodePlayerViewModelTest {
             advanceUntilIdle()
 
             coVerify(exactly = 0) { queue.remove(any()) }
+        }
+
+    @Test
+    fun `los saltos usan los segundos configurados`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            emitPlayback(episode, 100_000L)
+            headsetSettings.value = HeadsetControlSettings(skipBackSeconds = 5, skipForwardSeconds = 60)
+            advanceUntilIdle()
+
+            assertEquals(5, viewModel.ui.value.skipBackSeconds)
+            assertEquals(60, viewModel.ui.value.skipForwardSeconds)
+
+            viewModel.skipForward()
+            advanceUntilIdle()
+            verify { controller.seekTo(160_000L) }
+
+            viewModel.skipBack()
+            advanceUntilIdle()
+            verify { controller.seekTo(95_000L) }
+        }
+
+    @Test
+    fun `sin gating explicito no se mueve la posicion`() =
+        runTest {
+            prepareResolve()
+            val episode = testEpisode(progress = null)
+            viewModel.play(episode, null)
+            advanceUntilIdle()
+            emitPlayback(episode, 100_000L)
+            every { headsetControls.canSkip(SkipSource.ExplicitControl) } returns false
+
+            viewModel.skipForward()
+            viewModel.skipBack()
+            advanceUntilIdle()
+
+            verify(exactly = 0) { controller.seekTo(any()) }
         }
 }

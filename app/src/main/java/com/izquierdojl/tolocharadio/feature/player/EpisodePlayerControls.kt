@@ -17,11 +17,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.izquierdojl.tolocharadio.R
 import com.izquierdojl.tolocharadio.feature.podcasts.EPISODE_RATES
 
 /**
- * Controles VOD del episodio (US3, FR-014): reproducir/pausar, saltos
- * ±15/30 s y velocidad 1x–2x. Solo visible con episodio activo.
+ * Controles VOD del episodio (US3, FR-014/FR-017): reproducir/pausar, saltos
+ * configurables y velocidad 1x–2x. Solo visible con episodio activo.
  */
 @Composable
 @Suppress("LongParameterList")
@@ -29,6 +31,8 @@ fun EpisodePlayerControls(
     playing: Boolean,
     rate: Float,
     casting: Boolean,
+    skipBackSeconds: Int,
+    skipForwardSeconds: Int,
     onToggle: () -> Unit,
     onSkipBack: () -> Unit,
     onSkipForward: () -> Unit,
@@ -41,7 +45,10 @@ fun EpisodePlayerControls(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onSkipBack) {
-            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Atrás 15 segundos")
+            Icon(
+                Icons.AutoMirrored.Filled.Undo,
+                contentDescription = stringResource(R.string.media_seek_back_seconds, skipBackSeconds),
+            )
         }
         FilledIconButton(onClick = onToggle) {
             Icon(
@@ -50,7 +57,10 @@ fun EpisodePlayerControls(
             )
         }
         IconButton(onClick = onSkipForward) {
-            Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Adelante 30 segundos")
+            Icon(
+                Icons.AutoMirrored.Filled.Redo,
+                contentDescription = stringResource(R.string.media_seek_forward_seconds, skipForwardSeconds),
+            )
         }
         TextButton(onClick = onCycleRate, enabled = !casting) {
             Text(

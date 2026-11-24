@@ -34,12 +34,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.izquierdojl.tolocharadio.R
 import com.izquierdojl.tolocharadio.core.ui.components.TolochaTestTags
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
 import com.izquierdojl.tolocharadio.domain.podcasts.remainingMs
@@ -145,7 +147,8 @@ internal fun EpisodeMiniPlayerContent(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Undo,
-                        contentDescription = "Atrás 15 segundos",
+                        contentDescription =
+                            stringResource(R.string.media_seek_back_seconds, ui.skipBackSeconds),
                         modifier = Modifier.size(22.dp),
                     )
                 }
@@ -169,7 +172,8 @@ internal fun EpisodeMiniPlayerContent(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Redo,
-                        contentDescription = "Adelante 30 segundos",
+                        contentDescription =
+                            stringResource(R.string.media_seek_forward_seconds, ui.skipForwardSeconds),
                         modifier = Modifier.size(22.dp),
                     )
                 }

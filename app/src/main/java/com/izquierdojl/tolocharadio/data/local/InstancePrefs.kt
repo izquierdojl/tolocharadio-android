@@ -13,6 +13,7 @@ import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.playback.HeadsetControlSettings
 import com.izquierdojl.tolocharadio.domain.podcasts.DownloadRetention
 import com.izquierdojl.tolocharadio.domain.podcasts.TopCountry
 import com.izquierdojl.tolocharadio.domain.podcasts.TopGenre
@@ -118,6 +119,19 @@ class InstancePrefs
         val topChartsGenre: Flow<TopGenre> =
             store.data.map { TopGenre.fromId(it[KEY_TOP_CHARTS_GENRE]) }
 
+        /**
+         * Controles de auriculares (spec 0060): 15 s atrás, 30 s adelante y
+         * gestos activos por defecto. Valores corruptos caen a los defaults.
+         */
+        val headsetControlSettings: Flow<HeadsetControlSettings> =
+            store.data.map {
+                HeadsetControlSettings.fromPersisted(
+                    backSeconds = it[KEY_HEADSET_SKIP_BACK_SEC],
+                    forwardSeconds = it[KEY_HEADSET_SKIP_FORWARD_SEC],
+                    gesturesEnabled = it[KEY_HEADSET_SKIP_ENABLED],
+                )
+            }
+
         suspend fun setBaseUrl(url: String) {
             store.edit { it[KEY_BASE_URL] = url }
         }
@@ -196,6 +210,25 @@ class InstancePrefs
             store.edit { it[KEY_TOP_CHARTS_GENRE] = genre.id ?: "" }
         }
 
+        /** Persiste el salto atrás de los controles de auricular (spec 0060). */
+        suspend fun setHeadsetSkipBackSeconds(seconds: Int) {
+            store.edit {
+                it[KEY_HEADSET_SKIP_BACK_SEC] = HeadsetControlSettings.sanitizeBackSeconds(seconds)
+            }
+        }
+
+        /** Persiste el salto adelante de los controles de auricular (spec 0060). */
+        suspend fun setHeadsetSkipForwardSeconds(seconds: Int) {
+            store.edit {
+                it[KEY_HEADSET_SKIP_FORWARD_SEC] = HeadsetControlSettings.sanitizeForwardSeconds(seconds)
+            }
+        }
+
+        /** Activa o desactiva los gestos de salto del auricular (FR-012). */
+        suspend fun setHeadsetSkipGesturesEnabled(enabled: Boolean) {
+            store.edit { it[KEY_HEADSET_SKIP_ENABLED] = enabled }
+        }
+
         private companion object {
             val KEY_BASE_URL = stringPreferencesKey("base_url")
             val KEY_SETUP_DONE = booleanPreferencesKey("setup_done")
@@ -213,5 +246,8 @@ class InstancePrefs
             val KEY_DOWNLOAD_RETENTION_DAYS = intPreferencesKey("download_retention_days")
             val KEY_TOP_CHARTS_COUNTRY = stringPreferencesKey("top_charts_country")
             val KEY_TOP_CHARTS_GENRE = stringPreferencesKey("top_charts_genre")
+            val KEY_HEADSET_SKIP_BACK_SEC = intPreferencesKey("headset_skip_back_sec")
+            val KEY_HEADSET_SKIP_FORWARD_SEC = intPreferencesKey("headset_skip_forward_sec")
+            val KEY_HEADSET_SKIP_ENABLED = booleanPreferencesKey("headset_skip_enabled")
         }
     }

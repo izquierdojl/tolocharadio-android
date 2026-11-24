@@ -4,14 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.izquierdojl.tolocharadio.core.network.ApiResult
 import com.izquierdojl.tolocharadio.core.network.userMessage
+import com.izquierdojl.tolocharadio.data.local.HeadsetControlSettingsCache
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisodeProgress
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
 import com.izquierdojl.tolocharadio.data.repo.ProgressRepo
 import com.izquierdojl.tolocharadio.data.repo.QueueRepo
+import com.izquierdojl.tolocharadio.domain.playback.HeadsetControlSettings
+import com.izquierdojl.tolocharadio.domain.playback.SkipSource
 import com.izquierdojl.tolocharadio.domain.podcasts.DismissEpisodeUseCase
-import com.izquierdojl.tolocharadio.domain.podcasts.EPISODE_SKIP_BACK_MS
-import com.izquierdojl.tolocharadio.domain.podcasts.EPISODE_SKIP_FORWARD_MS
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlaybackController
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodePlayerEvent
 import com.izquierdojl.tolocharadio.domain.podcasts.ListeningTimeTracker
@@ -20,6 +21,7 @@ import com.izquierdojl.tolocharadio.domain.podcasts.NextEpisodeUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.ResolveEpisodePlaybackUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.ResumeSource
 import com.izquierdojl.tolocharadio.domain.podcasts.resumePoint
+import com.izquierdojl.tolocharadio.feature.player.HeadsetControlsController
 import com.izquierdojl.tolocharadio.feature.player.VoiceBoostController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -51,6 +53,8 @@ data class EpisodePlayerUi(
     val rate: Float = 1f,
     val downloaded: Boolean = false,
     val recovering: Boolean = false,
+    val skipBackSeconds: Int = HeadsetControlSettings.DEFAULT_SKIP_BACK_SECONDS,
+    val skipForwardSeconds: Int = HeadsetControlSettings.DEFAULT_SKIP_FORWARD_SECONDS,
     val message: String? = null,
 )
 
@@ -71,6 +75,8 @@ class EpisodePlayerViewModel
         private val dismiss: DismissEpisodeUseCase,
         private val loadProgress: LoadEpisodeProgressUseCase,
         private val voiceBoost: VoiceBoostController,
+        private val headsetControls: HeadsetControlsController,
+        private val headsetSettingsCache: HeadsetControlSettingsCache,
     ) : ViewModel() {
         private val _ui = MutableStateFlow(EpisodePlayerUi())
         val ui: StateFlow<EpisodePlayerUi> = _ui.asStateFlow()
@@ -82,8 +88,21 @@ class EpisodePlayerViewModel
         private var sequence: Long = 0
         private var ticker: Job? = null
         private val listening = ListeningTimeTracker()
+        private var skipBackSeconds = HeadsetControlSettings.DEFAULT_SKIP_BACK_SECONDS
+        private var skipForwardSeconds = HeadsetControlSettings.DEFAULT_SKIP_FORWARD_SECONDS
 
         init {
+            viewModelScope.launch {
+                headsetSettingsCache.settings.collect { settings ->
+                    skipBackSeconds = settings.skipBackSeconds
+                    skipForwardSeconds = settings.skipForwardSeconds
+                    _ui.value =
+                        _ui.value.copy(
+                            skipBackSeconds = settings.skipBackSeconds,
+                            skipForwardSeconds = settings.skipForwardSeconds,
+                        )
+                }
+            }
             viewModelScope.launch {
                 controller.state.collect { state ->
                     val current = _ui.value
@@ -96,7 +115,7 @@ class EpisodePlayerViewModel
                                     // Idle = el controlador ya no tiene el episodio
                                     // (radio, temporizador o parada externa). Se cierra
                                     // la tarjeta para no reportar la posición 0.
-                                    EpisodePlayerUi(rate = current.rate)
+                                    emptyUi(current.rate)
                                 }
                             is EpisodePlaybackController.State.Loading ->
                                 current.copy(loading = true)
@@ -151,6 +170,14 @@ class EpisodePlayerViewModel
             }
         }
 
+        /** UI vacía conservando los segundos de salto configurados. */
+        private fun emptyUi(rate: Float): EpisodePlayerUi =
+            EpisodePlayerUi(
+                rate = rate,
+                skipBackSeconds = skipBackSeconds,
+                skipForwardSeconds = skipForwardSeconds,
+            )
+
         /** Reproduce un episodio desde el inicio o su progreso guardado. */
         fun play(
             episode: PodcastEpisode,
@@ -158,7 +185,14 @@ class EpisodePlayerViewModel
         ) {
             viewModelScope.launch {
                 _ui.value =
-                    EpisodePlayerUi(episode = episode, podcast = podcast, loading = true, rate = _ui.value.rate)
+                    EpisodePlayerUi(
+                        episode = episode,
+                        podcast = podcast,
+                        loading = true,
+                        rate = _ui.value.rate,
+                        skipBackSeconds = skipBackSeconds,
+                        skipForwardSeconds = skipForwardSeconds,
+                    )
                 val embedded = episode.progress
                 val remote =
                     when (val r = loadProgress(episode.id)) {
@@ -194,9 +228,19 @@ class EpisodePlayerViewModel
             report(_ui.value.episode?.id ?: return)
         }
 
-        fun skipBack() = seekTo((_ui.value.positionMs - EPISODE_SKIP_BACK_MS).coerceAtLeast(0))
+        fun skipBack() {
+            if (!headsetControls.canSkip(SkipSource.ExplicitControl)) return
+            val target = (_ui.value.positionMs - skipBackSeconds.toLong() * MS_PER_SEC).coerceAtLeast(0)
+            seekTo(target)
+        }
 
-        fun skipForward() = seekTo(_ui.value.positionMs + EPISODE_SKIP_FORWARD_MS)
+        fun skipForward() {
+            if (!headsetControls.canSkip(SkipSource.ExplicitControl)) return
+            val target = _ui.value.positionMs + skipForwardSeconds.toLong() * MS_PER_SEC
+            seekTo(
+                if (_ui.value.durationMs > 0L) target.coerceAtMost(_ui.value.durationMs) else target,
+            )
+        }
 
         fun cycleRate() {
             val nextRate = EPISODE_RATES.firstOrNull { it > _ui.value.rate } ?: EPISODE_RATES.first()
@@ -212,7 +256,7 @@ class EpisodePlayerViewModel
             val durationMs = _ui.value.durationMs
             val position = controller.stop()
             ticker?.cancel()
-            _ui.value = EpisodePlayerUi(rate = _ui.value.rate)
+            _ui.value = emptyUi(_ui.value.rate)
             if (id == null) return
             viewModelScope.launch {
                 val result = reportProgress(id, position, completed = false, durationMs = durationMs)
@@ -286,7 +330,7 @@ class EpisodePlayerViewModel
                 queue.remove(episodeId)
                 val nextId = next(episodeId)
                 if (nextId == null) {
-                    _ui.value = EpisodePlayerUi(rate = _ui.value.rate)
+                    _ui.value = emptyUi(_ui.value.rate)
                     return@launch
                 }
                 val item = queue.queue.value.items.firstOrNull { it.id == nextId } ?: return@launch

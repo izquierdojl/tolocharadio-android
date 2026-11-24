@@ -6,8 +6,10 @@ import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.core.util.AppBuildInfo
+import com.izquierdojl.tolocharadio.data.local.HeadsetControlSettingsCache
 import com.izquierdojl.tolocharadio.data.local.InstancePrefs
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.playback.HeadsetControlSettings
 import com.izquierdojl.tolocharadio.domain.podcasts.CleanupDownloadsUseCase
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodeCache
 import com.izquierdojl.tolocharadio.domain.podcasts.EpisodeCacheStats
@@ -47,6 +49,10 @@ class SettingsCacheTest {
         mockk(relaxed = true) {
             every { stats } returns flowOf(EpisodeCacheStats(sizeBytes = 2_048L, entryCount = 1))
         }
+    private val headsetSettingsCache: HeadsetControlSettingsCache =
+        mockk {
+            every { settings } returns kotlinx.coroutines.flow.MutableStateFlow(HeadsetControlSettings.DEFAULT)
+        }
 
     private fun viewModel(): SettingsViewModel =
         SettingsViewModel(
@@ -56,6 +62,7 @@ class SettingsCacheTest {
             profileController = profileController,
             cleanupDownloads = cleanupDownloads,
             episodeCache = episodeCache,
+            headsetSettingsCache = headsetSettingsCache,
         )
 
     @Test

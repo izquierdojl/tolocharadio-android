@@ -52,6 +52,7 @@ import com.izquierdojl.tolocharadio.core.ui.navigation.PodcastStartScreen
 import com.izquierdojl.tolocharadio.core.ui.navigation.StartScreen
 import com.izquierdojl.tolocharadio.core.ui.theme.ThemeMode
 import com.izquierdojl.tolocharadio.domain.playback.BufferProfile
+import com.izquierdojl.tolocharadio.domain.playback.HeadsetControlSettings
 import com.izquierdojl.tolocharadio.domain.podcasts.DownloadRetention
 import java.util.Locale
 
@@ -85,6 +86,9 @@ fun SettingsScreen(
                     onDefaultSectionChange = viewModel::onDefaultSectionChange,
                     onBufferProfileChange = viewModel::onBufferProfileChange,
                     onResumeOnConnectivityChange = viewModel::onResumeOnConnectivityChange,
+                    onHeadsetSkipBackSecondsChange = viewModel::onHeadsetSkipBackSecondsChange,
+                    onHeadsetSkipForwardSecondsChange = viewModel::onHeadsetSkipForwardSecondsChange,
+                    onHeadsetSkipGesturesEnabledChange = viewModel::onHeadsetSkipGesturesEnabledChange,
                     onDownloadRetentionChange = viewModel::onDownloadRetentionChange,
                     onClearEpisodeCache = viewModel::onClearCache,
                     onStats = onStats,
@@ -112,6 +116,9 @@ internal data class SettingsActions(
     val onDefaultSectionChange: (ContentMode) -> Unit = {},
     val onBufferProfileChange: (BufferProfile) -> Unit = {},
     val onResumeOnConnectivityChange: (Boolean) -> Unit = {},
+    val onHeadsetSkipBackSecondsChange: (Int) -> Unit = {},
+    val onHeadsetSkipForwardSecondsChange: (Int) -> Unit = {},
+    val onHeadsetSkipGesturesEnabledChange: (Boolean) -> Unit = {},
     val onDownloadRetentionChange: (Int) -> Unit = {},
     val onClearEpisodeCache: () -> Unit = {},
     val onStats: () -> Unit = {},
@@ -235,6 +242,16 @@ internal fun SettingsContent(
             resumeOnConnectivity = ui.resumeOnConnectivity,
             onBufferProfileChange = actions.onBufferProfileChange,
             onResumeOnConnectivityChange = actions.onResumeOnConnectivityChange,
+        )
+
+        Spacer(Modifier.height(16.dp))
+        HeadsetControlsSection(
+            skipBackSeconds = ui.headsetSkipBackSeconds,
+            skipForwardSeconds = ui.headsetSkipForwardSeconds,
+            gesturesEnabled = ui.headsetSkipGesturesEnabled,
+            onSkipBackSecondsChange = actions.onHeadsetSkipBackSecondsChange,
+            onSkipForwardSecondsChange = actions.onHeadsetSkipForwardSecondsChange,
+            onGesturesEnabledChange = actions.onHeadsetSkipGesturesEnabledChange,
         )
 
         Spacer(Modifier.height(16.dp))
@@ -511,6 +528,121 @@ internal fun PlaybackSettingsSection(
                 onCheckedChange = onResumeOnConnectivityChange,
                 modifier = Modifier.semantics { contentDescription = "Cambiar reanudación automática" },
             )
+        }
+    }
+}
+
+/**
+ * Sección «Controles de auriculares» (spec 0060, FR-008/FR-012/FR-019).
+ * Los segundos se eligen entre las opciones canónicas; el interruptor solo
+ * afecta a los gestos del auricular, no a los botones en pantalla.
+ */
+@Composable
+internal fun HeadsetControlsSection(
+    skipBackSeconds: Int,
+    skipForwardSeconds: Int,
+    gesturesEnabled: Boolean,
+    onSkipBackSecondsChange: (Int) -> Unit,
+    onSkipForwardSecondsChange: (Int) -> Unit,
+    onGesturesEnabledChange: (Boolean) -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .testTag(TolochaTestTags.HEADSET_CONTROLS),
+    ) {
+        Text("Controles de auriculares", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(4.dp))
+        HeadsetSkipSelector(
+            label = "Saltar atrás",
+            seconds = skipBackSeconds,
+            testTag = TolochaTestTags.HEADSET_SKIP_BACK,
+            onSecondsChange = onSkipBackSecondsChange,
+        )
+        Spacer(Modifier.height(8.dp))
+        HeadsetSkipSelector(
+            label = "Saltar adelante",
+            seconds = skipForwardSeconds,
+            testTag = TolochaTestTags.HEADSET_SKIP_FORWARD,
+            onSecondsChange = onSkipForwardSecondsChange,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Usar gestos de salto en el auricular" }
+                    .padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Usar gestos de salto en el auricular", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "Pulsación larga de volumen y botones anterior/siguiente.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Switch(
+                checked = gesturesEnabled,
+                onCheckedChange = onGesturesEnabledChange,
+                modifier =
+                    Modifier
+                        .testTag(TolochaTestTags.HEADSET_GESTURES_SWITCH)
+                        .semantics { contentDescription = "Cambiar gestos de salto del auricular" },
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "La pulsación larga de volumen solo funciona con la app abierta y en " +
+                "auriculares compatibles. En Bluetooth, usa anterior/siguiente. La radio " +
+                "en directo no se puede saltar.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
+@Composable
+private fun HeadsetSkipSelector(
+    label: String,
+    seconds: Int,
+    testTag: String,
+    onSecondsChange: (Int) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .testTag(testTag),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = true }
+                    .semantics { contentDescription = "$label: $seconds segundos" }
+                    .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text(
+                skipSecondsLabel(seconds),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            HeadsetControlSettings.OPTIONS_SECONDS.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(skipSecondsLabel(option)) },
+                    onClick = {
+                        expanded = false
+                        onSecondsChange(option)
+                    },
+                )
+            }
         }
     }
 }

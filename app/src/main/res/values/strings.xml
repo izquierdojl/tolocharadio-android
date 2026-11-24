@@ -6,8 +6,8 @@
     <string name="sleep_timer_badge_minutes">%d min</string>
     <string name="sleep_timer_remaining_minutes">Quedan %d minutos</string>
     <string name="sleep_timer_cancel">Cancelar temporizador</string>
-    <string name="media_seek_back_15">Retroceder 15 segundos</string>
-    <string name="media_seek_forward_30">Avanzar 30 segundos</string>
+    <string name="media_seek_back_seconds">Retroceder %1$d segundos</string>
+    <string name="media_seek_forward_seconds">Avanzar %1$d segundos</string>
     <string name="menu_open">Abrir menú</string>
     <string name="menu_timer">Temporizador</string>
     <string name="menu_servers">Servidores</string>

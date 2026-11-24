@@ -57,3 +57,6 @@ fun BufferProfile.description(): String =
         BufferProfile.MAX_STABILITY ->
             "Máxima tolerancia a cortes. Puede tardar hasta 5 segundos más en arrancar y usa más memoria."
     }
+
+/** Etiqueta corta de los segundos de salto (spec 0060, FR-019). */
+fun skipSecondsLabel(seconds: Int): String = "$seconds s"
