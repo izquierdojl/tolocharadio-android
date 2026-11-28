@@ -28,6 +28,7 @@ class EpisodeMiniPlayerTest {
 
     private fun content(
         ui: EpisodePlayerUi,
+        overrideEpisode: PodcastEpisode = episode,
         onOpen: () -> Unit = {},
         onStop: () -> Unit = {},
     ) {
@@ -35,7 +36,7 @@ class EpisodeMiniPlayerTest {
             TolochaTheme {
                 EpisodeMiniPlayerContent(
                     ui = ui,
-                    episode = episode,
+                    episode = overrideEpisode,
                     onOpenFullPlayer = onOpen,
                     onToggle = {},
                     onSkipBack = {},
@@ -50,18 +51,30 @@ class EpisodeMiniPlayerTest {
         playing: Boolean = true,
         positionMs: Long = 60_000L,
         durationMs: Long = 1_800_000L,
+        uiEpisode: PodcastEpisode = episode,
     ) = EpisodePlayerUi(
-        episode = episode,
+        episode = uiEpisode,
         playing = playing,
         positionMs = positionMs,
         durationMs = durationMs,
     )
 
     @Test
-    fun panelMideComoMaximo112Dp() {
+    fun panelSinImagenMideComoMaximo112Dp() {
         content(ui())
         val heightDp = compose.onRoot().fetchSemanticsNode().boundsInRoot.height / compose.density.density
         assertTrue("Panel de $heightDp dp", heightDp <= 112.5f)
+        compose.onNodeWithText(episode.title).assertIsDisplayed()
+    }
+
+    @Test
+    fun panelConImagenMideComoMaximo72DpYOcultaElTexto() {
+        val withImage = episode.copy(imageUrl = "https://example.org/episode.png")
+        content(ui(uiEpisode = withImage), overrideEpisode = withImage)
+        val heightDp = compose.onRoot().fetchSemanticsNode().boundsInRoot.height / compose.density.density
+        assertTrue("Panel de $heightDp dp", heightDp <= 72.5f)
+        compose.onNodeWithText(withImage.title).assertDoesNotExist()
+        compose.onNodeWithContentDescription("${withImage.title}, Podcast").assertExists()
     }
 
     @Test

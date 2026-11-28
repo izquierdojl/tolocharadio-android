@@ -12,10 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.FastRewind
-import androidx.compose.material.icons.filled.OfflinePin
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.FilledIconButton
@@ -34,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -93,96 +93,59 @@ internal fun EpisodeMiniPlayerContent(
                 "${formatPlaybackTime(ui.durationMs)}. Quedan ${formatPlaybackTime(it)}"
         } ?: "Transcurrido ${formatPlaybackTime(ui.positionMs)}"
     val timeStyle = MaterialTheme.typography.labelSmall.copy(lineHeight = 12.sp)
+    val imageUrl = episode.imageUrl ?: ui.podcast?.imageUrl
+    val hasImage = !imageUrl.isNullOrBlank()
+    val imageDescription = "${episode.title}, ${ui.podcast?.title ?: "Podcast"}"
     NowPlayingContainer(onClick = onOpenFullPlayer) {
         Column {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                AsyncImage(
-                    model = episode.imageUrl ?: ui.podcast?.imageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier =
-                        Modifier
-                            .size(40.dp)
-                            .clip(MaterialTheme.shapes.small),
-                )
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (ui.downloaded) {
-                            Icon(
-                                Icons.Filled.OfflinePin,
-                                contentDescription = "Episodio descargado",
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(14.dp),
-                            )
-                            Spacer(Modifier.width(4.dp))
-                        }
+            if (!hasImage) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
                         Text(
                             episode.title,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.titleSmall,
                         )
+                        Text(
+                            ui.podcast?.title ?: "Podcast",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                    Text(
-                        ui.podcast?.title ?: "Podcast",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
-            Box(Modifier.fillMaxWidth().height(56.dp)) {
-                Row(
-                    modifier = Modifier.align(Alignment.Center),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onSkipBack, modifier = Modifier.size(48.dp)) {
-                        Icon(
-                            Icons.Filled.FastRewind,
-                            contentDescription =
-                                stringResource(R.string.media_seek_back_seconds, ui.skipBackSeconds),
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
-                    FilledIconButton(
-                        onClick = onToggle,
-                        modifier = Modifier.size(56.dp),
-                        colors =
-                            IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                            ),
-                    ) {
-                        Icon(
-                            if (ui.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (ui.playing) "Pausar" else "Reproducir",
-                            modifier = Modifier.size(30.dp),
-                        )
-                    }
-                    IconButton(onClick = onSkipForward, modifier = Modifier.size(48.dp)) {
-                        Icon(
-                            Icons.Filled.FastForward,
-                            contentDescription =
-                                stringResource(R.string.media_seek_forward_seconds, ui.skipForwardSeconds),
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
-                }
-                IconButton(
-                    onClick = onStop,
-                    modifier = Modifier.align(Alignment.CenterEnd).size(48.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.Close,
-                        contentDescription = "Detener",
-                        modifier = Modifier.size(22.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (hasImage) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = imageDescription,
+                        contentScale = ContentScale.Crop,
+                        modifier =
+                            Modifier
+                                .size(56.dp)
+                                .clip(MaterialTheme.shapes.small),
+                        error = painterResource(R.drawable.sierra_emblem),
+                        fallback = painterResource(R.drawable.sierra_emblem),
                     )
+                    Spacer(Modifier.width(8.dp))
                 }
+                MiniControlsRow(
+                    ui = ui,
+                    onToggle = onToggle,
+                    onSkipBack = onSkipBack,
+                    onSkipForward = onSkipForward,
+                    onStop = onStop,
+                    modifier = Modifier.weight(1f),
+                )
             }
             Row(
                 modifier =
@@ -220,11 +183,77 @@ internal fun EpisodeMiniPlayerContent(
     }
 }
 
+@Composable
+private fun MiniControlsRow(
+    ui: EpisodePlayerUi,
+    onToggle: () -> Unit,
+    onSkipBack: () -> Unit,
+    onSkipForward: () -> Unit,
+    onStop: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.height(56.dp)) {
+        Row(
+            modifier = Modifier.align(Alignment.Center),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onSkipBack, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Undo,
+                    contentDescription =
+                        stringResource(R.string.media_seek_back_seconds, ui.skipBackSeconds),
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            FilledIconButton(
+                onClick = onToggle,
+                modifier = Modifier.size(56.dp),
+                colors =
+                    IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+            ) {
+                Icon(
+                    if (ui.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (ui.playing) "Pausar" else "Reproducir",
+                    modifier = Modifier.size(30.dp),
+                )
+            }
+            IconButton(onClick = onSkipForward, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Redo,
+                    contentDescription =
+                        stringResource(R.string.media_seek_forward_seconds, ui.skipForwardSeconds),
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+        IconButton(
+            onClick = onStop,
+            modifier = Modifier.align(Alignment.CenterEnd).size(48.dp),
+        ) {
+            Icon(
+                Icons.Filled.Close,
+                contentDescription = "Detener",
+                modifier = Modifier.size(22.dp),
+            )
+        }
+    }
+}
+
 @Suppress("MagicNumber")
 @Preview(name = "EpisodeMiniPlayer dark", showBackground = true, backgroundColor = 0xFF08100B)
 @Composable
 internal fun EpisodeMiniPlayerDarkPreview() {
-    val episode = PodcastEpisode(id = 1L, podcastId = 1L, title = "Episodio de prueba", durationSec = 1_800L)
+    val episode =
+        PodcastEpisode(
+            id = 1L,
+            podcastId = 1L,
+            title = "Episodio de prueba",
+            durationSec = 1_800L,
+            imageUrl = "https://picsum.photos/seed/tolocha-mini/400/400",
+        )
     TolochaTheme(darkTheme = true) {
         EpisodeMiniPlayerContent(
             ui =

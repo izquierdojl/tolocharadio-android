@@ -1,27 +1,18 @@
 package com.izquierdojl.tolocharadio.core.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.OfflinePin
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.PlaylistAdd
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -31,7 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -64,11 +54,11 @@ fun formatEpisodeDuration(totalSec: Long?): String {
 }
 
 /**
- * Fila compacta de episodio (paridad con `EpisodeRow` web): título a una
- * línea, apoyo a una línea, reproducir/pausar, encolar (toque = al final;
- * pulsación larga = elegir posición), descarga, favorito, estado
- * reproducido/pendiente y ficha al tocarla.
+ * Fila de episodio (spec 0062): imagen 56 dp, título a dos líneas, podcast a
+ * una línea, meta/progreso y play de 48 dp a la derecha. El resto de acciones
+ * se abre con pulsación larga para no ocupar una fila entera.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 @Suppress("LongParameterList", "CyclomaticComplexMethod")
 fun EpisodeRow(
@@ -94,8 +84,33 @@ fun EpisodeRow(
         }
     val completed = episode.progress?.completed == true
     val downloaded = isDownloaded || downloadState is DownloadUiState.Downloaded
+    val downloadStatus =
+        when (downloadState) {
+            is DownloadUiState.Downloading -> "Descargando…"
+            is DownloadUiState.Failure -> "Error de descarga"
+            DownloadUiState.Downloaded -> "Descargado"
+            DownloadUiState.NotDownloaded -> null
+        }
+    val meta =
+        listOfNotNull(
+            dateText,
+            formatEpisodeDuration(episode.durationSec),
+            if (downloaded) "Descargado" else downloadStatus,
+            if (completed) "Completado" else null,
+        ).joinToString(" · ")
+    var showActions by remember { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
+
     ListItem(
-        modifier = modifier.clickable(onClick = onOpenDetail),
+        modifier =
+            modifier.combinedClickable(
+                onClick = onOpenDetail,
+                onLongClickLabel = "Más acciones",
+                onLongClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showActions = true
+                },
+            ),
         headlineContent = {
             Text(episode.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
         },
@@ -104,19 +119,14 @@ fun EpisodeRow(
                 podcast?.title?.let {
                     Text(
                         it,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Text(
-                    listOfNotNull(
-                        dateText,
-                        formatEpisodeDuration(episode.durationSec),
-                        if (downloaded) "Descargado" else null,
-                        if (completed) "Completado" else null,
-                    ).joinToString(" · "),
+                    meta,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelSmall,
@@ -127,62 +137,20 @@ fun EpisodeRow(
                 if (progress != null && !progress.completed && (progress.durationSec ?: 0) > 0) {
                     LinearProgressIndicator(
                         progress = { progress.positionSec.toFloat() / progress.durationSec!!.toFloat() },
-                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp).height(3.dp),
                     )
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onPlayPause) {
-                        Icon(
-                            if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (isPlaying) "Pausar" else "Reproducir",
+                if (downloadState is DownloadUiState.Downloading) {
+                    val fraction = downloadState.fraction
+                    if (fraction != null) {
+                        LinearProgressIndicator(
+                            progress = { fraction },
+                            modifier = Modifier.fillMaxWidth().padding(top = 2.dp).height(3.dp),
                         )
-                    }
-                    when {
-                        downloadState is DownloadUiState.Downloading ->
-                            DownloadProgressButton(downloadState, onDownload ?: {})
-                        downloadState is DownloadUiState.Failure && onDownload != null ->
-                            DownloadProgressButton(downloadState, onDownload)
-                        onDownload != null && !downloaded ->
-                            DownloadProgressButton(DownloadUiState.NotDownloaded, onDownload)
-                        downloaded ->
-                            Icon(
-                                Icons.Filled.OfflinePin,
-                                contentDescription = "Descargado",
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(24.dp),
-                            )
-                    }
-                    if (onQueueNext != null || onQueueEnd != null) {
-                        QueueAction(onNext = onQueueNext, onEnd = onQueueEnd)
-                    }
-                    FavoriteButton(isFavorite = episode.isFavorite, onToggle = onToggleFavorite)
-                    if (onTogglePlayed != null) {
-                        IconButton(onClick = onTogglePlayed) {
-                            Icon(
-                                if (completed) {
-                                    Icons.Filled.CheckCircle
-                                } else {
-                                    Icons.Filled.RadioButtonUnchecked
-                                },
-                                contentDescription =
-                                    if (completed) {
-                                        "Marcar como pendiente"
-                                    } else {
-                                        "Marcar como reproducido"
-                                    },
-                                tint =
-                                    if (completed) {
-                                        MaterialTheme.colorScheme.secondary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
+                    } else {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().padding(top = 2.dp).height(3.dp),
+                        )
                     }
                 }
             }
@@ -192,68 +160,40 @@ fun EpisodeRow(
                 model = episode.imageUrl ?: podcast?.imageUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier =
-                    Modifier
-                        .size(48.dp)
-                        .clip(MaterialTheme.shapes.small),
+                modifier = Modifier.size(56.dp).clip(MaterialTheme.shapes.small),
             )
         },
+        trailingContent = {
+            FilledIconButton(
+                onClick = onPlayPause,
+                modifier = Modifier.size(48.dp),
+                colors =
+                    IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+            ) {
+                Icon(
+                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (isPlaying) "Pausar" else "Reproducir",
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        },
     )
-}
-
-/**
- * Acción de cola: un toque añade al final; una pulsación larga abre el
- * menú para elegir entre "a continuación" y "al final".
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun QueueAction(
-    onNext: (() -> Unit)?,
-    onEnd: (() -> Unit)?,
-) {
-    val default = onEnd ?: onNext ?: return
-    val canChoose = onNext != null && onEnd != null
-    var expanded by remember { mutableStateOf(false) }
-    val haptics = LocalHapticFeedback.current
-    Box {
-        Icon(
-            Icons.Filled.PlaylistAdd,
-            contentDescription = "Añadir a la cola. Mantén pulsado para elegir posición.",
-            modifier =
-                Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .combinedClickable(
-                        onClick = default,
-                        onLongClick = {
-                            if (canChoose) {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                expanded = true
-                            } else {
-                                default()
-                            }
-                        },
-                    ).padding(12.dp),
+    if (showActions) {
+        EpisodeActionsSheet(
+            episode = episode,
+            podcast = podcast,
+            isDownloaded = downloaded,
+            downloadState = downloadState,
+            onDownload = onDownload,
+            onQueueNext = onQueueNext,
+            onQueueEnd = onQueueEnd,
+            onToggleFavorite = onToggleFavorite,
+            onTogglePlayed = onTogglePlayed,
+            onOpenDetail = onOpenDetail,
+            onDismiss = { showActions = false },
         )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            onNext?.let {
-                DropdownMenuItem(
-                    text = { Text("A continuación") },
-                    onClick = {
-                        expanded = false
-                        it()
-                    },
-                )
-            }
-            onEnd?.let {
-                DropdownMenuItem(
-                    text = { Text("Al final") },
-                    onClick = {
-                        expanded = false
-                        it()
-                    },
-                )
-            }
-        }
     }
 }

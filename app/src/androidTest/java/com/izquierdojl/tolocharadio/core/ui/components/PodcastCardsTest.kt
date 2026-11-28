@@ -4,10 +4,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTouchInput
 import com.izquierdojl.tolocharadio.core.ui.theme.TolochaTheme
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastSummary
@@ -104,7 +108,7 @@ class PodcastCardsTest {
     }
 
     @Test
-    fun laFilaDeEpisodioMuestraCorazonLlenoSiEsFavorito() {
+    fun laFilaDeEpisodioMuestraPlayPrincipalYAccionesAlMantenerPulsado() {
         compose.setContent {
             TolochaTheme {
                 EpisodeRow(
@@ -121,11 +125,26 @@ class PodcastCardsTest {
                     onPlayPause = {},
                     onOpenDetail = {},
                     onToggleFavorite = {},
+                    onDownload = {},
+                    onQueueNext = {},
+                    onQueueEnd = {},
+                    onTogglePlayed = {},
                 )
             }
         }
 
-        compose.onNodeWithContentDescription("Quitar de favoritos").assertExists()
+        compose.onNodeWithContentDescription("Reproducir").assertExists()
+        compose.onAllNodesWithContentDescription("Descargar").assertCountEquals(0)
+        compose.onAllNodesWithContentDescription("Quitar de favoritos").assertCountEquals(0)
+
+        compose.onNodeWithText("Episodio favorito").performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Quitar de favoritos").assertExists()
+        compose.onNodeWithText("Descargar").assertExists()
+        compose.onNodeWithText("Añadir a continuación").assertExists()
+        compose.onNodeWithText("Añadir al final").assertExists()
+        compose.onNodeWithText("Marcar como reproducido").assertExists()
+        compose.onNodeWithText("Abrir ficha").assertExists()
     }
 
     @Test
