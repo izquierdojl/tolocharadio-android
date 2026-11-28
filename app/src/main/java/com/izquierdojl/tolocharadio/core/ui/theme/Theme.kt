@@ -7,6 +7,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -21,7 +22,10 @@ val Pine300 = Color(0xFF8CB29A)
 val Pine400 = Color(0xFF5F8F73)
 val Pine500 = Color(0xFF3C6A4D)
 val Pine600 = Color(0xFF2C4F38)
+val Pine650 = Color(0xFF24422E)
 val Pine700 = Color(0xFF203A28)
+val Pine725 = Color(0xFF1B3121)
+val Pine750 = Color(0xFF1A2E20)
 val Pine800 = Color(0xFF17291C)
 val Pine850 = Color(0xFF122016)
 val Pine900 = Color(0xFF0F1A12)
@@ -97,7 +101,7 @@ private val DarkTolochaScheme =
         surface = Pine950,
         onSurface = Pine100,
         surfaceVariant = Pine800,
-        onSurfaceVariant = Pine400,
+        onSurfaceVariant = Pine300,
         surfaceContainerLowest = Pine950,
         surfaceContainerLow = Pine900,
         surfaceContainer = Pine900,
@@ -195,10 +199,13 @@ fun TolochaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkTolochaScheme else LightTolochaScheme,
-        typography = TolochaTypography,
-        shapes = TolochaShapes,
-        content = content,
-    )
+    val colors = if (darkTheme) DarkTolochaColors else LightTolochaColors
+    CompositionLocalProvider(LocalTolochaColors provides colors) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkTolochaScheme else LightTolochaScheme,
+            typography = TolochaTypography,
+            shapes = TolochaShapes,
+            content = content,
+        )
+    }
 }

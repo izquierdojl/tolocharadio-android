@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import com.izquierdojl.tolocharadio.core.ui.theme.TolochaTheme
 import com.izquierdojl.tolocharadio.data.remote.dto.PodcastEpisode
@@ -55,6 +56,13 @@ class EpisodeMiniPlayerTest {
         positionMs = positionMs,
         durationMs = durationMs,
     )
+
+    @Test
+    fun panelMideComoMaximo112Dp() {
+        content(ui())
+        val heightDp = compose.onRoot().fetchSemanticsNode().boundsInRoot.height / compose.density.density
+        assertTrue("Panel de $heightDp dp", heightDp <= 112.5f)
+    }
 
     @Test
     fun muestraElTiempoTranscurridoYElRestante() {

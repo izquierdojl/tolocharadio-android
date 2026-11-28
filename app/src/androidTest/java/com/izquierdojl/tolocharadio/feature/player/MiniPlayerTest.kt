@@ -7,10 +7,12 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import com.izquierdojl.tolocharadio.core.ui.theme.TolochaTheme
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -28,7 +30,7 @@ class MiniPlayerTest {
     private fun panel(
         state: PlayerState,
         muted: Boolean = false,
-        subtitle: String = "España · español",
+        panel: PlayerPanelUi = PlayerPanelUi("En directo"),
         onToggle: () -> Unit = {},
         onCancelLoad: () -> Unit = {},
         onRetry: () -> Unit = {},
@@ -41,7 +43,7 @@ class MiniPlayerTest {
                     state = state,
                     station = station,
                     muted = muted,
-                    subtitle = subtitle,
+                    panel = panel,
                     actions =
                         MiniPlayerActions(
                             onOpen = {},
@@ -57,6 +59,13 @@ class MiniPlayerTest {
     }
 
     @Test
+    fun panelMideComoMaximo64Dp() {
+        panel(PlayerState.Playing(station))
+        val heightDp = compose.onRoot().fetchSemanticsNode().boundsInRoot.height / compose.density.density
+        assertTrue("Panel de $heightDp dp", heightDp <= 64.5f)
+    }
+
+    @Test
     fun sonando_muestraPausarYSilenciarSinCopiar() {
         panel(PlayerState.Playing(station))
         compose.onNodeWithContentDescription("Pausar").assertIsDisplayed()
@@ -68,7 +77,7 @@ class MiniPlayerTest {
 
     @Test
     fun bufferingRetry_muestraSubtituloYSpinner() {
-        panel(PlayerState.Buffering(station, retrying = true), subtitle = "Reintentando…")
+        panel(PlayerState.Buffering(station, retrying = true), panel = PlayerPanelUi("Reintentando…"))
         compose.onNodeWithText("Reintentando…").assertIsDisplayed()
         compose.onNodeWithContentDescription("Cancelar carga").assertIsDisplayed()
     }
@@ -96,7 +105,7 @@ class MiniPlayerTest {
 
     @Test
     fun error_muestraReintentarSinSilenciar() {
-        panel(PlayerState.Error(station, "Fallo de red"), subtitle = "Fallo de red")
+        panel(PlayerState.Error(station, "Fallo de red"), panel = PlayerPanelUi("Fallo de red"))
         compose.onNodeWithContentDescription("Reintentar").assertIsDisplayed()
         compose.onNodeWithText("Fallo de red").assertIsDisplayed()
         compose.onAllNodesWithContentDescription("Silenciar").assertCountEquals(0)
@@ -111,13 +120,13 @@ class MiniPlayerTest {
 
     @Test
     fun reconnecting_muestraIndicadorYSubtitulo() {
-        panel(PlayerState.Reconnecting(station, 2, 5), subtitle = "Reconectando (2/5)…")
+        panel(PlayerState.Reconnecting(station, 2, 5), panel = PlayerPanelUi("Reconectando (2/5)…"))
         compose.onNodeWithText("Reconectando (2/5)…").assertIsDisplayed()
     }
 
     @Test
     fun aplicandoAjuste_muestraSubtitulo() {
-        panel(PlayerState.Reconnecting(station, 0, 5, applying = true), subtitle = "Aplicando ajuste…")
+        panel(PlayerState.Reconnecting(station, 0, 5, applying = true), panel = PlayerPanelUi("Aplicando ajuste…"))
         compose.onNodeWithText("Aplicando ajuste…").assertIsDisplayed()
     }
 
@@ -126,7 +135,7 @@ class MiniPlayerTest {
         var edited = false
         panel(
             PlayerState.Error(station, "Sesión caducada", PlayerErrorAction.EDIT_SERVER),
-            subtitle = "Sesión caducada",
+            panel = PlayerPanelUi("Sesión caducada"),
             onEditServer = { edited = true },
         )
         compose.onNodeWithContentDescription("Editar servidor").assertIsDisplayed()

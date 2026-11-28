@@ -1,5 +1,6 @@
 package com.izquierdojl.tolocharadio.core.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,10 +20,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -42,14 +46,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.izquierdojl.tolocharadio.R
-import com.izquierdojl.tolocharadio.core.ui.theme.Pine800
+import com.izquierdojl.tolocharadio.core.ui.playback.StationPlaybackUiState
+import com.izquierdojl.tolocharadio.core.ui.theme.LocalTolochaColors
 import com.izquierdojl.tolocharadio.core.ui.theme.PlayActiveBackground
 import com.izquierdojl.tolocharadio.core.ui.theme.PlayActiveContent
 import com.izquierdojl.tolocharadio.core.ui.theme.PlayRestBackground
 import com.izquierdojl.tolocharadio.core.ui.theme.PlayRestContent
+import com.izquierdojl.tolocharadio.core.ui.theme.TolochaTheme
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 
 /** Relación de aspecto 16:9 de la carátula de [StationCard] (paridad con `StationCard` web). */
@@ -198,31 +205,33 @@ fun TagChip(
  * Tarjeta de emisora con jerarquía web (`StationCard.tsx`): imagen 16:9 con
  * degradado inferior, play circular abajo-izquierda (ocre al reproducir),
  * favorito arriba-derecha, título, país · idioma, ≤3 chips y bitrate.
+ *
+ * `onOpen` abre la ficha; `onPlay` reproduce o alterna play/pausa. La tarjeta
+ * activa muestra pausa y un badge no basado solo en color.
  */
+@Suppress("CyclomaticComplexMethod", "LongParameterList")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StationCard(
     station: StationDto,
     isFavorite: Boolean,
+    onOpen: () -> Unit,
     onPlay: () -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
-    isPlaying: Boolean = false,
+    playback: StationPlaybackUiState = StationPlaybackUiState.Inactive,
     isCustom: Boolean = false,
 ) {
+    val colors = LocalTolochaColors.current
+    val isActive =
+        playback == StationPlaybackUiState.Playing || playback == StationPlaybackUiState.Paused
     Card(
-        onClick = onPlay,
+        onClick = onOpen,
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ),
-        border =
-            androidx.compose.foundation.BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outlineVariant,
-            ),
+        colors = CardDefaults.cardColors(containerColor = colors.cardContainer),
+        border = BorderStroke(1.dp, colors.cardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (colors.isDark) 0.dp else 2.dp),
     ) {
         Column {
             Box(
@@ -230,7 +239,7 @@ fun StationCard(
                     Modifier
                         .fillMaxWidth()
                         .aspectRatio(CARD_ARTWORK_ASPECT_RATIO)
-                        .background(Pine800),
+                        .background(colors.cardPlaceholder),
             ) {
                 if (station.favicon.isNullOrBlank() || isCustom) {
                     Image(
@@ -245,6 +254,8 @@ fun StationCard(
                         contentDescription = null,
                         modifier = Modifier.matchParentSize(),
                         contentScale = ContentScale.Crop,
+                        error = painterResource(R.drawable.sierra_emblem),
+                        fallback = painterResource(R.drawable.sierra_emblem),
                     )
                 }
                 Box(
@@ -255,16 +266,50 @@ fun StationCard(
                             ),
                         ),
                 )
+                if (playback != StationPlaybackUiState.Inactive) {
+                    StationPlaybackBadge(
+                        state = playback,
+                        modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                    )
+                }
                 FilledIconButton(
                     onClick = onPlay,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).size(40.dp),
+                    enabled = playback != StationPlaybackUiState.Loading,
+                    modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).size(48.dp),
                     colors =
                         IconButtonDefaults.filledIconButtonColors(
-                            containerColor = if (isPlaying) PlayActiveBackground else PlayRestBackground,
-                            contentColor = if (isPlaying) PlayActiveContent else PlayRestContent,
+                            containerColor = if (isActive) PlayActiveBackground else PlayRestBackground,
+                            contentColor = if (isActive) PlayActiveContent else PlayRestContent,
                         ),
                 ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = if (isPlaying) "Reproduciendo" else "Reproducir")
+                    when (playback) {
+                        StationPlaybackUiState.Playing ->
+                            Icon(Icons.Filled.Pause, contentDescription = "Pausar", modifier = Modifier.size(24.dp))
+                        StationPlaybackUiState.Loading ->
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = PlayRestContent,
+                            )
+                        StationPlaybackUiState.Error ->
+                            Icon(
+                                Icons.Filled.Refresh,
+                                contentDescription = "Reintentar",
+                                modifier = Modifier.size(22.dp),
+                            )
+                        StationPlaybackUiState.Paused ->
+                            Icon(
+                                Icons.Filled.PlayArrow,
+                                contentDescription = "Reanudar",
+                                modifier = Modifier.size(26.dp),
+                            )
+                        StationPlaybackUiState.Inactive ->
+                            Icon(
+                                Icons.Filled.PlayArrow,
+                                contentDescription = "Reproducir",
+                                modifier = Modifier.size(26.dp),
+                            )
+                    }
                 }
                 FavoriteButton(
                     isFavorite = isFavorite,
@@ -312,14 +357,31 @@ fun StationCard(
 fun StationListItem(
     station: StationDto,
     isFavorite: Boolean,
-    onPlay: () -> Unit,
+    onOpen: () -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
+    playback: StationPlaybackUiState = StationPlaybackUiState.Inactive,
     isCustom: Boolean = false,
 ) {
     ListItem(
-        modifier = modifier.clickable { onPlay() },
-        headlineContent = { Text(station.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        modifier = modifier.clickable(onClick = onOpen),
+        headlineContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    station.name,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (playback != StationPlaybackUiState.Inactive) {
+                    StationPlaybackBadge(
+                        state = playback,
+                        compact = true,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
+        },
         supportingContent = {
             Text(
                 listOfNotNull(station.country, station.language, station.tags.firstOrNull())
@@ -342,4 +404,46 @@ fun StationListItem(
         },
         trailingContent = { FavoriteButton(isFavorite = isFavorite, onToggle = onToggleFavorite) },
     )
+}
+
+@Preview(name = "StationCard dark", showBackground = true, backgroundColor = 0xFF08100B)
+@Composable
+internal fun StationCardDarkPreview() {
+    TolochaTheme(darkTheme = true) {
+        StationCard(
+            station =
+                StationDto(
+                    id = "preview",
+                    name = "Radio Sierra",
+                    country = "España",
+                    language = "español",
+                ),
+            isFavorite = true,
+            playback = StationPlaybackUiState.Playing,
+            onOpen = {},
+            onPlay = {},
+            onToggleFavorite = {},
+        )
+    }
+}
+
+@Preview(name = "StationCard light", showBackground = true, backgroundColor = 0xFFEEF3EF)
+@Composable
+internal fun StationCardLightPreview() {
+    TolochaTheme(darkTheme = false) {
+        StationCard(
+            station =
+                StationDto(
+                    id = "preview",
+                    name = "Radio Sierra",
+                    country = "España",
+                    language = "español",
+                ),
+            isFavorite = false,
+            playback = StationPlaybackUiState.Inactive,
+            onOpen = {},
+            onPlay = {},
+            onToggleFavorite = {},
+        )
+    }
 }

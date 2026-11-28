@@ -1,6 +1,7 @@
 package com.izquierdojl.tolocharadio.feature.customstations
 
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,9 +27,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,10 +63,15 @@ import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.ErrorBanner
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
+import com.izquierdojl.tolocharadio.core.ui.components.StationPlaybackBadge
 import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
+import com.izquierdojl.tolocharadio.core.ui.playback.NowPlayingUi
+import com.izquierdojl.tolocharadio.core.ui.playback.StationPlaybackUiState
+import com.izquierdojl.tolocharadio.core.ui.theme.LocalTolochaColors
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
+import com.izquierdojl.tolocharadio.feature.player.rememberNowPlayingUi
 
 /** Relación de aspecto 16:9 del artwork de la tarjeta de cuadrícula. */
 private const val GRID_ARTWORK_ASPECT_RATIO = 16f / 9f
@@ -91,6 +100,7 @@ fun CustomStationsScreen(
     val ui by viewModel.ui.collectAsState()
     val form by viewModel.form.collectAsState()
     val mode by viewModeVm.mode.collectAsState()
+    val nowPlaying = rememberNowPlayingUi(player)
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
@@ -120,8 +130,17 @@ fun CustomStationsScreen(
             CustomStationsContent(
                 state = ui,
                 mode = mode,
+                nowPlaying = nowPlaying,
                 onExplore = onExplore,
-                onPlay = { player.play(it) },
+                onPlay = { station ->
+                    when (nowPlaying.stateFor(station.id)) {
+                        StationPlaybackUiState.Playing,
+                        StationPlaybackUiState.Paused,
+                        -> player.toggle()
+                        StationPlaybackUiState.Loading -> Unit
+                        else -> player.play(station)
+                    }
+                },
                 onDelete = viewModel::onDelete,
                 onRetry = viewModel::retry,
             )
@@ -182,6 +201,7 @@ private fun CustomStationForm(
 private fun CustomStationsContent(
     state: CustomStationsUiState,
     mode: ViewMode = ViewMode.LIST,
+    nowPlaying: NowPlayingUi = NowPlayingUi(),
     onExplore: () -> Unit,
     onPlay: (StationDto) -> Unit,
     onDelete: (String) -> Unit,
@@ -225,6 +245,7 @@ private fun CustomStationsContent(
                             CustomStationGridCard(
                                 station = station,
                                 isDeleting = station.id in state.pendingDeletes,
+                                playback = nowPlaying.stateFor(station.id),
                                 onPlay = { onPlay(station) },
                                 onDelete = { onDelete(station.id) },
                             )
@@ -239,6 +260,7 @@ private fun CustomStationsContent(
                             CustomStationRow(
                                 station = station,
                                 isDeleting = station.id in state.pendingDeletes,
+                                playback = nowPlaying.stateFor(station.id),
                                 onPlay = { onPlay(station) },
                                 onDelete = { onDelete(station.id) },
                             )
@@ -260,6 +282,7 @@ private fun CustomStationsContent(
 private fun CustomStationRow(
     station: StationDto,
     isDeleting: Boolean,
+    playback: StationPlaybackUiState = StationPlaybackUiState.Inactive,
     onPlay: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -272,12 +295,22 @@ private fun CustomStationRow(
         Column(
             modifier = Modifier.weight(1f).clickable(onClick = onPlay).padding(vertical = 4.dp),
         ) {
-            Text(
-                station.name.ifBlank { "Emisora sin nombre" },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleSmall,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    station.name.ifBlank { "Emisora sin nombre" },
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                if (playback != StationPlaybackUiState.Inactive) {
+                    StationPlaybackBadge(
+                        state = playback,
+                        compact = true,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
             Text(
                 station.url,
                 maxLines = 1,
@@ -287,7 +320,20 @@ private fun CustomStationRow(
             )
         }
         IconButton(onClick = onPlay) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = "Reproducir")
+            Icon(
+                when (playback) {
+                    StationPlaybackUiState.Playing -> Icons.Filled.Pause
+                    StationPlaybackUiState.Error -> Icons.Filled.Refresh
+                    else -> Icons.Filled.PlayArrow
+                },
+                contentDescription =
+                    when (playback) {
+                        StationPlaybackUiState.Playing -> "Pausar"
+                        StationPlaybackUiState.Paused -> "Reanudar"
+                        StationPlaybackUiState.Error -> "Reintentar"
+                        else -> "Reproducir"
+                    },
+            )
         }
         IconButton(onClick = onDelete, enabled = !isDeleting) {
             val tint =
@@ -310,16 +356,17 @@ private fun CustomStationRow(
 private fun CustomStationGridCard(
     station: StationDto,
     isDeleting: Boolean,
+    playback: StationPlaybackUiState = StationPlaybackUiState.Inactive,
     onPlay: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val colors = LocalTolochaColors.current
     Card(
         onClick = onPlay,
         shape = MaterialTheme.shapes.large,
-        colors =
-            androidx.compose.material3.CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ),
+        colors = CardDefaults.cardColors(containerColor = colors.cardContainer),
+        border = BorderStroke(1.dp, colors.cardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (colors.isDark) 0.dp else 2.dp),
     ) {
         Box(
             modifier =
@@ -337,8 +384,28 @@ private fun CustomStationGridCard(
                 Modifier.matchParentSize().clip(MaterialTheme.shapes.large),
                 isCustom = true,
             )
-            IconButton(onClick = onPlay, modifier = Modifier.align(Alignment.BottomStart).padding(4.dp).size(36.dp)) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = "Reproducir")
+            if (playback != StationPlaybackUiState.Inactive) {
+                StationPlaybackBadge(
+                    state = playback,
+                    modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                )
+            }
+            IconButton(onClick = onPlay, modifier = Modifier.align(Alignment.BottomStart).padding(4.dp).size(48.dp)) {
+                Icon(
+                    when (playback) {
+                        StationPlaybackUiState.Playing -> Icons.Filled.Pause
+                        StationPlaybackUiState.Error -> Icons.Filled.Refresh
+                        else -> Icons.Filled.PlayArrow
+                    },
+                    contentDescription =
+                        when (playback) {
+                            StationPlaybackUiState.Playing -> "Pausar"
+                            StationPlaybackUiState.Paused -> "Reanudar"
+                            StationPlaybackUiState.Error -> "Reintentar"
+                            else -> "Reproducir"
+                        },
+                    modifier = Modifier.size(24.dp),
+                )
             }
             IconButton(
                 onClick = onDelete,
@@ -351,12 +418,22 @@ private fun CustomStationGridCard(
             }
         }
         Column(Modifier.padding(12.dp)) {
-            Text(
-                station.name.ifBlank { "Emisora sin nombre" },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleSmall,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    station.name.ifBlank { "Emisora sin nombre" },
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                if (playback != StationPlaybackUiState.Inactive) {
+                    StationPlaybackBadge(
+                        state = playback,
+                        compact = true,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
             Text(
                 station.url,
                 maxLines = 1,

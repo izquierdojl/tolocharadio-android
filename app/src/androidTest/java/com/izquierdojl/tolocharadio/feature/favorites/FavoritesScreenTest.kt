@@ -10,6 +10,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import com.izquierdojl.tolocharadio.core.ui.ViewMode
+import com.izquierdojl.tolocharadio.core.ui.playback.NowPlayingUi
+import com.izquierdojl.tolocharadio.core.ui.playback.StationPlaybackUiState
 import com.izquierdojl.tolocharadio.core.ui.theme.TolochaTheme
 import com.izquierdojl.tolocharadio.data.remote.dto.FavoriteDto
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
@@ -51,12 +53,14 @@ class FavoritesScreenTest {
         onMove: (Int, Int) -> Unit = { _, _ -> },
         onCommit: () -> Unit = {},
         onRetry: () -> Unit = {},
+        nowPlaying: NowPlayingUi = NowPlayingUi(),
     ) {
         compose.setContent {
             TolochaTheme {
                 FavoritesScreenContent(
                     state = state,
                     mode = mode,
+                    nowPlaying = nowPlaying,
                     actions =
                         FavoriteListActions(
                             onStation = onStation,
@@ -80,6 +84,16 @@ class FavoritesScreenTest {
         compose.onAllNodesWithContentDescription("Reordenar").assertCountEquals(2)
         compose.onAllNodesWithContentDescription("Reproducir").assertCountEquals(2)
         compose.onAllNodesWithContentDescription("Quitar de favoritos").assertCountEquals(2)
+    }
+
+    @Test
+    fun activaMuestraPausaYBadge() {
+        screen(
+            FavoritesUiState.Content(favs),
+            nowPlaying = NowPlayingUi("u1", StationPlaybackUiState.Playing),
+        )
+        compose.onAllNodesWithContentDescription("Pausar").assertCountEquals(1)
+        compose.onAllNodesWithContentDescription("En reproducción").assertCountEquals(1)
     }
 
     @Test
