@@ -1,6 +1,7 @@
 package com.izquierdojl.tolocharadio.feature.history
 
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,9 +25,12 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,12 +63,17 @@ import com.izquierdojl.tolocharadio.core.ui.components.EmptyState
 import com.izquierdojl.tolocharadio.core.ui.components.ErrorBanner
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
+import com.izquierdojl.tolocharadio.core.ui.components.StationPlaybackBadge
 import com.izquierdojl.tolocharadio.core.ui.components.TagChip
 import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
+import com.izquierdojl.tolocharadio.core.ui.playback.NowPlayingUi
+import com.izquierdojl.tolocharadio.core.ui.playback.StationPlaybackUiState
+import com.izquierdojl.tolocharadio.core.ui.theme.LocalTolochaColors
 import com.izquierdojl.tolocharadio.data.remote.dto.HistoryEntryDto
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 import com.izquierdojl.tolocharadio.feature.favorites.relativeTime
 import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
+import com.izquierdojl.tolocharadio.feature.player.rememberNowPlayingUi
 
 /** Nº máximo de etiquetas visibles por fila (paridad con StationCard). */
 private const val MAX_ROW_TAGS = 3
@@ -104,6 +113,7 @@ fun HistoryScreen(
 ) {
     val ui by viewModel.ui.collectAsState()
     val mode by viewModeVm.mode.collectAsState()
+    val nowPlaying = rememberNowPlayingUi(player)
     val snackbar = remember { SnackbarHostState() }
     var showClearDialog by remember { mutableStateOf(false) }
 
@@ -148,14 +158,23 @@ fun HistoryScreen(
             HistoryScreenContent(
                 state = ui,
                 mode = mode,
+                nowPlaying = nowPlaying,
                 onToggleView = viewModeVm::toggle,
                 callbacks =
                     HistoryCallbacks(
                         onStation = onStation,
                         onExplore = onExplore,
-                        onPlay = {
-                            player.play(it.station)
-                            viewModel.onPlayTriggered()
+                        onPlay = { entry ->
+                            when (nowPlaying.stateFor(entry.station.id)) {
+                                StationPlaybackUiState.Playing,
+                                StationPlaybackUiState.Paused,
+                                -> player.toggle()
+                                StationPlaybackUiState.Loading -> Unit
+                                else -> {
+                                    player.play(entry.station)
+                                    viewModel.onPlayTriggered()
+                                }
+                            }
                         },
                         onRemove = viewModel::onRemove,
                         onRetry = viewModel::retry,
@@ -174,6 +193,7 @@ fun HistoryScreenContent(
     callbacks: HistoryCallbacks,
     mode: ViewMode = ViewMode.LIST,
     onToggleView: () -> Unit = {},
+    nowPlaying: NowPlayingUi = NowPlayingUi(),
 ) {
     when (state) {
         HistoryUiState.Loading ->
@@ -202,6 +222,7 @@ fun HistoryScreenContent(
                 mode = mode,
                 onToggleView = onToggleView,
                 callbacks = callbacks,
+                nowPlaying = nowPlaying,
             )
     }
 }
@@ -212,6 +233,7 @@ private fun HistoryList(
     mode: ViewMode,
     onToggleView: () -> Unit,
     callbacks: HistoryCallbacks,
+    nowPlaying: NowPlayingUi = NowPlayingUi(),
 ) {
     val items = state.items
     Column(Modifier.fillMaxSize()) {
@@ -266,6 +288,7 @@ private fun HistoryList(
                     HistoryGridCard(
                         entry = entry,
                         isDeleting = entry.station.id in state.pendingDeletes,
+                        playback = nowPlaying.stateFor(entry.station.id),
                         onOpen = { callbacks.onStation(entry.station.id) },
                         onPlay = { callbacks.onPlay(entry) },
                         onRemove = { callbacks.onRemove(entry.station.id) },
@@ -278,6 +301,7 @@ private fun HistoryList(
                     HistoryRow(
                         entry = entry,
                         isDeleting = entry.station.id in state.pendingDeletes,
+                        playback = nowPlaying.stateFor(entry.station.id),
                         onOpen = { callbacks.onStation(entry.station.id) },
                         onPlay = { callbacks.onPlay(entry) },
                         onRemove = { callbacks.onRemove(entry.station.id) },
@@ -292,6 +316,7 @@ private fun HistoryList(
 private fun HistoryRow(
     entry: HistoryEntryDto,
     isDeleting: Boolean,
+    playback: StationPlaybackUiState = StationPlaybackUiState.Inactive,
     onOpen: () -> Unit,
     onPlay: () -> Unit,
     onRemove: () -> Unit,
@@ -305,12 +330,22 @@ private fun HistoryRow(
         Column(
             modifier = Modifier.weight(1f).clickable(onClick = onOpen).padding(vertical = 4.dp),
         ) {
-            Text(
-                entry.station.name.ifBlank { "Emisora sin nombre" },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleSmall,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    entry.station.name.ifBlank { "Emisora sin nombre" },
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                if (playback != StationPlaybackUiState.Inactive) {
+                    StationPlaybackBadge(
+                        state = playback,
+                        compact = true,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
             Text(
                 listOfNotNull(entry.station.country, entry.station.language).joinToString(" · "),
                 maxLines = 1,
@@ -334,7 +369,20 @@ private fun HistoryRow(
             }
         }
         IconButton(onClick = onPlay) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = "Reproducir")
+            Icon(
+                when (playback) {
+                    StationPlaybackUiState.Playing -> Icons.Filled.Pause
+                    StationPlaybackUiState.Error -> Icons.Filled.Refresh
+                    else -> Icons.Filled.PlayArrow
+                },
+                contentDescription =
+                    when (playback) {
+                        StationPlaybackUiState.Playing -> "Pausar"
+                        StationPlaybackUiState.Paused -> "Reanudar"
+                        StationPlaybackUiState.Error -> "Reintentar"
+                        else -> "Reproducir"
+                    },
+            )
         }
         IconButton(onClick = onRemove, enabled = !isDeleting) {
             val tint =
@@ -357,17 +405,18 @@ private fun HistoryRow(
 private fun HistoryGridCard(
     entry: HistoryEntryDto,
     isDeleting: Boolean,
+    playback: StationPlaybackUiState = StationPlaybackUiState.Inactive,
     onOpen: () -> Unit,
     onPlay: () -> Unit,
     onRemove: () -> Unit,
 ) {
+    val colors = LocalTolochaColors.current
     Card(
         onClick = onOpen,
         shape = MaterialTheme.shapes.large,
-        colors =
-            androidx.compose.material3.CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ),
+        colors = CardDefaults.cardColors(containerColor = colors.cardContainer),
+        border = BorderStroke(1.dp, colors.cardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (colors.isDark) 0.dp else 2.dp),
     ) {
         Box(
             modifier =
@@ -381,8 +430,28 @@ private fun HistoryGridCard(
                     ),
         ) {
             StationArtwork(entry.station, Modifier.matchParentSize().clip(MaterialTheme.shapes.large))
-            IconButton(onClick = onPlay, modifier = Modifier.align(Alignment.BottomStart).padding(4.dp).size(36.dp)) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = "Reproducir")
+            if (playback != StationPlaybackUiState.Inactive) {
+                StationPlaybackBadge(
+                    state = playback,
+                    modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                )
+            }
+            IconButton(onClick = onPlay, modifier = Modifier.align(Alignment.BottomStart).padding(4.dp).size(48.dp)) {
+                Icon(
+                    when (playback) {
+                        StationPlaybackUiState.Playing -> Icons.Filled.Pause
+                        StationPlaybackUiState.Error -> Icons.Filled.Refresh
+                        else -> Icons.Filled.PlayArrow
+                    },
+                    contentDescription =
+                        when (playback) {
+                            StationPlaybackUiState.Playing -> "Pausar"
+                            StationPlaybackUiState.Paused -> "Reanudar"
+                            StationPlaybackUiState.Error -> "Reintentar"
+                            else -> "Reproducir"
+                        },
+                    modifier = Modifier.size(24.dp),
+                )
             }
             IconButton(
                 onClick = onRemove,

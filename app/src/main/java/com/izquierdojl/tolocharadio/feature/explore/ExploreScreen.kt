@@ -49,7 +49,12 @@ import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.StationCard
 import com.izquierdojl.tolocharadio.core.ui.components.StationListItem
 import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
+import com.izquierdojl.tolocharadio.core.ui.playback.NowPlayingUi
+import com.izquierdojl.tolocharadio.core.ui.playback.StationPlaybackUiState
+import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
+import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
+import com.izquierdojl.tolocharadio.feature.player.rememberNowPlayingUi
 
 /** Filtro seleccionado para abrir en el bottom sheet. */
 private enum class ActiveFilter { COUNTRY, LANGUAGE, TAG }
@@ -62,10 +67,12 @@ private enum class ActiveFilter { COUNTRY, LANGUAGE, TAG }
  *
  * @param onStation abre la ficha al pulsar la tarjeta.
  */
+@Suppress("CyclomaticComplexMethod")
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(
     onStation: (String) -> Unit,
+    player: PlayerViewModel,
     viewModel: ExploreViewModel = hiltViewModel(),
     viewModeVm: ViewModeViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
 ) {
@@ -74,6 +81,14 @@ fun ExploreScreen(
     val countries by viewModel.countries.collectAsState()
     val languages by viewModel.languages.collectAsState()
     val tags by viewModel.tags.collectAsState()
+    val nowPlaying = rememberNowPlayingUi(player)
+    val playStation: (StationDto) -> Unit = { station ->
+        when (nowPlaying.stateFor(station.id)) {
+            StationPlaybackUiState.Playing, StationPlaybackUiState.Paused -> player.toggle()
+            StationPlaybackUiState.Loading -> Unit
+            else -> player.play(station)
+        }
+    }
 
     var sheetFilter by remember { mutableStateOf<ActiveFilter?>(null) }
     val sheetState = rememberModalBottomSheetState()
@@ -185,7 +200,9 @@ fun ExploreScreen(
         ExploreContent(
             ui = ui,
             mode = mode,
+            nowPlaying = nowPlaying,
             onStation = onStation,
+            onPlayStation = playStation,
             onToggleFavorite = viewModel::toggleFavorite,
             onRetry = viewModel::refresh,
             onLoadMore = viewModel::loadMore,
@@ -277,6 +294,7 @@ fun ExploreScreen(
  * Contenido de Explorar independiente del ViewModel (testeable con
  * Compose Test): renderiza el [ui] en [mode] sin recargar datos (FR-003).
  */
+@Suppress("LongParameterList")
 @Composable
 internal fun ExploreContent(
     ui: ExploreUiState,
@@ -285,6 +303,8 @@ internal fun ExploreContent(
     onToggleFavorite: (String) -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
+    nowPlaying: NowPlayingUi = NowPlayingUi(),
+    onPlayStation: (StationDto) -> Unit = {},
 ) {
     when (val s = ui) {
         ExploreUiState.Loading -> CircularProgressIndicator(Modifier.padding(32.dp))
@@ -311,7 +331,9 @@ internal fun ExploreContent(
                             StationCard(
                                 station = station,
                                 isFavorite = station.id in s.favorites,
-                                onPlay = { onStation(station.id) },
+                                playback = nowPlaying.stateFor(station.id),
+                                onOpen = { onStation(station.id) },
+                                onPlay = { onPlayStation(station) },
                                 onToggleFavorite = { onToggleFavorite(station.id) },
                             )
                         }
@@ -325,7 +347,8 @@ internal fun ExploreContent(
                             StationListItem(
                                 station = station,
                                 isFavorite = station.id in s.favorites,
-                                onPlay = { onStation(station.id) },
+                                playback = nowPlaying.stateFor(station.id),
+                                onOpen = { onStation(station.id) },
                                 onToggleFavorite = { onToggleFavorite(station.id) },
                             )
                         }

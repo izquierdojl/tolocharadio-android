@@ -7,14 +7,15 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
@@ -25,13 +26,14 @@ import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -53,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.izquierdojl.tolocharadio.cast.CastConnectionState
 import com.izquierdojl.tolocharadio.cast.CastPlayerState
+import com.izquierdojl.tolocharadio.core.ui.components.NowPlayingContainer
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
 import com.izquierdojl.tolocharadio.data.remote.dto.StationDto
 import com.izquierdojl.tolocharadio.domain.playback.PlayerErrorAction
@@ -102,27 +105,30 @@ fun MiniPlayer(
         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
     ) {
         val safeStation = station ?: return@AnimatedVisibility
+        val panelStatus =
+            when (val s = effectiveState) {
+                is PlayerState.Playing -> "En directo"
+                is PlayerState.Paused -> "Pausado"
+                is PlayerState.Reconnecting ->
+                    when {
+                        s.applying -> "Aplicando ajuste…"
+                        s.waitingForNetwork -> "Sin conexión. Se reanudará al volver la red."
+                        else -> "Reconectando (${s.attempt}/${s.maxAttempts})…"
+                    }
+                is PlayerState.Buffering ->
+                    when {
+                        s.waitingForNetwork -> "Sin conexión. Se reanudará al volver la red."
+                        s.retrying -> "Reintentando…"
+                        else -> "Cargando…"
+                    }
+                is PlayerState.Error -> s.message
+                PlayerState.Idle -> ""
+            }
         MiniPlayerContent(
             state = effectiveState,
             station = safeStation,
             muted = muted,
-            subtitle =
-                when (val s = effectiveState) {
-                    is PlayerState.Reconnecting ->
-                        when {
-                            s.applying -> "Aplicando ajuste…"
-                            s.waitingForNetwork -> "Sin conexión. Se reanudará al volver la red."
-                            else -> "Reconectando (${s.attempt}/${s.maxAttempts})…"
-                        }
-                    is PlayerState.Buffering ->
-                        when {
-                            s.waitingForNetwork -> "Sin conexión. Se reanudará al volver la red."
-                            s.retrying -> "Reintentando…"
-                            else -> panelSubtitle(safeStation, castState)
-                        }
-                    is PlayerState.Error -> s.message
-                    else -> panelSubtitle(safeStation, castState)
-                },
+            panel = PlayerPanelUi(panelStatus, (castState as? CastPlayerState.Cast)?.deviceName),
             actions =
                 MiniPlayerActions(
                     onOpen = { showStationInfo = true },
@@ -162,6 +168,14 @@ data class MiniPlayerActions(
     val onToggleMute: () -> Unit,
 )
 
+/** Estado de presentación del panel de radio (spec 0061). */
+internal data class PlayerPanelUi(
+    val status: String,
+    val castDeviceName: String? = null,
+) {
+    fun displayStatus(): String = if (castDeviceName.isNullOrBlank()) status else "$status · $castDeviceName"
+}
+
 /**
  * Contenido sin estado del mini-player (puerta de test sin Hilt, spec 0039, C2):
  * en reproducción normal exactamente 2 acciones (principal + silenciar), sin
@@ -172,25 +186,22 @@ internal fun MiniPlayerContent(
     state: PlayerState,
     station: StationDto,
     muted: Boolean,
-    subtitle: String,
+    panel: PlayerPanelUi,
     actions: MiniPlayerActions,
 ) {
     val displayName = station.name.ifBlank { "Emisora" }
     val error = state as? PlayerState.Error
-    Surface(
-        tonalElevation = 3.dp,
-        shape = RoundedCornerShape(16.dp),
-    ) {
+    NowPlayingContainer {
         Row(
             modifier =
-                Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                Modifier.fillMaxWidth().heightIn(min = 63.dp).padding(horizontal = 8.dp)
                     .semantics { contentDescription = panelAnnouncement(state, displayName) },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PanelIdentity(
                 station = station,
                 title = displayName,
-                subtitle = subtitle,
+                subtitle = panel.displayStatus(),
                 isError = error != null,
                 modifier = Modifier.weight(1f),
                 onOpen = actions.onOpen,
@@ -245,7 +256,7 @@ private fun panelAnnouncement(
         PlayerState.Idle -> ""
     }
 
-/** Zona izquierda del panel: avatar + nombre + línea técnica; abre el completo (FR-007). */
+/** Zona izquierda del panel: avatar + nombre + estado; abre la ficha de la emisora. */
 @Composable
 private fun PanelIdentity(
     station: StationDto,
@@ -258,19 +269,19 @@ private fun PanelIdentity(
     Row(
         modifier =
             modifier.clickable(
-                onClickLabel = "Abrir reproductor",
+                onClickLabel = "Abrir ficha de la emisora",
                 role = Role.Button,
             ) { onOpen() },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        StationArtwork(station = station, modifier = Modifier.size(48.dp))
+        StationArtwork(station = station, modifier = Modifier.size(40.dp))
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
             )
             Text(
                 subtitle,
@@ -307,22 +318,40 @@ private fun PanelMainAction(
             is PlayerState.Buffering -> {
                 IconButton(
                     onClick = onCancelLoad,
-                    modifier = Modifier.semantics { contentDescription = "Cancelar carga" },
+                    modifier = Modifier.size(48.dp).semantics { contentDescription = "Cancelar carga" },
                 ) {
-                    CircularProgressIndicator(Modifier.size(24.dp))
+                    CircularProgressIndicator(Modifier.size(26.dp), strokeWidth = 2.dp)
                 }
             }
             is PlayerState.Reconnecting -> {
-                CircularProgressIndicator(Modifier.size(24.dp))
+                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(Modifier.size(26.dp), strokeWidth = 2.dp)
+                }
             }
             is PlayerState.Playing -> {
-                IconButton(onClick = onToggle) {
-                    Icon(Icons.Filled.Pause, contentDescription = "Pausar")
+                FilledIconButton(
+                    onClick = onToggle,
+                    modifier = Modifier.size(56.dp),
+                    colors =
+                        IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                ) {
+                    Icon(Icons.Filled.Pause, contentDescription = "Pausar", modifier = Modifier.size(30.dp))
                 }
             }
             is PlayerState.Paused -> {
-                IconButton(onClick = onToggle) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = "Reanudar")
+                FilledIconButton(
+                    onClick = onToggle,
+                    modifier = Modifier.size(56.dp),
+                    colors =
+                        IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                ) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = "Reanudar", modifier = Modifier.size(30.dp))
                 }
             }
             is PlayerState.Error -> {
@@ -333,6 +362,7 @@ private fun PanelMainAction(
                         } else {
                             onRetry
                         },
+                    modifier = Modifier.size(48.dp),
                 ) {
                     if (current.action == PlayerErrorAction.EDIT_SERVER) {
                         Icon(Icons.Filled.Settings, contentDescription = "Editar servidor")
@@ -352,10 +382,11 @@ private fun PanelMuteButton(
     muted: Boolean,
     onToggleMute: () -> Unit,
 ) {
-    IconButton(onClick = onToggleMute) {
+    IconButton(onClick = onToggleMute, modifier = Modifier.size(48.dp)) {
         Icon(
             if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
             contentDescription = if (muted) "Activar sonido" else "Silenciar",
+            modifier = Modifier.size(24.dp),
         )
     }
 }

@@ -48,4 +48,54 @@ class ContrastTest {
     @Test fun `play activo ochre-500 sobre pine-950 legible`() {
         assertTrue(ratio(0xC0883E, 0x08100B) >= 3.0)
     }
+
+    // Spec 0061: pares usados por tarjetas, chips y barra inferior.
+
+    @Test fun `dark secondary on card cumple AA`() {
+        assertTrue(ratio(0x8CB29A, 0x24422E) >= 4.5)
+    }
+
+    @Test fun `dark chip text on chip cumple AA`() {
+        assertTrue(ratio(0x8CB29A, 0x17291C) >= 4.5)
+    }
+
+    @Test fun `dark card surface sobre fondo`() {
+        assertTrue(ratio(0x24422E, 0x08100B) >= 1.3)
+    }
+
+    @Test fun `dark card border sobre tarjeta`() {
+        assertTrue(ratio(0x3C6A4D, 0x24422E) >= 1.5)
+    }
+
+    @Test fun `dark player border sobre panel`() {
+        assertTrue(ratio(0x3C6A4D, 0x1B3121) >= 1.5)
+    }
+
+    @Test fun `dark nav indicator sobre barra`() {
+        assertTrue(ratio(0xD3A568, 0x0F1A12) >= 3.0)
+    }
+
+    @Test fun `dark nav selected sobre indicador`() {
+        assertTrue(ratio(0x08100B, 0xD3A568) >= 4.5)
+    }
+
+    @Test fun `light secondary on card cumple AA`() {
+        assertTrue(ratio(0x4C6B58, 0xFFFFFF) >= 4.5)
+    }
+
+    @Test fun `light chip text on chip cumple AA`() {
+        assertTrue(ratio(0x4C6B58, 0xD9E4DC) >= 4.5)
+    }
+
+    @Test fun `light card border sobre tarjeta`() {
+        assertTrue(ratio(0xC4D4C9, 0xFFFFFF) >= 1.5)
+    }
+
+    @Test fun `light nav indicator sobre barra`() {
+        assertTrue(ratio(0x8A5F26, 0xFFFFFF) >= 3.0)
+    }
+
+    @Test fun `light nav selected sobre indicador`() {
+        assertTrue(ratio(0xFFFFFF, 0x8A5F26) >= 4.5)
+    }
 }

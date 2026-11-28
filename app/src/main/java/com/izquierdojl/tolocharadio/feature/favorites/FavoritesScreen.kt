@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -74,11 +75,15 @@ import com.izquierdojl.tolocharadio.core.ui.components.FavoriteButton
 import com.izquierdojl.tolocharadio.core.ui.components.SectionHeader
 import com.izquierdojl.tolocharadio.core.ui.components.StationArtwork
 import com.izquierdojl.tolocharadio.core.ui.components.StationCard
+import com.izquierdojl.tolocharadio.core.ui.components.StationPlaybackBadge
 import com.izquierdojl.tolocharadio.core.ui.components.TagChip
 import com.izquierdojl.tolocharadio.core.ui.components.ViewModeToggle
+import com.izquierdojl.tolocharadio.core.ui.playback.NowPlayingUi
+import com.izquierdojl.tolocharadio.core.ui.playback.StationPlaybackUiState
 import com.izquierdojl.tolocharadio.data.remote.dto.FavoriteDto
 import com.izquierdojl.tolocharadio.feature.ViewModeViewModel
 import com.izquierdojl.tolocharadio.feature.player.PlayerViewModel
+import com.izquierdojl.tolocharadio.feature.player.rememberNowPlayingUi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -117,6 +122,7 @@ private data class FavoriteRowState(
     val fav: FavoriteDto,
     val showDragHandle: Boolean,
     val isDragging: Boolean,
+    val playback: StationPlaybackUiState = StationPlaybackUiState.Inactive,
 )
 
 /** Callbacks de una fila de favorita. */
@@ -152,6 +158,7 @@ fun FavoritesScreen(
 ) {
     val ui by viewModel.ui.collectAsState()
     val mode by viewModeVm.mode.collectAsState()
+    val nowPlaying = rememberNowPlayingUi(player)
     val snackbar = remember { SnackbarHostState() }
 
     val pendingUndo = (ui as? FavoritesUiState.Content)?.pendingUndo
@@ -202,11 +209,20 @@ fun FavoritesScreen(
             FavoritesScreenContent(
                 state = ui,
                 mode = mode,
+                nowPlaying = nowPlaying,
                 actions =
                     FavoriteListActions(
                         onStation = onStation,
                         onExplore = onExplore,
-                        onPlay = { player.play(it.station) },
+                        onPlay = { fav ->
+                            when (nowPlaying.stateFor(fav.station.id)) {
+                                StationPlaybackUiState.Playing,
+                                StationPlaybackUiState.Paused,
+                                -> player.toggle()
+                                StationPlaybackUiState.Loading -> Unit
+                                else -> player.play(fav.station)
+                            }
+                        },
                         onRemove = viewModel::removeWithUndo,
                         onMove = viewModel::moveItem,
                         onCommit = viewModel::commitOrder,
@@ -224,6 +240,7 @@ fun FavoritesScreenContent(
     state: FavoritesUiState,
     actions: FavoriteListActions,
     mode: ViewMode = ViewMode.LIST,
+    nowPlaying: NowPlayingUi = NowPlayingUi(),
 ) {
     when (state) {
         FavoritesUiState.Loading -> CircularProgressIndicator(Modifier.padding(32.dp))
@@ -243,11 +260,13 @@ fun FavoritesScreenContent(
             if (mode == ViewMode.GRID) {
                 FavoritesGrid(
                     s = state,
+                    nowPlaying = nowPlaying,
                     onStation = actions.onStation,
+                    onPlay = actions.onPlay,
                     onRemove = actions.onRemove,
                 )
             } else {
-                FavoritesList(s = state, actions = actions)
+                FavoritesList(s = state, actions = actions, nowPlaying = nowPlaying)
             }
     }
 }
@@ -256,7 +275,9 @@ fun FavoritesScreenContent(
 @Composable
 private fun FavoritesGrid(
     s: FavoritesUiState.Content,
+    nowPlaying: NowPlayingUi,
     onStation: (String) -> Unit,
+    onPlay: (FavoriteDto) -> Unit,
     onRemove: (String) -> Unit,
 ) {
     if (s.offline) {
@@ -276,7 +297,9 @@ private fun FavoritesGrid(
             StationCard(
                 station = fav.station,
                 isFavorite = true,
-                onPlay = { onStation(fav.station.id) },
+                playback = nowPlaying.stateFor(fav.station.id),
+                onOpen = { onStation(fav.station.id) },
+                onPlay = { onPlay(fav) },
                 onToggleFavorite = { onRemove(fav.station.id) },
             )
         }
@@ -287,6 +310,7 @@ private fun FavoritesGrid(
 private fun FavoritesList(
     s: FavoritesUiState.Content,
     actions: FavoriteListActions,
+    nowPlaying: NowPlayingUi = NowPlayingUi(),
 ) {
     val reorderEnabled = !s.offline && s.items.size > 1
     if (s.offline) {
@@ -316,6 +340,7 @@ private fun FavoritesList(
                         fav = fav,
                         showDragHandle = reorderEnabled,
                         isDragging = draggingId == fav.station.id,
+                        playback = nowPlaying.stateFor(fav.station.id),
                     ),
                 actions =
                     FavoriteRowActions(
@@ -398,12 +423,22 @@ private fun FavoriteRow(
         Column(
             modifier = Modifier.weight(1f).clickable(onClick = actions.onOpen).padding(vertical = 4.dp),
         ) {
-            Text(
-                state.fav.station.name.ifBlank { "Emisora sin nombre" },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleSmall,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    state.fav.station.name.ifBlank { "Emisora sin nombre" },
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                if (state.playback != StationPlaybackUiState.Inactive) {
+                    StationPlaybackBadge(
+                        state = state.playback,
+                        compact = true,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
             Text(
                 listOfNotNull(state.fav.station.country, state.fav.station.language).joinToString(" · "),
                 maxLines = 1,
@@ -427,7 +462,19 @@ private fun FavoriteRow(
             }
         }
         IconButton(onClick = actions.onPlay) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = "Reproducir")
+            Icon(
+                if (state.playback == StationPlaybackUiState.Playing) {
+                    Icons.Filled.Pause
+                } else {
+                    Icons.Filled.PlayArrow
+                },
+                contentDescription =
+                    when (state.playback) {
+                        StationPlaybackUiState.Playing -> "Pausar"
+                        StationPlaybackUiState.Paused -> "Reanudar"
+                        else -> "Reproducir"
+                    },
+            )
         }
         FavoriteButton(isFavorite = true, onToggle = actions.onRemove)
     }
