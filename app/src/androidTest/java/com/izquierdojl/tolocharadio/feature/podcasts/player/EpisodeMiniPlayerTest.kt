@@ -13,6 +13,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import kotlin.math.abs
 
 class EpisodeMiniPlayerTest {
     @get:Rule
@@ -75,6 +76,20 @@ class EpisodeMiniPlayerTest {
         assertTrue("Panel de $heightDp dp", heightDp <= 72.5f)
         compose.onNodeWithText(withImage.title).assertDoesNotExist()
         compose.onNodeWithContentDescription("${withImage.title}, Podcast").assertExists()
+    }
+
+    @Test
+    fun losControlesCentralesQuedanCentradosEnLaBarra() {
+        val withImage = episode.copy(imageUrl = "https://example.org/episode.png")
+        content(ui(uiEpisode = withImage), overrideEpisode = withImage)
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val play = compose.onNodeWithContentDescription("Pausar").fetchSemanticsNode().boundsInRoot
+        val density = compose.density.density
+        val topGap = (play.top - root.top) / density
+        val bottomGap = (root.bottom - play.bottom) / density
+        val horizontalOffset = ((play.left + play.right) / 2f - (root.left + root.right) / 2f) / density
+        assertTrue("Huecos $topGap/$bottomGap dp", abs(topGap - bottomGap) <= 1.5f)
+        assertTrue("Descentrado $horizontalOffset dp", abs(horizontalOffset) <= 1.5f)
     }
 
     @Test

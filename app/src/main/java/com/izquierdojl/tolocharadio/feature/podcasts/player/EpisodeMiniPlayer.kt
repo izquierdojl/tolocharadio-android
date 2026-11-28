@@ -1,16 +1,13 @@
 package com.izquierdojl.tolocharadio.feature.podcasts.player
 
 import androidx.activity.ComponentActivity
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
@@ -53,9 +50,10 @@ import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerUi
 import com.izquierdojl.tolocharadio.feature.podcasts.EpisodePlayerViewModel
 
 /**
- * Mini-player de episodio (US3/spec 0047): tres filas —podcast, episodio
- * y acciones—. Tocar la barra abre el "now playing" completo; las acciones
- * no propagan el toque.
+ * Mini-player de episodio (spec 0062): con imagen, una barra compacta de
+ * 72 dp con carátula de 56 dp, los tres controles centrales centrados en
+ * ancho y alto, y tiempos/progreso en la franja inferior. Sin imagen añade
+ * título y podcast encima. Tocar la barra abre el reproductor completo.
  */
 @Composable
 fun EpisodeMiniPlayer(
@@ -96,11 +94,14 @@ internal fun EpisodeMiniPlayerContent(
     val imageUrl = episode.imageUrl ?: ui.podcast?.imageUrl
     val hasImage = !imageUrl.isNullOrBlank()
     val imageDescription = "${episode.title}, ${ui.podcast?.title ?: "Podcast"}"
+    // La barra de progreso comparte los mismos extremos que los tiempos.
+    val timeStart = if (hasImage) 72.dp else 8.dp
+    val timeEnd = 64.dp
     NowPlayingContainer(onClick = onOpenFullPlayer) {
         Column {
             if (!hasImage) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 12.dp),
+                    modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -120,10 +121,7 @@ internal fun EpisodeMiniPlayerContent(
                     }
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Box(Modifier.fillMaxWidth().height(71.dp)) {
                 if (hasImage) {
                     AsyncImage(
                         model = imageUrl,
@@ -131,12 +129,13 @@ internal fun EpisodeMiniPlayerContent(
                         contentScale = ContentScale.Crop,
                         modifier =
                             Modifier
+                                .align(Alignment.CenterStart)
+                                .padding(start = 8.dp, bottom = 1.dp)
                                 .size(56.dp)
                                 .clip(MaterialTheme.shapes.small),
                         error = painterResource(R.drawable.sierra_emblem),
                         fallback = painterResource(R.drawable.sierra_emblem),
                     )
-                    Spacer(Modifier.width(8.dp))
                 }
                 MiniControlsRow(
                     ui = ui,
@@ -144,40 +143,51 @@ internal fun EpisodeMiniPlayerContent(
                     onSkipBack = onSkipBack,
                     onSkipForward = onSkipForward,
                     onStop = onStop,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.matchParentSize().padding(bottom = 1.dp).padding(horizontal = 8.dp),
                 )
-            }
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(12.dp)
-                        .padding(horizontal = 8.dp)
-                        .testTag(TolochaTestTags.EPISODE_TIME_ROW)
-                        .semantics {
-                            contentDescription = timeDescription
-                        },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    formatPlaybackTime(ui.positionMs),
-                    style = timeStyle,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                remaining?.let {
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(15.dp)
+                            .testTag(TolochaTestTags.EPISODE_TIME_ROW)
+                            .semantics {
+                                contentDescription = timeDescription
+                            },
+                ) {
                     Text(
-                        formatRemainingTime(it),
+                        formatPlaybackTime(ui.positionMs),
                         style = timeStyle,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(start = timeStart, bottom = 3.dp),
+                    )
+                    remaining?.let {
+                        Text(
+                            formatRemainingTime(it),
+                            style = timeStyle,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier =
+                                Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(end = timeEnd, bottom = 3.dp),
+                        )
+                    }
+                }
+                if (ui.durationMs > 0) {
+                    LinearProgressIndicator(
+                        progress = { (ui.positionMs.toFloat() / ui.durationMs.toFloat()).coerceIn(0f, 1f) },
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(start = timeStart, end = timeEnd)
+                                .fillMaxWidth()
+                                .height(3.dp),
                     )
                 }
-            }
-            if (ui.durationMs > 0) {
-                LinearProgressIndicator(
-                    progress = { (ui.positionMs.toFloat() / ui.durationMs.toFloat()).coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth().height(3.dp),
-                )
             }
         }
     }
@@ -192,7 +202,7 @@ private fun MiniControlsRow(
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier.height(56.dp)) {
+    Box(modifier) {
         Row(
             modifier = Modifier.align(Alignment.Center),
             verticalAlignment = Alignment.CenterVertically,

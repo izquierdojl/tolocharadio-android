@@ -63,7 +63,7 @@ La persona usa TalkBack o mantiene pulsado para descubrir acciones. Quiere que l
 
 - **FR-001**: El panel de podcast MUST mostrar la carátula de 56 dp en la misma fila que los controles cuando el episodio o el podcast tienen imagen; en ese caso MUST NOT mostrar título ni nombre del podcast.
 - **FR-002**: Si no hay imagen, el panel MUST mostrar el título a una línea y el podcast a una línea sobre los controles.
-- **FR-003**: El panel MUST conservar play/pausa de 56 dp, saltos y Detener de 48 dp, tiempos transcurrido/restante y barra de progreso; los saltos MUST usar los mismos iconos que el detalle (`Undo`/`Redo`).
+- **FR-003**: El panel MUST conservar play/pausa de 56 dp, saltos y Detener de 48 dp, tiempos transcurrido/restante y barra de progreso; los saltos MUST usar los mismos iconos que el detalle (`Undo`/`Redo`). Los tres botones centrales MUST quedar centrados horizontalmente en el panel completo y, cuando hay imagen, también verticalmente con márgenes superior e inferior iguales; tiempos y progreso MUST ocupar la franja inferior sin desplazarlos hacia arriba. La barra de progreso MUST empezar y terminar en los mismos extremos que los tiempos, sin invadir la carátula ni Detener.
 - **FR-004**: La altura del panel MUST ser como máximo 72 dp con imagen y 112 dp sin imagen, con la fuente por defecto.
 - **FR-005**: La carátula del panel MUST tener un nombre accesible con episodio y podcast; tocar el panel MUST abrir el reproductor completo.
 - **FR-006**: Las filas de episodio MUST usar una imagen de 56 dp, título a dos líneas, podcast a una línea, meta de fecha/duración/estado y progreso cuando exista.
@@ -87,6 +87,7 @@ No hay entidades nuevas. Se reutilizan `PodcastEpisode`, `PodcastSummary`, `Down
 - **SC-003**: El 100 % de las acciones que hoy están en la fila sigue disponible en el menú de pulsación larga; no se pierde ninguna.
 - **SC-004**: Con imagen no aparece texto de título/podcast en el panel; sin imagen sí aparece.
 - **SC-005**: Los iconos de salto del panel coinciden con los del detalle del episodio.
+- **SC-007**: El play central del panel con imagen queda en el centro geométrico de la barra (±1 dp) y los huecos superior e inferior son iguales.
 - **SC-006**: La suite existente y los nuevos tests de fila, panel y menú pasan; `assembleDebug`, `testDebugUnitTest`, `detekt`, `ktlintCheck`, `lintDebug` y `connectedDebugAndroidTest` en verde.
 
 ## Assumptions

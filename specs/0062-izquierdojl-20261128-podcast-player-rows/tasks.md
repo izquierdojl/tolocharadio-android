@@ -10,6 +10,8 @@
 
 - [X] T001 [US1] Integrar la carátula de 56 dp en la fila de controles de `EpisodeMiniPlayerContent`, ocultar título/podcast cuando hay imagen y conservar texto cuando no la hay, en `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/player/EpisodeMiniPlayer.kt`
 - [X] T002 [US1] Cambiar los saltos del mini-player a `Undo`/`Redo` (mismos iconos que el detalle), mantener play 56/saltos 48/Detener 48, tiempos y progreso, y ajustar alturas 72/112 dp en `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/player/EpisodeMiniPlayer.kt`
+- [X] T014 [US1] Centrar el grupo central en el ancho y alto totales de la barra, con márgenes iguales, y llevar tiempos/progreso a la franja inferior sin sumar altura, en `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/player/EpisodeMiniPlayer.kt`
+- [X] T015 [US1] Alinear los extremos de la barra de progreso con los tiempos transcurrido/restante, sin invadir la carátula ni Detener, en `app/src/main/java/com/izquierdojl/tolocharadio/feature/podcasts/player/EpisodeMiniPlayer.kt`
 
 ## Phase 2: Filas de episodio
 

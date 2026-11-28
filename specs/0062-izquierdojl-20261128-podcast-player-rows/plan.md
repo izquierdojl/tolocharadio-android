@@ -54,7 +54,7 @@ app/src/androidTest/java/com/izquierdojl/tolocharadio/
 
 ## Design Decisions
 
-- **Mini-player**: si hay imagen, una `Box` de 56 dp con carátula a la izquierda, controles centrados y Detener a la derecha; sin fila de texto. Si no hay imagen, se mantiene la fila de título/podcast. Tiempos y progreso debajo. Alturas 72/112 dp.
+- **Mini-player**: una sola `Box` de 71 dp con carátula de 56 dp a la izquierda, grupo central centrado en el ancho y alto completos (márgenes iguales), Detener a la derecha y tiempos/progreso en la franja inferior sin sumar altura; el progreso comparte los mismos extremos que los tiempos, sin invadir carátula ni Detener. Sin imagen se añade la fila de título/podcast de 36 dp. Alturas 72/112 dp.
 - **Saltos**: `Icons.AutoMirrored.Filled.Undo/Redo`, igual que `EpisodePlayerControls`; `contentDescription` con los segundos configurados.
 - **Fila**: `ListItem` con imagen 56 dp, título 2 líneas, podcast 1 línea, meta/progreso y `FilledIconButton` de 48 dp a la derecha. `combinedClickable` para abrir ficha o menú.
 - **Menú**: `ModalBottomSheet` con descargar/reintentar, cola a continuación, cola al final, favorito, reproducido/pendiente y abrir ficha; se ocultan las acciones no disponibles. Feedback háptico en la pulsación larga.
